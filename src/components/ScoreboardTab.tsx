@@ -34,8 +34,8 @@ const TeamDetails: React.FC<{ team: ParticipantDto[]; searchedPlayerPuuid: strin
       };
     }
     return isWin
-      ? { bgClass: 'bg-blue-500/10', textClass: teamId === 100 ? 'text-blue-400' : 'text-red-400', label: 'Victory' }
-      : { bgClass: 'bg-red-900/30', textClass: teamId === 100 ? 'text-blue-400' : 'text-red-400', label: 'Defeat' };
+      ? { bgClass: 'bg-gray-900/20', textClass: 'text-blue-400', label: 'Victory' }
+      : { bgClass: 'bg-gray-900/20', textClass: 'text-red-400', label: 'Defeat' };
   };
   const headerInfo = getHeaderInfo();
   return (

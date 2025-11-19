@@ -126,7 +126,9 @@ const DashboardPage = () => {
                     </td>
                     <td className="block text-right py-1 text-lg font-semibold text-white truncate md:table-cell md:px-6 md:py-3 md:text-base md:text-left">
                       <span className="float-left font-bold md:hidden text-gray-400 uppercase">Summoner</span>
-                      <div className="md:inline"><span className="truncate">{player.gameName}</span> <span className="text-gray-400 font-normal">#{player.tagLine}</span></div>
+                      <div className="md:inline">
+                        <span className="truncate">{player.gameName}</span> <span className="text-gray-400 font-normal">#{player.tagLine}</span>
+                      </div>
                     </td>
                     <td className="block text-right py-1 font-bold text-blue-300 md:table-cell md:px-6 md:py-3">
                       <span className="float-left font-bold md:hidden text-gray-400 uppercase">LP</span>

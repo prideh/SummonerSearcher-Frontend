@@ -52,7 +52,7 @@ const RegistrationForm: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-center h-screen">
+    <div className="flex flex-col md:flex-row items-center justify-center min-h-screen p-4 bg-gray-900">
       <form onSubmit={handleSubmit} className="bg-gray-800 p-6 rounded-lg shadow-md w-full max-w-sm">
         <h2 className="text-2xl font-bold mb-4 text-white">Register</h2>
         {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
@@ -123,7 +123,7 @@ const RegistrationForm: React.FC = () => {
         </div>
       </form>
       
-      <PasswordRequirements requirements={passwordRequirements} className="ml-8" />
+      <PasswordRequirements requirements={passwordRequirements} className="mt-8 md:mt-0 md:ml-8" />
     </div>
 
   );
