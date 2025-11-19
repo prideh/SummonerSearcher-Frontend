@@ -36,7 +36,7 @@ const LoginForm: React.FC = () => {
 
     if (password.length < 8) {
       setError('Password must be at least 8 characters long.');
-      return;
+      return; 
     }
     setIsSubmitting(true);
 
