@@ -61,6 +61,7 @@ const TwoFAPage = () => {
       setSuccessMessage(data.message || '2FA has been enabled successfully.');
       update2FAStatus(true);
       setQrCode(null); // Hide the QR/verification form on success
+      setCode(''); // Clear the code input on success
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data || 'Verification failed. Please try again.');
@@ -82,6 +83,7 @@ const TwoFAPage = () => {
       const data = await disable2FA(parseInt(code, 10)); // Assuming 'code' state is used for disable as well
       setSuccessMessage(data.message || '2FA has been disabled successfully.');
       update2FAStatus(false);
+      setCode(''); // Clear the code input on success
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data.message || 'Failed to disable 2FA.');
