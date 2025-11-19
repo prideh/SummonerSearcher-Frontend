@@ -162,6 +162,19 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
           <div className="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
             {/* Player Stats */}
             <div className="flex items-center space-x-2">
+                            <div className="text-left">
+                <p className="font-bold text-white whitespace-nowrap">
+                  <span className="text-green-400">{kills}</span> / <span className="text-red-400">{deaths}</span> / <span className="text-yellow-400">{assists}</span>
+                </p>
+                <p className="text-xs text-gray-400 mt-1">{kda.toFixed(2)} KDA</p>
+                <div className="h-5 mt-1">
+                  {(challenges?.soloKills ?? 0) > 0 && (
+                    <p className="text-xs font-semibold text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded inline-block">
+                      Solo Kills: {challenges.soloKills}
+                    </p>
+                  )}
+                </div>
+              </div>
               <div className="relative shrink-0">
                 <img
                   src={`${CDN_URL}/img/champion/${getCorrectChampionName(championName)}.png`}
@@ -227,20 +240,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
           </div>
 
           {/* KDA, CS, KP Stats */}
-          <div className="flex flex-col md:flex-row justify-around items-center text-center gap-2 md:gap-4 md:w-[150px] shrink-0">
-            <div>
-              <p className="font-bold text-white whitespace-nowrap">
-                <span className="text-green-400">{kills}</span> / <span className="text-red-400">{deaths}</span> / <span className="text-yellow-400">{assists}</span>
-              </p>
-              <p className="text-xs text-gray-400 mt-1">{kda.toFixed(2)} KDA</p>
-              <div className="h-5 mt-1">
-                {(challenges?.soloKills ?? 0) > 0 && (
-                  <p className="text-xs font-semibold text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded inline-block">
-                    Solo Kills: {challenges.soloKills}
-                  </p>
-                )}
-              </div>
-            </div>
+          <div className="flex justify-around items-center text-center md:w-[100px] shrink-0">
             <div>
               <p className="text-gray-300">CS {cs}</p>
               <p className="text-xs text-red-300 mt-1">KP {killParticipation.toFixed(0)}%</p>
