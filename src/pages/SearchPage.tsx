@@ -18,6 +18,7 @@ const SearchPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showRecent, setShowRecent] = useState(false);
 
   const region = useAuthStore((state) => state.region);
@@ -37,26 +38,21 @@ const SearchPage = () => {
   }, []);
 
   const performSearch = useCallback(async (name: string, tag: string) => {
-    if (!name || !tag) {
-      setError('Please enter both a summoner name and a tagline.');
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    setSummonerData(null);
-
     try {
       const data: SummonerData = await getSummonerByName(region, name, tag);
       setSummonerData(data);
       setLastSearchedSummoner(data);
+      setLastUpdated(new Date());
       // Re-fetch recent searches after a successful search
       fetchRecentSearches();
     } catch (err) {
-      if (axios.isAxiosError(err)) {
+      if (err instanceof Error && err.message === 'NOT_FOUND') {
+        setError('NOT_FOUND');
+      } else if (axios.isAxiosError(err)) {
         if (err.response?.status === 404) {
           setError('NOT_FOUND'); // Use a special key for "not found" errors
         } else {
-          setError(err.response?.data.message || 'An error occurred while searching.');
+          setError(err.response?.data?.message || 'An error occurred while searching.');
         }
       } else if (err instanceof Error) {
         setError(err.message);
@@ -68,6 +64,19 @@ const SearchPage = () => {
     }
   }, [region, fetchRecentSearches, setLastSearchedSummoner]);
 
+  const startSearch = (name: string, tag: string, isRefresh = false) => {
+    if (!name || !tag) {
+      setError('Please enter both a summoner name and a tagline.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    if (!isRefresh) {
+      setSummonerData(null);
+    }
+    performSearch(name, tag);
+  };
+
   const handleSearchClick = () => {
     const parts = searchInput.split('#');
     if (parts.length !== 2 || !parts[0].trim() || !parts[1].trim()) {
@@ -75,13 +84,19 @@ const SearchPage = () => {
       return;
     }
     const [name, tag] = parts.map(p => p.trim());
-    performSearch(name, tag);
+    startSearch(name, tag);
+  };
+
+  const handleRefresh = () => {
+    if (summonerData) {
+      startSearch(summonerData.gameName, summonerData.tagLine, true);
+    }
   };
 
   const handlePlayerClick = (name: string, tag: string) => {
     const combined = `${name}#${tag}`;
     setSearchInput(combined);
-    performSearch(name, tag);
+    startSearch(name, tag);
     window.scrollTo(0, 0); // Scroll to top for the new search
   };
 
@@ -101,18 +116,19 @@ const SearchPage = () => {
     const gameNameFromUrl = searchParams.get('gameName');
     const tagLineFromUrl = searchParams.get('tagLine');
 
+    initialSearchPerformed.current = true;
+
     if (gameNameFromUrl && tagLineFromUrl) {
-      initialSearchPerformed.current = true;
       const combinedInput = `${gameNameFromUrl}#${tagLineFromUrl}`;
       setSearchInput(combinedInput);
-      performSearch(gameNameFromUrl, tagLineFromUrl);
+      startSearch(gameNameFromUrl, tagLineFromUrl);
     }
     // If no search from URL, load the last searched summoner from the store
     else if (lastSearchedSummoner) {
       setSummonerData(lastSearchedSummoner);
+      setLastUpdated(new Date()); // Assume it's fresh for this session
     }
   }, [searchParams, performSearch, lastSearchedSummoner]);
-
   // This effect will run once when the component mounts to fetch recent searches.
   useEffect(() => {
     fetchRecentSearches();
@@ -248,7 +264,7 @@ const SearchPage = () => {
                     onClick={() => {
                       setSearchInput(search);
                       const [name, tag] = search.split('#');
-                      performSearch(name, tag);
+                      startSearch(name, tag);
                       setShowRecent(false);
                     }}
                   >
@@ -280,9 +296,26 @@ const SearchPage = () => {
                 alt="Profile Icon"
                 className="w-20 h-20 rounded-full border-2 border-blue-400"
               />
-              <div className="text-center sm:text-left">
-                <h2 className="text-2xl font-bold">{summonerData.gameName} <span className="text-gray-500">#{summonerData.tagLine}</span></h2>
-                <p className="text-gray-400">Level {summonerData.summonerLevel}</p>
+              <div className="flex-grow text-center sm:text-left">
+                <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start sm:space-x-4">
+                  <h2 className="text-2xl font-bold">{summonerData.gameName} <span className="text-gray-500">#{summonerData.tagLine}</span></h2>
+                </div>
+                <p className="text-gray-400 mt-1">Level {summonerData.summonerLevel}</p>
+                {lastUpdated && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Last updated: {lastUpdated.toLocaleTimeString()}
+                  </p>
+                )}
+              </div>
+              <div className="shrink-0">
+                <button 
+                  onClick={handleRefresh} 
+                  disabled={loading}
+                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md disabled:bg-blue-400/50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 11.667 0l3.181-3.183m-4.991-2.691V5.25a8.25 8.25 0 0 0-11.667 0v3.183" /></svg>
+                  <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
+                </button>
               </div>
             </div>
             {summonerData.soloQueueRank ? (
