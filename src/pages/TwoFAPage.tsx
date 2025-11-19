@@ -82,13 +82,13 @@ const TwoFAPage = () => {
   };
 
   return (
-    <div className="container mx-auto p-4 bg-gray-900 text-white min-h-screen flex flex-col items-center">
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-900 text-white min-h-screen flex flex-col items-center">
       <h2 className="text-3xl font-bold mb-6 text-center">Two-Factor Authentication</h2>
 
       {error && <p className="text-red-500 text-center">{error}</p>}
 
       {successMessage && (
-        <div className="bg-green-800 bg-opacity-50 border border-green-600 text-green-300 px-6 py-4 rounded-lg text-center max-w-md">
+        <div className="bg-green-800 bg-opacity-50 border border-green-600 text-green-300 px-6 py-4 rounded-lg text-center w-full max-w-md">
           <h3 className="font-bold text-xl mb-2">Success!</h3>
           <p>{successMessage}</p>
         </div>
@@ -96,7 +96,7 @@ const TwoFAPage = () => {
 
       {!successMessage && (
         is2faEnabled ? (
-          <div className="bg-gray-800 p-8 rounded-lg shadow-lg text-center max-w-md">
+          <div className="bg-gray-800 p-6 md:p-8 rounded-lg shadow-lg text-center w-full max-w-md">
             <p className="text-lg text-green-400 mb-4">2FA is currently enabled.</p>
             <p className="text-gray-400 mb-6">To disable it, please enter a code from your authenticator app.</p>
             <form onSubmit={handleDisable2FA} className="flex flex-col items-center">
@@ -111,7 +111,7 @@ const TwoFAPage = () => {
                 }}
                 placeholder="6-digit code"
                 maxLength={6}
-                className="p-2 border border-gray-700 rounded-md bg-gray-900 text-gray-300 text-center text-2xl tracking-widest w-48 focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="p-2 border border-gray-700 rounded-md bg-gray-900 text-gray-300 text-center text-2xl tracking-widest w-full max-w-[12rem] focus:outline-none focus:ring-2 focus:ring-red-500"
                 required
               />
               <button
@@ -136,7 +136,7 @@ const TwoFAPage = () => {
             {loading && <p className="text-lg">Generating your QR code...</p>}
 
             {qrCode && !loading && (
-              <div className="bg-gray-800 p-8 rounded-lg shadow-lg text-center max-w-md">
+              <div className="bg-gray-800 p-6 md:p-8 rounded-lg shadow-lg text-center w-full max-w-md">
                 <p className="mb-4 text-gray-300">
                   Scan the QR code below with your authenticator app (like Google Authenticator, Authy, or 1Password).
                 </p>
@@ -156,7 +156,7 @@ const TwoFAPage = () => {
                     }}
                     placeholder="6-digit code"
                     maxLength={6}
-                    className="p-2 border border-gray-700 rounded-md bg-gray-900 text-gray-300 text-center text-2xl tracking-widest w-48 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="p-2 border border-gray-700 rounded-md bg-gray-900 text-gray-300 text-center text-2xl tracking-widest w-full max-w-[12rem] focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <button type="submit" disabled={isVerifying} className="mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-green-400 disabled:cursor-not-allowed">
                     {isVerifying ? 'Verifying...' : 'Verify & Enable'}

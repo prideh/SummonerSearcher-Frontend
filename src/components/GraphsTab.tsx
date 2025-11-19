@@ -41,9 +41,9 @@ const StatGraph: React.FC<StatGraphProps> = ({ participants, puuid, onPlayerClic
 
         return (
           <div key={player.puuid} className={`flex items-center space-x-3 text-sm p-1 rounded-md transition-colors ${isSearchedPlayer ? 'bg-gray-700/50' : ''}`}>
-            <img src={`${CDN_URL}/img/champion/${getCorrectChampionName(player.championName)}.png`} alt={player.championName} className="w-8 h-8 rounded" />
+            <img src={`${CDN_URL}/img/champion/${getCorrectChampionName(player.championName)}.png`} alt={player.championName} className="w-8 h-8 rounded shrink-0" />
             <div
-              className={`w-32 truncate cursor-pointer ${isSearchedPlayer ? 'text-white font-bold' : 'text-gray-300 hover:text-white'}`}
+              className={`w-24 md:w-32 truncate cursor-pointer ${isSearchedPlayer ? 'text-white font-bold' : 'text-gray-300 hover:text-white'}`}
               onClick={() => onPlayerClick(player.riotIdGameName!, player.riotIdTagline!)}
             >
               {player.riotIdGameName}
@@ -54,7 +54,7 @@ const StatGraph: React.FC<StatGraphProps> = ({ participants, puuid, onPlayerClic
                 style={{ width: `${barWidth}%` }}
               />
             </div>
-            <div className="w-16 text-right font-semibold text-white">{formatNumber(statValue)}</div>
+            <div className="w-12 md:w-16 text-right font-semibold text-white shrink-0">{formatNumber(statValue)}</div>
           </div>
         );
       })}
@@ -74,7 +74,7 @@ const GraphsTab: React.FC<GraphsTabProps> = ({ match, puuid, onPlayerClick }) =>
 
   return (
     <div className="p-4 space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <h3 className="text-lg font-bold text-white">
           {
             selectedGraph === 'damage' ? 'Damage to Champions' :
@@ -100,7 +100,7 @@ const GraphsTab: React.FC<GraphsTabProps> = ({ match, puuid, onPlayerClick }) =>
         <select
           value={selectedGraph}
           onChange={(e) => setSelectedGraph(e.target.value as GraphType)}
-          className="p-1 border border-gray-600 rounded-md bg-gray-700 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+          className="p-1 border border-gray-600 rounded-md bg-gray-700 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm self-end sm:self-auto"
         >
           <option value="damage">Damage</option>
           <option value="damageTaken">Damage Taken</option>

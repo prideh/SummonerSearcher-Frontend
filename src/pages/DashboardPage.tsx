@@ -91,10 +91,15 @@ const DashboardPage = () => {
     }
 
     return (
-      <div className="mt-6 w-full max-w-4xl bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-        <div className="h-144 overflow-y-auto">
-          <table className="w-full text-sm text-left text-gray-300 table-fixed">
-            <thead className="text-xs text-gray-400 uppercase bg-gray-700 sticky top-0">
+      <div className="mt-6 w-full max-w-4xl">
+        {/* On mobile, the h-144 and overflow-y-auto are removed to allow natural page scroll.
+            On desktop (md:), they are re-applied to contain the table in a scrollable view. */}
+        <div className="md:h-144 md:overflow-y-auto md:bg-gray-800 md:rounded-lg md:shadow-lg">
+          {/* On mobile (<md), the table loses its table layout to allow for a card-based view.
+              The `md:table` and `md:table-fixed` classes restore the default table behavior on larger screens. */}
+          <table className="w-full text-sm text-left text-gray-300 border-collapse md:table md:table-fixed">
+            {/* The table head is hidden on mobile and shown as a table-header-group on desktop. */}
+            <thead className="hidden md:table-header-group text-xs text-gray-400 uppercase bg-gray-700 sticky top-0">
               <tr>
                 <th scope="col" className="px-4 py-3 text-center w-16">#</th>
                 <th scope="col" className="px-6 py-3 w-1/2">Summoner</th>
@@ -102,23 +107,34 @@ const DashboardPage = () => {
                 <th scope="col" className="px-6 py-3 text-right w-48">Win / Loss</th>
               </tr>
             </thead>
-            <tbody>
+            {/* On mobile, the tbody becomes a block container for the card-like rows. */}
+            <tbody className="block md:table-row-group">
               {leaderboard.map((player, index) => {
                 const winRate = player.wins + player.losses > 0 ? ((player.wins / (player.wins + player.losses)) * 100).toFixed(1) : 'N/A';
                 return (
+                  // Each row becomes a block-level card on mobile with spacing, and a table-row on desktop.
                   <tr
                     key={`${player.gameName}-${index}`}
-                    className="border-b border-gray-700 hover:bg-gray-600 cursor-pointer"
+                    className="block p-4 mb-3 bg-gray-800 rounded-lg shadow-lg md:table-row md:p-0 md:mb-0 md:shadow-none md:bg-transparent md:border-b md:border-gray-700 hover:bg-gray-600 cursor-pointer"
                     onClick={() => handleRowClick(player.gameName, player.tagLine)}
                   >
-                    <td className="px-4 py-3 font-medium text-center">{index + 1}</td>
-                    <td className="px-6 py-3 font-semibold text-white truncate">
-                      <span className="truncate">{player.gameName}</span> <span className="text-gray-400 font-normal">#{player.tagLine}</span>
+                    {/* Each cell becomes a block with its own label on mobile, and a normal table-cell on desktop. */}
+                    {/* The `before:` pseudo-element is used to add labels, which are hidden on desktop. */}
+                    <td className="block text-right py-1 md:table-cell md:px-4 md:py-3 md:font-medium md:text-center">
+                      <span className="float-left font-bold md:hidden text-gray-400 uppercase">Rank</span>
+                      {index + 1}
                     </td>
-                    <td className="px-6 py-3 text-right font-bold text-blue-300">{player.leaguePoints} LP</td>
-                    <td className="px-6 py-3 text-right">
-                      <span className="text-green-400">{player.wins}W</span> / <span className="text-red-400">{player.losses}L</span>
-                      <span className="text-gray-400 ml-2">({winRate}%)</span>
+                    <td className="block text-right py-1 text-lg font-semibold text-white truncate md:table-cell md:px-6 md:py-3 md:text-base">
+                      <span className="float-left font-bold md:hidden text-gray-400 uppercase">Summoner</span>
+                      <div className="md:inline"><span className="truncate">{player.gameName}</span> <span className="text-gray-400 font-normal">#{player.tagLine}</span></div>
+                    </td>
+                    <td className="block text-right py-1 font-bold text-blue-300 md:table-cell md:px-6 md:py-3">
+                      <span className="float-left font-bold md:hidden text-gray-400 uppercase">LP</span>
+                      {player.leaguePoints} LP
+                    </td>
+                    <td className="block text-right py-1 md:table-cell md:px-6 md:py-3">
+                      <span className="float-left font-bold md:hidden text-gray-400 uppercase">Win/Loss</span>
+                      <div><span className="text-green-400">{player.wins}W</span> / <span className="text-red-400">{player.losses}L</span> <span className="text-gray-400 ml-2">({winRate}%)</span></div>
                     </td>
                   </tr>
                 );
@@ -131,7 +147,7 @@ const DashboardPage = () => {
   };
 
   return (
-    <div className="container mx-auto p-4 flex flex-col items-center">
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col items-center">
       <h1 className="text-3xl font-bold mb-4 text-center">Challenger Leaderboard</h1>
       <div className="flex items-center space-x-4 mb-4">
         <label htmlFor="region-select" className="font-semibold">Region:</label>

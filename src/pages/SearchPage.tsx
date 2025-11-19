@@ -140,7 +140,7 @@ const SearchPage = () => {
 
     return (
       <div className="bg-gray-900/50 p-4 rounded-lg mt-4 border border-gray-700">
-        <h3 className="text-lg font-semibold text-blue-300">Ranked Solo/Duo</h3>
+        <h3 className="text-lg font-semibold text-blue-300 mb-2">Ranked Solo/Duo</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 mt-2">
           <div className="flex items-center space-x-4">
             {rankedData.tier && (
@@ -222,47 +222,49 @@ const SearchPage = () => {
         opacity={1}
       />
       <h1 className="text-4xl font-bold mb-8 text-center text-gray-100 tracking-wider">Summoner Search</h1>
-      <div className="flex items-start space-x-2">
-        <div className="relative" onMouseEnter={() => setShowRecent(true)} onMouseLeave={() => setShowRecent(false)}>
+      <div className="w-full max-w-lg flex flex-col md:flex-row items-stretch md:items-start space-y-2 md:space-y-0 md:space-x-0">
+        <div className="relative flex-grow" onMouseEnter={() => setShowRecent(true)} onMouseLeave={() => setShowRecent(false)}>
           <input
             type="text" 
             placeholder="SummonerName#TagLine"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="p-3 border border-gray-700 rounded-l-md bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 w-80 transition-all"
+            className="p-3 border border-gray-700 rounded-md md:rounded-l-md md:rounded-r-none bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full transition-all"
           />
           {showRecent && recentSearches.length > 0 && ( // Removed mt-1, added top-full
-            <div className="absolute z-10 w-72 top-full bg-gray-700 border border-gray-600 rounded-md shadow-lg">
+            <div className="absolute z-10 w-full md:w-72 top-full bg-gray-700 border border-gray-600 rounded-md shadow-lg">
               <div className="flex justify-between items-center px-3 py-2">
                 <span className="text-xs text-gray-400 font-semibold uppercase">Recent Searches</span>
                 <button onClick={handleClearRecentSearches} className="text-xs text-blue-400 hover:text-blue-300 hover:underline focus:outline-none">
                   Clear
                 </button>
               </div>
-              <ul className="py-1 max-h-60 overflow-y-auto">
+              <ul className="py-1 max-h-60 overflow-y-auto rounded-b-md">
                 {recentSearches.map((search, index) => (
                   <li 
                     key={index} 
-                    className="px-3 py-2 text-sm text-gray-300 hover:bg-gray-600 cursor-pointer"
+                    className="px-3 py-2 text-sm text-gray-300 hover:bg-gray-600 cursor-pointer truncate"
                     onClick={() => {
                       setSearchInput(search);
                       const [name, tag] = search.split('#');
                       performSearch(name, tag);
                       setShowRecent(false);
                     }}
-                  >{search}</li>
+                  >
+                    {search}
+                  </li>
                 ))}
               </ul>
             </div>
           )}
         </div>
-        <select value={region} onChange={(e) => setRegion(e.target.value)} className="p-3 border-y border-gray-700 bg-gray-800 text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+        <select value={region} onChange={(e) => setRegion(e.target.value)} className="p-3 border border-gray-700 md:border-y md:border-l-0 bg-gray-800 text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all rounded-md md:rounded-none">
           <option value="EUW1">EUW</option>
           <option value="NA1">NA</option>
           <option value="KR">KR</option>
         </select>
-        <button onClick={handleSearchClick} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-r-md disabled:bg-blue-400/50 disabled:cursor-not-allowed transition-colors">
+        <button onClick={handleSearchClick} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-md md:rounded-r-md md:rounded-l-none disabled:bg-blue-400/50 disabled:cursor-not-allowed transition-colors">
           {loading ? 'Searching...' : 'Search'}
         </button>
       </div>
@@ -272,13 +274,13 @@ const SearchPage = () => {
         {loading && renderSkeleton()}
         {summonerData && (
           <div className="bg-gray-800/50 border border-gray-700 p-6 rounded-lg shadow-lg">
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
               <img
                 src={`https://ddragon.leagueoflegends.com/cdn/15.21.1/img/profileicon/${summonerData.profileIconId}.png`}
                 alt="Profile Icon"
                 className="w-20 h-20 rounded-full border-2 border-blue-400"
               />
-              <div>
+              <div className="text-center sm:text-left">
                 <h2 className="text-2xl font-bold">{summonerData.gameName} <span className="text-gray-500">#{summonerData.tagLine}</span></h2>
                 <p className="text-gray-400">Level {summonerData.summonerLevel}</p>
               </div>

@@ -64,12 +64,12 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
 
   return (
     <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto">
-      <div className="bg-gray-800/50 p-4 rounded-lg">
+      <div className="bg-gray-800/50 p-3 md:p-4 rounded-lg">
         <h4 className="font-bold text-blue-300 border-b border-gray-700 pb-2 mb-3">{mainPlayer.riotIdGameName} (You)</h4>
         {renderPlayerChallenges(mainPlayer, opponent)}
       </div>
       {opponent ? (
-        <div className="bg-gray-800/50 p-4 rounded-lg">
+        <div className="bg-gray-800/50 p-3 md:p-4 rounded-lg">
           <h4 className="font-bold text-red-400 border-b border-gray-700 pb-2 mb-3">{opponent.riotIdGameName} (Opponent)</h4>
           {renderPlayerChallenges(opponent, mainPlayer)}
         </div>
