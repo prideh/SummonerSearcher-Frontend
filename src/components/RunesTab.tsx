@@ -32,19 +32,25 @@ const RunesTab: React.FC<RunesTabProps> = ({ match, puuid, onPlayerClick }) => {
                 <img src={`${CDN_URL}/img/champion/${getCorrectChampionName(player.championName)}.png`} alt={player.championName} className="w-8 h-8 rounded-full" />
                 <span className="font-semibold text-white truncate group-hover:text-blue-300">{player.riotIdGameName}</span>
               </div>
-              <div className="flex justify-center space-x-4">
+              {/* Mobile View: Single row of runes */}
+              <div className="flex md:hidden justify-start items-center space-x-1.5">
+                <RuneIcon runeId={primaryStyle?.selections[0].perk} isKeystone={true} className="w-7 h-7" />
+                <RuneIcon runeId={secondaryStyle?.style} className="w-6 h-6" />
+              </div>
+
+              {/* Desktop View: Full rune trees */}
+              <div className="hidden md:flex justify-center space-x-4">
                 {/* Primary Tree */}
                 <div className="flex flex-col items-center space-y-2">
-                  {primaryStyle?.selections.map((selection, i) => (
+                  {primaryStyle?.selections?.map((selection, i) => (
                     <RuneIcon key={i} runeId={selection.perk} isKeystone={i === 0} className="w-7 h-7" />
                   ))}
                 </div>
-                {/* Secondary Tree & Stat Shards */}
+                {/* Secondary Tree */}
                 <div className="flex flex-col items-center space-y-2">
-                  {secondaryStyle?.selections.slice(0, 2).map((selection, i) => (
+                  {secondaryStyle?.selections?.slice(0, 2).map((selection, i) => (
                     <RuneIcon key={i} runeId={selection.perk} className="w-6 h-6" />
                   ))}
-
                 </div>
               </div>
             </div>

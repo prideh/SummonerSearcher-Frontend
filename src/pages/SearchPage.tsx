@@ -222,7 +222,7 @@ const SearchPage = () => {
         opacity={1}
       />
       <h1 className="text-4xl font-bold mb-8 text-center text-gray-100 tracking-wider">Summoner Search</h1>
-      <div className="w-full max-w-lg flex flex-col md:flex-row items-stretch md:items-start space-y-2 md:space-y-0 md:space-x-0">
+      <div className="w-full max-w-lg flex flex-col sm:flex-row items-stretch sm:items-start space-y-2 sm:space-y-0 sm:space-x-0">
         <div className="relative flex-grow" onMouseEnter={() => setShowRecent(true)} onMouseLeave={() => setShowRecent(false)}>
           <input
             type="text" 
@@ -230,9 +230,9 @@ const SearchPage = () => {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="p-3 border border-gray-700 rounded-md md:rounded-l-md md:rounded-r-none bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full transition-all"
+            className="p-3 border border-gray-700 rounded-md sm:rounded-l-md sm:rounded-r-none bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full transition-all"
           />
-          {showRecent && recentSearches.length > 0 && ( // Removed mt-1, added top-full
+          {showRecent && recentSearches.length > 0 && (
             <div className="absolute z-10 w-full md:w-72 top-full bg-gray-700 border border-gray-600 rounded-md shadow-lg">
               <div className="flex justify-between items-center px-3 py-2">
                 <span className="text-xs text-gray-400 font-semibold uppercase">Recent Searches</span>
@@ -259,12 +259,12 @@ const SearchPage = () => {
             </div>
           )}
         </div>
-        <select value={region} onChange={(e) => setRegion(e.target.value)} className="p-3 border border-gray-700 md:border-y md:border-l-0 bg-gray-800 text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all rounded-md md:rounded-none">
+        <select value={region} onChange={(e) => setRegion(e.target.value)} className="p-3 border border-gray-700 sm:border-y sm:border-l-0 bg-gray-800 text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all rounded-md sm:rounded-none">
           <option value="EUW1">EUW</option>
           <option value="NA1">NA</option>
           <option value="KR">KR</option>
         </select>
-        <button onClick={handleSearchClick} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-md md:rounded-r-md md:rounded-l-none disabled:bg-blue-400/50 disabled:cursor-not-allowed transition-colors">
+        <button onClick={handleSearchClick} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-md sm:rounded-r-md sm:rounded-l-none disabled:bg-blue-400/50 disabled:cursor-not-allowed transition-colors">
           {loading ? 'Searching...' : 'Search'}
         </button>
       </div>

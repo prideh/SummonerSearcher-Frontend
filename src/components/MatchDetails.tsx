@@ -23,7 +23,7 @@ const MatchDetails: React.FC<MatchDetailsProps> = ({ match, puuid, onPlayerClick
 
   return (
     <div className="col-span-full bg-gray-800/70 rounded-b-lg text-white border-t border-gray-700/50 overflow-hidden">
-      <div className="flex border-b border-gray-700/50 px-2 md:px-4 overflow-x-auto">
+      <div className="flex border-b border-gray-700/50 px-2 sm:px-4 overflow-x-auto">
         <button onClick={() => setActiveTab('scoreboard')} className={getTabClass('scoreboard')}>
           Scoreboard
         </button>

@@ -43,7 +43,6 @@ const LoginForm: React.FC = () => {
     try {
       const data = await loginUser(email, password);
       if (data && data.jwt) {
-        console.log(data.twoFactorEnabled)
         login(data.jwt, email, data.twoFactorEnabled);
       } else if (data && data.twoFactorRequired && data.tempToken) {
         // 2FA is required, navigate to the verification page with the temp token

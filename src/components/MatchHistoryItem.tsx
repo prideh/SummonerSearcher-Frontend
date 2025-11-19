@@ -135,11 +135,11 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
   };
   const outcome = getMatchOutcomeStyles();
   return (
-    <div className={`border-l-4 ${outcome.container} ${showDetails ? 'rounded-t-lg' : 'rounded-lg'}`}>
-      <div className="grid grid-cols-[130px_1fr_auto_1fr_280px_40px] gap-x-4 items-center p-4 text-sm bg-gray-800/50">
+    <div className={`relative border-l-4 ${outcome.container} ${showDetails ? 'rounded-t-lg' : 'rounded-lg'}`}>
+      <div className="grid grid-cols-1 md:grid-cols-[130px_1fr_auto_1fr_280px_40px] gap-4 items-center p-4 text-sm bg-gray-800/50">
         {/* Game Info */}
-        <div className="text-left">
-          <p className="font-bold text-white truncate">{getQueueType(queueId)}</p>
+        <div className="flex justify-between items-center md:flex-col md:items-start md:justify-start pr-10 md:pr-0">
+          <p className="font-bold text-white truncate text-lg md:text-base">{getQueueType(queueId)}</p>
           <p 
             className="text-xs text-gray-400"
             data-tooltip-id="player-name-tooltip"
@@ -147,16 +147,18 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
           >
             {timeAgo(gameCreation)}
           </p>
-          <div className="w-12 border-t border-gray-600 my-1"></div>
-          <p className={`font-semibold ${outcome.text}`}>{outcome.label}</p>
-          <p className="text-gray-400">{formatDuration(gameDuration)}</p>
+          <div className="hidden md:block w-12 border-t border-gray-600 my-1"></div>
+          <div className="text-right md:text-left">
+            <p className={`font-semibold ${outcome.text}`}>{outcome.label}</p>
+            <p className="text-gray-400">{formatDuration(gameDuration)}</p>
+          </div>
         </div>
 
         {/* Player Stats */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4 justify-between">
           {/* Champion & Spells */}
           <div className="flex items-center space-x-2">
-            <div className="w-6 h-6"> {/* Placeholder container */}
+            <div className="w-6 h-6 hidden md:block"> {/* Placeholder container */}
               <RoleIcon role={teamPosition} className="w-6 h-6" />
             </div>
             <img
@@ -207,7 +209,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
         </div>
 
         {/* Opponent Stats */}
-        <div className="text-gray-400 flex justify-start">
+        <div className="text-gray-400 flex justify-start w-full">
           {opponent && (
             <div 
               className="grid grid-cols-[auto_auto_1fr_auto] gap-x-3 items-center w-full cursor-pointer group"
@@ -267,19 +269,23 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
         </div>
 
         {/* Items */}
-        <div className="flex justify-center">
-            <div className="grid grid-cols-3 gap-1">
-              {mainItems.map((item, i) => (
-                <ItemIcon key={i} itemId={item} />
-              ))}
-            </div>
-            <div className="ml-2">
-              <ItemIcon itemId={trinket} />
-            </div>
+        <div className="flex items-center justify-center">
+          {/* Mobile: Single flex row for all items */}
+          <div className="flex md:hidden items-center gap-1">
+            {mainItems.map((item, i) => (
+              <ItemIcon key={`mobile-main-${i}`} itemId={item} className="w-8 h-8" />
+            ))}
+            <ItemIcon key="mobile-trinket" itemId={trinket} className="w-8 h-8 ml-1" />
+          </div>
+          {/* Desktop: 3x2 grid for main items, trinket separate */}
+          <div className="hidden md:flex items-center">
+            <div className="grid grid-cols-3 gap-1">{mainItems.map((item, i) => (<ItemIcon key={`desktop-main-${i}`} itemId={item} className="w-8 h-8" />))}</div>
+            <div className="ml-2"><ItemIcon key="desktop-trinket" itemId={trinket} className="w-8 h-8" /></div>
+          </div>
         </div>
 
         {/* Expand Button */}
-        <div className="flex items-center justify-center">
+        <div className="absolute top-2 right-2 md:static flex items-center justify-center">
           <button onClick={() => setShowDetails(!showDetails)} className={`p-2 rounded-md transition-all duration-200 ${showDetails ? 'rotate-180 bg-gray-600' : 'bg-gray-500/20 hover:bg-gray-500/40'}`}>
             <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>
