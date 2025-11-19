@@ -13,6 +13,7 @@ const TwoFAPage = () => {
   const [code, setCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [isDisabling, setIsDisabling] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // This effect synchronizes the component's state with the global auth state.
@@ -25,6 +26,7 @@ const TwoFAPage = () => {
     setCode('');
     setError(null);
     setSuccessMessage(null);
+    setCopied(false);
   }, [is2faEnabled]);
 
   const handleEnable2FA = async () => {
@@ -95,6 +97,17 @@ const TwoFAPage = () => {
     }
   };
 
+  const handleCopySecret = () => {
+    if (twoFaSecret) {
+      navigator.clipboard.writeText(twoFaSecret);
+      setCopied(true);
+      // Reset the copied state after a few seconds
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-900 text-white min-h-screen flex flex-col items-center">
       <h2 className="text-3xl font-bold mb-6 text-center">Two-Factor Authentication</h2>
@@ -151,10 +164,31 @@ const TwoFAPage = () => {
 
             {qrCode && !loading && (
               <div className="bg-gray-800 p-6 md:p-8 rounded-lg shadow-lg text-center w-full max-w-md">
-                <p className="mb-4 text-gray-300">
-                  Scan the QR code below with your authenticator app (like Google Authenticator, Authy, or 1Password).
-                </p>
-                <img src={qrCode} alt="2FA QR Code" className="mx-auto border-4 border-white rounded-lg" />
+                {/* Mobile View: Text Secret */}
+                <div className="md:hidden">
+                  <p className="mb-4 text-gray-300">
+                    Open your authenticator app and enter the setup key below.
+                  </p>
+                  <div className="bg-gray-900 p-3 rounded-lg flex items-center justify-between space-x-4">
+                    <span className="text-lg font-mono text-gray-200 break-all text-left">{twoFaSecret}</span>
+                    <button
+                      onClick={handleCopySecret}
+                      type="button"
+                      className={`text-sm font-semibold py-2 px-3 rounded-md shrink-0 transition-colors ${copied ? 'bg-green-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                    >
+                      {copied ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Desktop View: QR Code */}
+                <div className="hidden md:block">
+                  <p className="mb-4 text-gray-300">
+                    Scan the QR code below with your authenticator app (like Google Authenticator, Authy, or 1Password).
+                  </p>
+                  <img src={qrCode} alt="2FA QR Code" className="mx-auto border-4 border-white rounded-lg" />
+                </div>
+
                 <p className="mt-6 text-gray-400 text-sm mb-4">
                   After scanning, enter the 6-digit code from your app to verify.
                 </p>
