@@ -1,31 +1,26 @@
-import { useState, type ReactNode } from 'react';
+import React, { useState, type ReactNode } from 'react';
 import { getRiotServerStatus } from '../api/riot';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
-interface StatusUpdate {
-  id: number;
-  maintenance_status: 'scheduled' | 'in_progress' | 'complete';
-  incident_severity: 'info' | 'warning' | 'critical';
-  titles: { locale: string; content: string }[];
-  updates: {
-    author: string;
-    content: string;
-    created_at: string;
-    translations: { locale: string; content: string }[];
-  }[];
+interface StatusItemDto {
+  status: string | null;
+  severity: string | null;
+  title: string;
+  description: string;
+  platforms: string[];
 }
 
-interface RiotStatus {
+interface PlatformStatusDto {
   name: string;
-  maintenances: StatusUpdate[];
-  incidents: StatusUpdate[];
+  maintenances: StatusItemDto[];
+  incidents: StatusItemDto[];
 }
 
 const StatusPage = () => {
   const region = useAuthStore((state) => state.region);
   const setRegion = useAuthStore((state) => state.setRegion);
-  const [status, setStatus] = useState<RiotStatus | null>(null);
+  const [status, setStatus] = useState<PlatformStatusDto | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +29,7 @@ const StatusPage = () => {
     setError(null);
     setStatus(null);
     try {
-      const data: RiotStatus = await getRiotServerStatus(region);
+      const data: PlatformStatusDto = await getRiotServerStatus(region);
       setStatus(data);
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -48,8 +43,8 @@ const StatusPage = () => {
     setLoading(false);
   };
 
-  const renderUpdates = (updates: StatusUpdate[], type: 'Maintenance' | 'Incident'): ReactNode => {
-    if (updates.length === 0) {
+  const renderUpdates = (updates: StatusItemDto[], type: 'Maintenance' | 'Incident'): ReactNode => {
+    if (!updates || updates.length === 0) {
       return null;
     }
 
@@ -58,28 +53,19 @@ const StatusPage = () => {
         <h3 className={`text-2xl font-bold mb-4 ${type === 'Incident' ? 'text-red-400' : 'text-yellow-400'}`}>
           {type === 'Incident' ? 'Active Incidents' : 'Maintenances'}
         </h3>
-        {updates.map((update) => (
-          <div key={update.id} className="bg-gray-800 p-4 rounded-lg mb-4 shadow">
-            <h4 className="text-xl font-semibold text-white">{update.titles[0]?.content || 'No Title'}</h4>
-            <p className="text-sm text-gray-400 capitalize">
-              Severity: {update.incident_severity} | Status: {update.maintenance_status.replace('_', ' ')}
-            </p>
-            {update.updates.map((u, index) => (
-              <div key={index} className="mt-3 border-t border-gray-700 pt-3">
-                <p className="text-gray-300">{u.translations[0]?.content || u.content}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  by {u.author} at {new Date(u.created_at).toLocaleString()}
-                </p>
-              </div>
-            ))}
+        {updates.map((item, index) => (
+          <div key={`${type}-${index}`} className="bg-gray-800 p-4 rounded-lg mb-4 shadow">
+            <h4 className="text-xl font-semibold text-white">{item.title}</h4>
+            <div className="text-sm text-gray-400 capitalize flex items-center space-x-2">
+              {item.severity && <span key="severity">Severity: {item.severity}</span>}
+            </div>
+            <p className="text-gray-300 mt-3">{item.description}</p>
+            <p className="text-xs text-gray-500 mt-2">Platforms: {item.platforms.join(', ')}</p>
           </div>
         ))}
       </div>
     );
   };
-
-  const hasContent = status && (status.incidents.length > 0 || status.maintenances.length > 0);
-  const noIssues = status && !hasContent;
 
   return (
     <div className="container mx-auto p-4 bg-gray-900 text-white min-h-screen">
@@ -98,7 +84,7 @@ const StatusPage = () => {
       {error && <p className="text-red-500 text-center mb-4">{error}</p>}
 
       <div className="max-w-4xl mx-auto">
-        {noIssues && (
+        {status && status.incidents.length === 0 && status.maintenances.length === 0 && (
           <div className="bg-green-800 bg-opacity-50 border border-green-600 text-green-300 px-4 py-3 rounded-lg relative text-center" role="alert">
             <strong className="font-bold">All good!</strong>
             <span className="block sm:inline"> No active incidents or maintenances reported for {status.name}.</span>
@@ -106,10 +92,10 @@ const StatusPage = () => {
         )}
 
         {status && (
-          renderUpdates(status.incidents, 'Incident')
+          <React.Fragment key="incidents">{renderUpdates(status.incidents, 'Incident')}</React.Fragment>
         )}
         {status && (
-          renderUpdates(status.maintenances, 'Maintenance')
+          <React.Fragment key="maintenances">{renderUpdates(status.maintenances, 'Maintenance')}</React.Fragment>
         )}
       </div>
     </div>
