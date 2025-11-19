@@ -35,7 +35,6 @@ const TwoFAVerifyPage: React.FC = () => {
       const data = await verify2FALogin(tempToken, code);
       if (data && data.jwt) {
         // On successful verification, complete the login process
-        console.log(data)
         login(data.jwt, email, data.twoFactorRequired);
       }
     } catch (err) {
