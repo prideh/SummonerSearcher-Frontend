@@ -68,7 +68,6 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
     totalMinionsKilled,
     neutralMinionsKilled,
     teamPosition,
-    challenges,
     perks = { styles: [] }
     , gameEndedInEarlySurrender
   } = player;
