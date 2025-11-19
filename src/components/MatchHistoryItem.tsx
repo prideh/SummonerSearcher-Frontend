@@ -134,11 +134,11 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
   };
   const outcome = getMatchOutcomeStyles();
   return (
-    <div className={`border-l-4 ${outcome.container} ${showDetails ? 'rounded-t-lg' : 'rounded-lg'} bg-gray-800/50 md:bg-transparent`}>
+    <div className={`border-l-4 ${outcome.container} ${showDetails ? 'rounded-t-lg' : 'rounded-lg'}`}>
       <div className="flex flex-col md:flex-row md:items-center gap-4 p-3 text-sm">
         {/* Game Info (Left Column on Desktop) */}
         <div className="flex justify-between items-center lg:flex-col lg:items-start lg:justify-start lg:w-[110px] lg:text-left shrink-0">
-          <div>
+          <div className="md:w-full">
             <p className="font-bold text-white truncate">{getQueueType(queueId)}</p>
             <p
               className="text-xs text-gray-400"
@@ -156,7 +156,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col md:flex-row md:items-center gap-4 md:bg-gray-800/50 md:p-2 md:rounded-md">
+        <div className="flex-1 flex flex-col md:flex-row md:items-center gap-4">
           {/* Player & Opponent Stats */}
           <div className="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
             {/* Player Stats */}
@@ -227,7 +227,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
           </div>
 
           {/* Items */}
-          <div className="flex items-center space-x-1 justify-center md:justify-start">
+          <div className="flex items-center space-x-1">
             <div className="grid grid-cols-3 gap-1">
               {mainItems.map((item, i) => (
                 <ItemIcon key={i} itemId={item} />

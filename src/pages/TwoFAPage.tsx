@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { enable2FA, verify2FAEnable, disable2FA } from '../api/user';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
@@ -14,6 +14,18 @@ const TwoFAPage = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isDisabling, setIsDisabling] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // This effect synchronizes the component's state with the global auth state.
+  // If the user logs in and is2faEnabled is already true, this resets the local
+  // state to ensure the correct view (disable 2FA) is shown.
+  useEffect(() => {
+    // Reset local state when the global 2FA status changes
+    setQrCode(null);
+    setTwoFaSecret(null);
+    setCode('');
+    setError(null);
+    setSuccessMessage(null);
+  }, [is2faEnabled]);
 
   const handleEnable2FA = async () => {
     setLoading(true);

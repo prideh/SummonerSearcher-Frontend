@@ -91,10 +91,10 @@ const DashboardPage = () => {
     }
 
     return (
-      <div className="mt-6 w-full max-w-4xl bg-gray-800 rounded-lg shadow-lg overflow-hidden md:overflow-visible">
+      <div className="mt-6 w-full max-w-4xl">
         {/* On mobile, the h-144 and overflow-y-auto are removed to allow natural page scroll.
             On desktop (md:), they are re-applied to contain the table in a scrollable view. */}
-        <div className="md:h-144 md:overflow-y-auto">
+        <div className="md:h-144 md:overflow-y-auto md:bg-gray-800 md:rounded-lg md:shadow-lg">
           {/* On mobile (<md), the table loses its table layout to allow for a card-based view.
               The `md:table` and `md:table-fixed` classes restore the default table behavior on larger screens. */}
           <table className="w-full text-sm text-left text-gray-300 border-collapse md:table md:table-fixed">
@@ -114,7 +114,7 @@ const DashboardPage = () => {
                 return (
                   // Each row becomes a block-level card on mobile with spacing, and a table-row on desktop.
                   <tr
-                    key={`${player.gameName}-${index}`}
+                    key={`${player.gameName}-${player.tagLine}-${index}`}
                     className="block p-4 mb-3 bg-gray-800 rounded-lg shadow-lg md:table-row md:p-0 md:mb-0 md:shadow-none md:bg-transparent md:border-b md:border-gray-700 hover:bg-gray-600 cursor-pointer"
                     onClick={() => handleRowClick(player.gameName, player.tagLine)}
                   >
