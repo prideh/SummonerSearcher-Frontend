@@ -12,15 +12,17 @@ import 'react-tooltip/dist/react-tooltip.css';
 import axios from 'axios';
 
 const SearchPage = () => {
-  const [searchInput, setSearchInput] = useState('');
   const [summonerData, setSummonerData] = useState<SummonerData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [relativeTime, setRelativeTime] = useState('');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showRecent, setShowRecent] = useState(false);
 
+  const searchInput = useAuthStore((state) => state.searchInput);
+  const setSearchInput = useAuthStore((state) => state.setSearchInput);
   const region = useAuthStore((state) => state.region);
   const setRegion = useAuthStore((state) => state.setRegion);
   const lastSearchedSummoner = useAuthStore((state) => state.lastSearchedSummoner);
@@ -37,20 +39,24 @@ const SearchPage = () => {
     }
   }, []);
 
-  const performSearch = useCallback(async (name: string, tag: string) => {
+  const performSearch = useCallback(async (name: string, tag: string, searchRegion: string) => {
     try {
-      const data: SummonerData = await getSummonerByName(region, name, tag);
-      setSummonerData(data);
-      setLastSearchedSummoner(data);
-      setLastUpdated(new Date());
+      const apiData: Omit<SummonerData, 'region' | 'lastUpdated'> = await getSummonerByName(searchRegion, name, tag);
+      const updatedTimestamp = new Date().toISOString();
+      const fullData: SummonerData = { ...apiData, region: searchRegion, lastUpdated: updatedTimestamp };
+      setSummonerData(fullData);
+      setLastSearchedSummoner(fullData);
+      setLastUpdated(new Date(updatedTimestamp));
       // Re-fetch recent searches after a successful search
       fetchRecentSearches();
     } catch (err) {
       if (err instanceof Error && err.message === 'NOT_FOUND') {
+        setLastSearchedSummoner('NOT_FOUND');
         setError('NOT_FOUND');
       } else if (axios.isAxiosError(err)) {
         if (err.response?.status === 404) {
           setError('NOT_FOUND'); // Use a special key for "not found" errors
+          setLastSearchedSummoner('NOT_FOUND');
         } else {
           setError(err.response?.data?.message || 'An error occurred while searching.');
         }
@@ -62,19 +68,17 @@ const SearchPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [region, fetchRecentSearches, setLastSearchedSummoner]);
+  }, [fetchRecentSearches, setLastSearchedSummoner]);
 
-  const startSearch = (name: string, tag: string, isRefresh = false) => {
+  const startSearch = (name: string, tag: string, searchRegion: string) => {
     if (!name || !tag) {
       setError('Please enter both a summoner name and a tagline.');
       return;
     }
     setLoading(true);
     setError(null);
-    if (!isRefresh) {
-      setSummonerData(null);
-    }
-    performSearch(name, tag);
+    setSummonerData(null);
+    performSearch(name, tag, searchRegion);
   };
 
   const handleSearchClick = () => {
@@ -84,19 +88,19 @@ const SearchPage = () => {
       return;
     }
     const [name, tag] = parts.map(p => p.trim());
-    startSearch(name, tag);
+    startSearch(name, tag, region);
   };
 
   const handleRefresh = () => {
     if (summonerData) {
-      startSearch(summonerData.gameName, summonerData.tagLine, true);
+      startSearch(summonerData.gameName, summonerData.tagLine, summonerData.region);
     }
   };
 
   const handlePlayerClick = (name: string, tag: string) => {
     const combined = `${name}#${tag}`;
     setSearchInput(combined);
-    startSearch(name, tag);
+    startSearch(name, tag, region); // A click on a player in match history should use the current region
     window.scrollTo(0, 0); // Scroll to top for the new search
   };
 
@@ -121,18 +125,58 @@ const SearchPage = () => {
     if (gameNameFromUrl && tagLineFromUrl) {
       const combinedInput = `${gameNameFromUrl}#${tagLineFromUrl}`;
       setSearchInput(combinedInput);
-      startSearch(gameNameFromUrl, tagLineFromUrl);
+      startSearch(gameNameFromUrl, tagLineFromUrl, region);
     }
     // If no search from URL, load the last searched summoner from the store
     else if (lastSearchedSummoner) {
-      setSummonerData(lastSearchedSummoner);
-      setLastUpdated(new Date()); // Assume it's fresh for this session
+      if (lastSearchedSummoner === 'NOT_FOUND') {
+        setError('NOT_FOUND');
+      } else {
+        setSummonerData(lastSearchedSummoner);
+        setLastUpdated(new Date(lastSearchedSummoner.lastUpdated));
+      }
     }
-  }, [searchParams, performSearch, lastSearchedSummoner]);
+  }, [searchParams, performSearch, lastSearchedSummoner, setSearchInput, region]);
   // This effect will run once when the component mounts to fetch recent searches.
   useEffect(() => {
     fetchRecentSearches();
   }, [fetchRecentSearches]);
+
+  const formatRelativeTime = useCallback((date: Date | null): string => {
+    if (!date) return '';
+  
+    const now = new Date();
+    const seconds = Math.round((now.getTime() - date.getTime()) / 1000);
+    const minutes = Math.round(seconds / 60);
+    const hours = Math.round(minutes / 60);
+    const days = Math.round(hours / 24);
+  
+    if (seconds < 10) {
+      return 'just now';
+    } else if (seconds < 60) {
+      return `${seconds} seconds ago`;
+    } else if (minutes === 1) {
+      return 'a minute ago';
+    } else if (minutes < 60) {
+      return `${minutes} minutes ago`;
+    } else if (hours === 1) {
+      return 'an hour ago';
+    } else if (hours < 24) {
+      return `${hours} hours ago`;
+    } else if (days === 1) {
+      return 'a day ago';
+    } else {
+      return `${days} days ago`;
+    }
+  }, []);
+
+  useEffect(() => {
+    setRelativeTime(formatRelativeTime(lastUpdated));
+    const interval = setInterval(() => {
+      setRelativeTime(formatRelativeTime(lastUpdated));
+    }, 30000); // Update every 30 seconds
+    return () => clearInterval(interval);
+  }, [lastUpdated, formatRelativeTime]);
 
   const handleClearRecentSearches = async () => {
     try {
@@ -264,7 +308,7 @@ const SearchPage = () => {
                     onClick={() => {
                       setSearchInput(search);
                       const [name, tag] = search.split('#');
-                      startSearch(name, tag);
+                      startSearch(name, tag, region);
                       setShowRecent(false);
                     }}
                   >
@@ -301,22 +345,23 @@ const SearchPage = () => {
                   <h2 className="text-2xl font-bold">{summonerData.gameName} <span className="text-gray-500">#{summonerData.tagLine}</span></h2>
                 </div>
                 <p className="text-gray-400 mt-1">Level {summonerData.summonerLevel}</p>
-                {lastUpdated && (
+                {relativeTime && (
                   <p className="text-xs text-gray-500 mt-1">
-                    Last updated: {lastUpdated.toLocaleTimeString()}
+                    Last updated: {relativeTime}
                   </p>
                 )}
               </div>
-              <div className="shrink-0">
-                <button 
-                  onClick={handleRefresh} 
-                  disabled={loading}
-                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md disabled:bg-blue-400/50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 11.667 0l3.181-3.183m-4.991-2.691V5.25a8.25 8.25 0 0 0-11.667 0v3.183" /></svg>
-                  <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
-                </button>
-              </div>
+              {!loading && (
+                <div className="shrink-0">
+                  <button 
+                    onClick={handleRefresh} 
+                    className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors"
+                  >
+                    <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 11.667 0l3.181-3.183m-4.991-2.691V5.25a8.25 8.25 0 0 0-11.667 0v3.183" /></svg>
+                    <span>Refresh</span>
+                  </button>
+                </div>
+              )}
             </div>
             {summonerData.soloQueueRank ? (
               renderRankedInfo(summonerData.soloQueueRank)

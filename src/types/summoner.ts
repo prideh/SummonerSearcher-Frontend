@@ -19,4 +19,6 @@ export interface SummonerData {
   summonerLevel: number;
   soloQueueRank: LeagueEntryDto | null;
   recentMatches: MatchDto[];
+  region: string;
+  lastUpdated: string; // ISO string format
 }
