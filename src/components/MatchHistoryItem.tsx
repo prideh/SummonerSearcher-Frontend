@@ -137,7 +137,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
     <div className={`border-l-4 ${outcome.container} ${showDetails ? 'rounded-t-lg' : 'rounded-lg'}`}>
       <div className="flex flex-col md:flex-row md:items-center gap-4 p-3 text-sm">
         {/* Game Info (Left Column on Desktop) */}
-        <div className="flex justify-between items-center lg:flex-col lg:items-start lg:justify-start lg:w-[110px] lg:text-left shrink-0">
+        <div className="flex justify-between items-center md:flex-col md:items-start md:justify-start md:w-[110px] md:text-left shrink-0">
           <div className="md:w-full">
             <p className="font-bold text-white truncate">{getQueueType(queueId)}</p>
             <p
@@ -148,8 +148,8 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
               {timeAgo(gameCreation)}
             </p>
           </div>
-          <div className="text-right lg:text-left">
-            <div className="w-12 border-t border-gray-600 my-1 hidden lg:block"></div>
+          <div className="text-right md:text-left">
+            <div className="w-12 border-t border-gray-600 my-1 hidden md:block"></div>
             <p className={`font-semibold ${outcome.text}`}>{outcome.label}</p>
             <p className="text-gray-400 text-xs">{formatDuration(gameDuration)}</p>
           </div>
@@ -227,7 +227,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
           </div>
 
           {/* Items */}
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-1 justify-center md:justify-start">
             <div className="grid grid-cols-3 gap-1">
               {mainItems.map((item, i) => (
                 <ItemIcon key={i} itemId={item} />
