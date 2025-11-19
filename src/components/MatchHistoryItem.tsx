@@ -68,6 +68,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
     totalMinionsKilled,
     neutralMinionsKilled,
     teamPosition,
+    challenges = {},
     perks = { styles: [] }
     , gameEndedInEarlySurrender
   } = player;
@@ -219,6 +220,11 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
                 <span className="text-green-400">{kills}</span> / <span className="text-red-400">{deaths}</span> / <span className="text-yellow-400">{assists}</span>
               </p>
               <p className="text-xs text-gray-400 mt-1">{kda.toFixed(2)} KDA</p>
+            </div>
+            <div className="h-5 mt-1">
+              {(challenges?.soloKills ?? 0) > 0 && (
+                <p className="text-xs font-semibold text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded inline-block">Solo Kills: {challenges.soloKills}</p>
+              )}
             </div>
             <div>
               <p className="text-gray-300">CS {cs}</p>
