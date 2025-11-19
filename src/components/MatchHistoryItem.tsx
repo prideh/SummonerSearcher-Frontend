@@ -134,8 +134,8 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
   };
   const outcome = getMatchOutcomeStyles();
   return (
-    <div className={`border-l-4 ${outcome.container} ${showDetails ? 'rounded-t-lg' : 'rounded-lg'}`}>
-      <div className="flex flex-col lg:flex-row lg:items-center gap-4 p-3 text-sm">
+    <div className={`border-l-4 ${outcome.container} ${showDetails ? 'rounded-t-lg' : 'rounded-lg'} bg-gray-800/50 md:bg-transparent`}>
+      <div className="flex flex-col md:flex-row md:items-center gap-4 p-3 text-sm">
         {/* Game Info (Left Column on Desktop) */}
         <div className="flex justify-between items-center lg:flex-col lg:items-start lg:justify-start lg:w-[110px] lg:text-left shrink-0">
           <div>
@@ -156,7 +156,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col lg:flex-row lg:items-center gap-4">
+        <div className="flex-1 flex flex-col md:flex-row md:items-center gap-4 md:bg-gray-800/50 md:p-2 md:rounded-md">
           {/* Player & Opponent Stats */}
           <div className="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
             {/* Player Stats */}
@@ -213,7 +213,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
           </div>
 
           {/* KDA, CS, KP Stats */}
-          <div className="flex justify-around items-center text-center lg:w-[150px] shrink-0">
+          <div className="flex justify-around items-center text-center md:w-[150px] shrink-0">
             <div>
               <p className="font-bold text-white whitespace-nowrap">
                 <span className="text-green-400">{kills}</span> / <span className="text-red-400">{deaths}</span> / <span className="text-yellow-400">{assists}</span>
@@ -227,7 +227,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
           </div>
 
           {/* Items */}
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-1 justify-center md:justify-start">
             <div className="grid grid-cols-3 gap-1">
               {mainItems.map((item, i) => (
                 <ItemIcon key={i} itemId={item} />
@@ -240,7 +240,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
         </div>
 
         {/* Expand Button */}
-        <div className="flex items-center justify-center lg:w-[40px] shrink-0">
+        <div className="flex items-center justify-center md:w-[40px] shrink-0">
           <button onClick={() => setShowDetails(!showDetails)} className={`p-2 rounded-md transition-all duration-200 ${showDetails ? 'rotate-180 bg-gray-600' : 'bg-gray-500/20 hover:bg-gray-500/40'}`}>
             <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>

@@ -91,10 +91,10 @@ const DashboardPage = () => {
     }
 
     return (
-      <div className="mt-6 w-full max-w-4xl">
+      <div className="mt-6 w-full max-w-4xl bg-gray-800 rounded-lg shadow-lg overflow-hidden md:overflow-visible">
         {/* On mobile, the h-144 and overflow-y-auto are removed to allow natural page scroll.
             On desktop (md:), they are re-applied to contain the table in a scrollable view. */}
-        <div className="md:h-144 md:overflow-y-auto md:bg-gray-800 md:rounded-lg md:shadow-lg">
+        <div className="md:h-144 md:overflow-y-auto">
           {/* On mobile (<md), the table loses its table layout to allow for a card-based view.
               The `md:table` and `md:table-fixed` classes restore the default table behavior on larger screens. */}
           <table className="w-full text-sm text-left text-gray-300 border-collapse md:table md:table-fixed">
