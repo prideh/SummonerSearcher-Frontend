@@ -42,6 +42,7 @@ const LoginForm: React.FC = () => {
 
     try {
       const data = await loginUser(email, password);
+      console.log(data);
       if (data && data.jwt) {
         login(data.jwt, email, data.twoFactorEnabled);
       } else if (data && data.twoFactorEnabled && data.tempToken) {
