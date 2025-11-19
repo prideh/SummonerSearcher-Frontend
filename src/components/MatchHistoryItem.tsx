@@ -136,152 +136,112 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
   const outcome = getMatchOutcomeStyles();
   return (
     <div className={`border-l-4 ${outcome.container} ${showDetails ? 'rounded-t-lg' : 'rounded-lg'}`}>
-      <div className="grid grid-cols-[130px_1fr_auto_1fr_280px_40px] gap-x-4 items-center p-4 text-sm">
-        {/* Game Info */}
-        <div className="text-left">
-          <p className="font-bold text-white truncate">{getQueueType(queueId)}</p>
-          <p 
-            className="text-xs text-gray-400"
-            data-tooltip-id="player-name-tooltip"
-            data-tooltip-content={gameCreation ? new Date(gameCreation).toLocaleString() : 'Unknown time'}
-          >
-            {timeAgo(gameCreation)}
-          </p>
-          <div className="w-12 border-t border-gray-600 my-1"></div>
-          <p className={`font-semibold ${outcome.text}`}>{outcome.label}</p>
-          <p className="text-gray-400">{formatDuration(gameDuration)}</p>
+      <div className="flex flex-col lg:flex-row lg:items-center gap-4 p-3 text-sm">
+        {/* Game Info (Left Column on Desktop) */}
+        <div className="flex justify-between items-center lg:flex-col lg:items-start lg:justify-start lg:w-[110px] lg:text-left shrink-0">
+          <div>
+            <p className="font-bold text-white truncate">{getQueueType(queueId)}</p>
+            <p
+              className="text-xs text-gray-400"
+              data-tooltip-id="player-name-tooltip"
+              data-tooltip-content={gameCreation ? new Date(gameCreation).toLocaleString() : 'Unknown time'}
+            >
+              {timeAgo(gameCreation)}
+            </p>
+          </div>
+          <div className="text-right lg:text-left">
+            <div className="w-12 border-t border-gray-600 my-1 hidden lg:block"></div>
+            <p className={`font-semibold ${outcome.text}`}>{outcome.label}</p>
+            <p className="text-gray-400 text-xs">{formatDuration(gameDuration)}</p>
+          </div>
         </div>
 
-        {/* Player Stats */}
-        <div className="flex items-center space-x-4">
-          {/* Champion & Spells */}
-          <div className="flex items-center space-x-2">
-            <div className="w-6 h-6"> {/* Placeholder container */}
-              <RoleIcon role={teamPosition} className="w-6 h-6" />
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col lg:flex-row lg:items-center gap-4">
+          {/* Player & Opponent Stats */}
+          <div className="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+            {/* Player Stats */}
+            <div className="flex items-center space-x-2">
+              <div className="relative shrink-0">
+                <img
+                  src={`${CDN_URL}/img/champion/${getCorrectChampionName(championName)}.png`}
+                  alt={championName}
+                  className="w-12 h-12 rounded-md"
+                />
+                <RoleIcon role={teamPosition} className="absolute -bottom-1 -left-1 w-5 h-5" />
+              </div>
+              <div className="flex flex-col space-y-1 shrink-0">
+                <SummonerSpellIcon spellId={summoner1Id} className="w-6 h-6" />
+                <SummonerSpellIcon spellId={summoner2Id} className="w-6 h-6" />
+              </div>
+              <div className="flex flex-col space-y-1 shrink-0">
+                <RuneIcon runeId={primaryRune} isKeystone={true} className="w-6 h-6" />
+                <RuneIcon runeId={secondaryPath} className="w-6 h-6" />
+              </div>
             </div>
-            <img
-              src={`${CDN_URL}/img/champion/${getCorrectChampionName(championName)}.png`}
-              alt={championName}
-              className="w-16 h-16 rounded-md"
-              data-tooltip-id="player-name-tooltip"
-              data-tooltip-content={championName}
-            />
-            <div className="flex flex-col space-y-1 shrink-0">
-              <SummonerSpellIcon spellId={summoner1Id} className="w-7 h-7" />
-              <SummonerSpellIcon spellId={summoner2Id} className="w-7 h-7" />
+
+            {/* "VS" Separator */}
+            <div className="text-center">
+              {opponent && <span className="text-lg font-bold text-gray-500">vs</span>}
             </div>
-            <div className="flex flex-col space-y-1 shrink-0">
-              <RuneIcon runeId={primaryRune} isKeystone={true} className="w-7 h-7" />
-              <RuneIcon runeId={secondaryPath} className="w-7 h-7" />
-            </div>
-          </div>
-          {/* KDA */}
-          <div className="text-center min-h-[100px]">
-            <p className="text-lg font-bold text-white whitespace-nowrap">
-              <span className="text-green-400">{kills}</span> / <span className="text-red-400">{deaths}</span> / <span className="text-yellow-400">{assists}</span>
-            </p>
-            {deaths === 0 ? (
-              <p className="text-xs font-semibold text-yellow-400 mt-1">Infinite KDA</p>
-            ) : (
-              <p className="text-xs text-gray-400 mt-1">{kda.toFixed(2)} KDA</p>
-            )}
-            <p 
-              className="text-xs text-gray-300 mt-1"
-              data-tooltip-id="player-name-tooltip"
-              data-tooltip-content={`Minions: ${totalMinionsKilled} | Jungle: ${neutralMinionsKilled}`}
-            >
-              CS: {cs}
-            </p>
-            <p className="text-xs text-red-300 mt-1">KP: {killParticipation.toFixed(0)}%</p>
-            <div className="h-6 mt-1"> {/* Placeholder container */}
-              {(challenges?.soloKills ?? 0) > 0 && (
-                <p className="text-xs font-semibold text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded inline-block">Solo Kills: {challenges?.soloKills}</p>
+
+            {/* Opponent Stats */}
+            <div className="flex items-center justify-end space-x-2">
+              {opponent && (
+                <>
+                  <div className="flex flex-col space-y-1 shrink-0">
+                    <RuneIcon runeId={opponent.perks?.styles?.[0]?.selections?.[0]?.perk} isKeystone={true} className="w-6 h-6" />
+                    <RuneIcon runeId={opponent.perks?.styles?.[1]?.style} className="w-6 h-6" />
+                  </div>
+                  <div className="flex flex-col space-y-1 shrink-0">
+                    <SummonerSpellIcon spellId={opponent.summoner1Id} className="w-6 h-6" />
+                    <SummonerSpellIcon spellId={opponent.summoner2Id} className="w-6 h-6" />
+                  </div>
+                  <div
+                    className="relative shrink-0 cursor-pointer group"
+                    onClick={() => onPlayerClick(opponent.riotIdGameName!, opponent.riotIdTagline!)}
+                  >
+                    <img
+                      src={`${CDN_URL}/img/champion/${getCorrectChampionName(opponent.championName)}.png`}
+                      alt={opponent.championName}
+                      className="w-12 h-12 rounded-md group-hover:opacity-80"
+                    />
+                    <RoleIcon role={opponent.teamPosition} className="absolute -bottom-1 -right-1 w-5 h-5" />
+                  </div>
+                </>
               )}
             </div>
           </div>
-        </div>
 
-        {/* "VS" Separator */}
-        <div className="text-center">
-          {opponent && <span className="text-lg font-bold text-gray-500 px-2">vs</span>}
-        </div>
-
-        {/* Opponent Stats */}
-        <div className="text-gray-400 flex justify-start">
-          {opponent && (
-            <div 
-              className="grid grid-cols-[auto_auto_1fr_auto] gap-x-3 items-center w-full cursor-pointer group"
-              onClick={() => {
-                if (opponent.riotIdGameName && opponent.riotIdTagline) {
-                  onPlayerClick(opponent.riotIdGameName, opponent.riotIdTagline);
-                }
-              }}
-            >
-              <img 
-                src={`${CDN_URL}/img/champion/${getCorrectChampionName(opponent.championName)}.png`} 
-                alt={opponent.championName} 
-                className="w-16 h-16 rounded-md group-hover:opacity-80 transition-opacity"
-                data-tooltip-id="player-name-tooltip"
-                data-tooltip-content={opponent.championName}
-              />
-              <div className="flex flex-col space-y-1 shrink-0">
-                <SummonerSpellIcon spellId={opponent.summoner1Id} className="w-7 h-7" /> 
-                <SummonerSpellIcon spellId={opponent.summoner2Id} className="w-7 h-7" />
-              </div>
-              <div className="flex flex-col justify-center min-w-0">
-                <div className="truncate" title={`${opponent.riotIdGameName}#${opponent.riotIdTagline}`}>
-                  <span className="font-semibold text-white group-hover:text-blue-300 transition-colors">
-                    {opponent.riotIdGameName}
-                  </span>
-                  <span className="text-gray-500 ml-1">#{opponent.riotIdTagline}</span>
-                </div>
-                <div className="flex space-x-1 mt-1">
-                  <RuneIcon runeId={opponent.perks?.styles?.[0]?.selections?.[0]?.perk} isKeystone={true} className="w-5 h-5" />
-                  <RuneIcon runeId={opponent.perks?.styles?.[1]?.style} className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="text-center min-h-[100px]">
-                <p className="text-lg font-bold text-white whitespace-nowrap">
-                  <span className="text-green-400">{opponent.kills}</span> / <span className="text-red-400">{opponent.deaths}</span> / <span className="text-yellow-400">{opponent.assists}</span>
-                </p>
-                {opponent.deaths === 0 ? (
-                  <p className="text-xs font-semibold text-yellow-400 mt-1">Infinite KDA</p>
-                ) : (
-                  <p className="text-xs text-gray-400 mt-1">{(((opponent.kills ?? 0) + (opponent.assists ?? 0)) / (opponent.deaths ?? 1)).toFixed(2)} KDA</p>
-                )}
-                <p className="text-xs text-gray-300 mt-1">CS: {(opponent.totalMinionsKilled ?? 0) + (opponent.neutralMinionsKilled ?? 0)}</p>
-                <p className="text-xs text-red-300 mt-1">KP: {
-                  (() => {
-                    const teamKills = participants.filter(p => p.teamId === opponent.teamId).reduce((acc, p) => acc + (p.kills ?? 0), 0);
-                    return teamKills > 0 ? (((opponent.kills ?? 0) + (opponent.assists ?? 0)) / teamKills) * 100 : 0;
-                  })().toFixed(0)
-                }%</p>
-                <div className="h-6 mt-1"> {/* Placeholder container */}
-                  {(opponent.challenges?.soloKills ?? 0) > 0 && (
-                    <p className="text-xs font-semibold text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded inline-block">Solo Kills: {opponent.challenges?.soloKills}</p>
-                  )}
-                </div>
-              </div>
+          {/* KDA, CS, KP Stats */}
+          <div className="flex justify-around items-center text-center lg:w-[150px] shrink-0">
+            <div>
+              <p className="font-bold text-white whitespace-nowrap">
+                <span className="text-green-400">{kills}</span> / <span className="text-red-400">{deaths}</span> / <span className="text-yellow-400">{assists}</span>
+              </p>
+              <p className="text-xs text-gray-400 mt-1">{kda.toFixed(2)} KDA</p>
             </div>
-          )}
-        </div>
+            <div>
+              <p className="text-gray-300">CS {cs}</p>
+              <p className="text-xs text-red-300 mt-1">KP {killParticipation.toFixed(0)}%</p>
+            </div>
+          </div>
 
-        {/* Items */}
-        <div className="flex justify-center">
+          {/* Items */}
           <div className="flex items-center space-x-1">
             <div className="grid grid-cols-3 gap-1">
               {mainItems.map((item, i) => (
                 <ItemIcon key={i} itemId={item} />
               ))}
             </div>
-            <div className="ml-2">
+            <div className="ml-1">
               <ItemIcon itemId={trinket} />
             </div>
           </div>
         </div>
 
         {/* Expand Button */}
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-center lg:w-[40px] shrink-0">
           <button onClick={() => setShowDetails(!showDetails)} className={`p-2 rounded-md transition-all duration-200 ${showDetails ? 'rotate-180 bg-gray-600' : 'bg-gray-500/20 hover:bg-gray-500/40'}`}>
             <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>
