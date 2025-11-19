@@ -189,6 +189,19 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
             <div className="flex items-center justify-end space-x-2">
               {opponent && (
                 <>
+                  <div className="text-right">
+                    <p className="font-bold text-white whitespace-nowrap">
+                      <span className="text-green-400">{opponent.kills}</span> / <span className="text-red-400">{opponent.deaths}</span> / <span className="text-yellow-400">{opponent.assists}</span>
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {
+                        (() => {
+                          const opponentKda = ((opponent.kills ?? 0) + (opponent.assists ?? 0)) / (opponent.deaths === 0 ? 1 : (opponent.deaths ?? 1));
+                          return `${opponentKda.toFixed(2)} KDA`;
+                        })()
+                      }
+                    </p>
+                  </div>
                   <div className="flex flex-col space-y-1 shrink-0">
                     <RuneIcon runeId={opponent.perks?.styles?.[0]?.selections?.[0]?.perk} isKeystone={true} className="w-6 h-6" />
                     <RuneIcon runeId={opponent.perks?.styles?.[1]?.style} className="w-6 h-6" />
