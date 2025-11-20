@@ -110,12 +110,18 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
 
         {/* Expand Button */}
         <div className="absolute top-2 right-2 md:static flex items-center justify-center">
-          <button onClick={() => setShowDetails(!showDetails)} className={`p-2 rounded-md transition-all duration-200 ${showDetails ? 'rotate-180 bg-gray-300 dark:bg-gray-700' : 'bg-gray-200 dark:bg-gray-800/50 hover:bg-gray-300 dark:hover:bg-gray-800'}`}>
+          <button 
+            onClick={() => setShowDetails(!showDetails)} 
+            className={`p-2 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${showDetails ? 'rotate-180 bg-gray-300 dark:bg-gray-700' : 'bg-gray-200 dark:bg-gray-800/50 hover:bg-gray-300 dark:hover:bg-gray-800'}`}
+            aria-expanded={showDetails}
+            aria-label={showDetails ? 'Collapse match details' : 'Expand match details'}
+            aria-controls={`match-details-${match.info.gameId}`}
+          >
             <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>
         </div>
       </div>
-      {showDetails && <MatchDetails match={match} puuid={puuid} onPlayerClick={onPlayerClick} />}
+      {showDetails && <MatchDetails match={match} puuid={puuid} onPlayerClick={onPlayerClick} id={`match-details-${match.info.gameId}`} />}
     </div>
   );
 };

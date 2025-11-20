@@ -67,7 +67,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           </div>
         )}
       </div>
-      <select value={region} onChange={(e) => setRegion(e.target.value)} className="p-3 border border-gray-300 dark:border-gray-700 sm:border-y sm:border-l-0 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all rounded-md sm:rounded-none">
+      <select value={region} onChange={(e) => setRegion(e.target.value)} aria-label="Select Region" className="p-3 border border-gray-300 dark:border-gray-700 sm:border-y sm:border-l-0 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all rounded-md sm:rounded-none">
         <option value="EUW1">EUW</option>
         <option value="NA1">NA</option>
         <option value="KR">KR</option>

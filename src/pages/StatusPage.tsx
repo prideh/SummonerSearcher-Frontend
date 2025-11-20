@@ -71,7 +71,7 @@ const StatusPage = () => {
     <div className="container mx-auto p-4 min-h-screen">
       <h2 className="text-3xl font-bold mb-6 text-center">Riot Games Server Status</h2>
       <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-8">
-        <select value={region} onChange={(e) => setRegion(e.target.value)} className="p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+        <select value={region} onChange={(e) => setRegion(e.target.value)} aria-label="Select Region" className="p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-500">
         <option value="EUW1">EUW</option>
         <option value="NA1">NA</option>
         <option value="KR">KR</option>
