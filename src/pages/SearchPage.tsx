@@ -34,7 +34,9 @@ const SearchPage = () => {
         setRecentSearches(searches);
       }
     } catch (err) {
-      console.error('Failed to fetch recent searches:', err);
+      if (import.meta.env.DEV) {
+        console.error('Failed to fetch recent searches:', err);
+      }
     }
   }, []);
 
@@ -140,7 +142,9 @@ const SearchPage = () => {
       setRecentSearches([]); // Clear from state
       setShowRecent(false); // Hide dropdown
     } catch (err) {
-      console.error('Failed to clear recent searches:', err);
+      if (import.meta.env.DEV) {
+        console.error('Failed to clear recent searches:', err);
+      }
       if (err instanceof Error) {
         setError(err.message);
       } else {

@@ -37,7 +37,9 @@ const VerifyEmailPage: React.FC = () => {
         setMessage(successMessage);
       } catch (error) {
         if (axios.isCancel(error)) { // Handle cancelled requests
-          console.log('Verification request cancelled');
+          if (import.meta.env.DEV) {
+            console.log('Verification request cancelled');
+          }
           return;
         }
         setStatus('error');

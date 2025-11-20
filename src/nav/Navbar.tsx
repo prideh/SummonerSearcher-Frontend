@@ -30,7 +30,9 @@ const Navbar: React.FC = () => {
       await updateDarkModePreference(newDarkModeState);
       // The backend has confirmed the change.
     } catch (error) {
-      console.error('Failed to update dark mode preference:', error);
+      if (import.meta.env.DEV) {
+        console.error('Failed to update dark mode preference:', error);
+      }
       toast.error('Could not save theme preference.');
       setDarkMode(!newDarkModeState); // Revert the optimistic update on error
     }
