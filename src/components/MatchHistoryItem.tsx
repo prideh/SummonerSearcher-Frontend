@@ -47,6 +47,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
     item4,
     item5,
     item6,
+    teamId,
     gameEndedInEarlySurrender
   } = player;
 
@@ -54,6 +55,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
   const trinket = item6;
 
   const outcome = getMatchOutcomeStyles(win, gameEndedInEarlySurrender);
+  const teamColorClass = teamId === 100 ? 'text-blue-400' : 'text-red-400';
   return (
     <div ref={ref} className={`relative border-l-4 ${outcome.container} ${showDetails ? 'rounded-t-lg' : 'rounded-lg'}`}>
       <div className="grid grid-cols-1 md:grid-cols-[130px_1fr_auto_1fr_280px_40px] gap-4 items-center p-4 text-sm bg-gray-900/50">
@@ -69,7 +71,11 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
           </p>
           <div className="hidden md:block w-12 border-t border-gray-700 my-1"></div>
           <div className="text-right md:text-left">
-            <p className={`font-semibold ${outcome.text}`}>{outcome.label}</p>
+            {outcome.label === 'Remake' ? (
+              <p className="font-semibold text-gray-400">Remake</p>
+            ) : (
+              <p className={`font-semibold ${teamColorClass}`}>{teamId === 100 ? 'Blue Side' : 'Red Side'}</p>
+            )}
             <p className="text-gray-400">{formatDuration(gameDuration)}</p>
           </div>
         </div>

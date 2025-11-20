@@ -33,9 +33,11 @@ const TeamDetails: React.FC<{ team: ParticipantDto[]; searchedPlayerPuuid: strin
         label: 'Remake',
       };
     }
-    return isWin
-      ? { bgClass: 'bg-gray-900/20', textClass: 'text-blue-400', label: 'Victory' }
-      : { bgClass: 'bg-gray-900/20', textClass: 'text-red-400', label: 'Defeat' };
+    
+    const teamColorClass = teamId === 100 ? 'text-blue-400' : 'text-red-400';
+    const outcomeLabel = isWin ? 'Victory' : 'Defeat';
+
+    return { bgClass: 'bg-gray-900/20', textClass: teamColorClass, label: outcomeLabel };
   };
   const headerInfo = getHeaderInfo();
   return (
