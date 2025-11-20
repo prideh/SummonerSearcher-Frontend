@@ -8,7 +8,7 @@ interface SummonerSpellIconProps {
 
 const SummonerSpellIcon: React.FC<SummonerSpellIconProps> = ({ spellId, className = 'w-8 h-8' }) => {
   const { summonerSpellMap, fetchSummonerSpellData } = useDataDragonStore();
-  const CDN_URL = useDataDragonStore(state => state.cdnUrl);
+  const cdnUrl = useDataDragonStore(state => state.cdnUrl);
 
   useEffect(() => {
     if (!summonerSpellMap) {
@@ -31,7 +31,8 @@ const SummonerSpellIcon: React.FC<SummonerSpellIconProps> = ({ spellId, classNam
 
   return (
     <img
-      src={`${CDN_URL}/img/spell/${spell?.image.full}`}
+      src={`${cdnUrl}/img/spell/${spell?.image.full}`}
+      loading="lazy"
       alt={spell?.name || `Spell ${spellId}`}
       className={`${className} rounded`}
       data-tooltip-id="item-tooltip" // We can reuse the item tooltip style

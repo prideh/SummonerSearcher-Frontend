@@ -5,6 +5,10 @@
     <link rel="icon" type="image/svg+xml" href="/lol.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Summoner Searcher</title>
+    <!-- Preconnect to the CDNs to speed up initial asset loading -->
+    <link rel="preconnect" href="https://ddragon.leagueoflegends.com" />
+    <link rel="preconnect" href="https://raw.communitydragon.org" />
+
     <script>
       // On page load or when changing themes, best to add inline in `head` to avoid FOUC
       if (localStorage.theme === 'dark' || (!('theme' in localStorage))) {

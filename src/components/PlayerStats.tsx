@@ -54,6 +54,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
         <img
           src={`${CDN_URL}/img/champion/${getCorrectChampionName(championName)}.png`}
           alt={championName}
+          loading="lazy"
           className="w-16 h-16 rounded-md"
           data-tooltip-id="player-name-tooltip"
           data-tooltip-content={championName}
@@ -107,6 +108,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
         <img 
           src={`${CDN_URL}/img/champion/${getCorrectChampionName(championName)}.png`} 
           alt={championName} 
+          loading="lazy"
           className="w-16 h-16 rounded-md group-hover:opacity-80 transition-opacity"
           data-tooltip-id="player-name-tooltip"
           data-tooltip-content={championName}

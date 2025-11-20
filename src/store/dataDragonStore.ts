@@ -1,8 +1,11 @@
 import { create } from 'zustand'; 
 import axios from 'axios';
 
-const CDN_URL = 'https://ddragon.leagueoflegends.com/cdn/15.23.1';
-const DDRAGON_IMG_URL = 'https://ddragon.leagueoflegends.com/cdn/img/';
+const ddragonVersion = import.meta.env.VITE_DDRAGON_VERSION || '15.23.1';
+
+// Use absolute CDN URLs for everything, with a dynamic version for data
+const CDN_URL = `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}`;
+const DDRAGON_IMG_URL = 'https://ddragon.leagueoflegends.com/cdn/img';
 const COMMUNITY_DRAGON_URL = 'https://raw.communitydragon.org/latest/plugins';
 
 export interface ItemData {
@@ -107,7 +110,7 @@ export const useDataDragonStore = create<DataDragonState>((set, get) => ({
     if (get().itemMap || get().loading.items) return;
     set(state => ({ loading: { ...state.loading, items: true } }));
     try {
-      const response = await axios.get(`${CDN_URL}/data/en_US/item.json`);
+      const response = await axios.get(`${get().cdnUrl}/data/en_US/item.json`);
       set({ itemMap: response.data.data });
     } finally {
       set(state => ({ loading: { ...state.loading, items: false } }));
@@ -117,7 +120,7 @@ export const useDataDragonStore = create<DataDragonState>((set, get) => ({
     if (get().summonerSpellMap || get().loading.spells) return;
     set(state => ({ loading: { ...state.loading, spells: true } }));
     try {
-      const response = await axios.get(`${CDN_URL}/data/en_US/summoner.json`);
+      const response = await axios.get(`${get().cdnUrl}/data/en_US/summoner.json`);
       const spellData = response.data.data;
       const spellMap: SummonerSpellMap = {};
       for (const spellName in spellData) {
@@ -132,7 +135,7 @@ export const useDataDragonStore = create<DataDragonState>((set, get) => ({
     if (get().runeMap || get().loading.runes) return;
     set(state => ({ loading: { ...state.loading, runes: true } }));
     try {
-      const response = await axios.get<DDragonRunePath[]>(`${CDN_URL}/data/en_US/runesReforged.json`);
+      const response = await axios.get<DDragonRunePath[]>(`${get().cdnUrl}/data/en_US/runesReforged.json`);
       const runeData = response.data;
      
       const runeMap: RuneMap = {};

@@ -9,7 +9,7 @@ interface RuneIconProps {
 
 const RuneIcon: React.FC<RuneIconProps> = ({ runeId, className = 'w-6 h-6' }) => {
   const { runeMap, fetchRuneData } = useDataDragonStore();
-  const cdnImgUrl = useDataDragonStore(state => state.cdnImgUrl);
+  const cdnImgUrl = useDataDragonStore(state => state.cdnImgUrl); // This was correct, let's ensure it's used properly.
 
   useEffect(() => {
     if (!runeMap) {
@@ -32,7 +32,8 @@ const RuneIcon: React.FC<RuneIconProps> = ({ runeId, className = 'w-6 h-6' }) =>
 
   return (
     <img
-      src={`${cdnImgUrl}${rune?.icon}`}
+      src={`${cdnImgUrl}/${rune?.icon}`}
+      loading="lazy"
       alt={rune?.name || `Rune ${runeId}`}
       className={className}
       data-tooltip-id="item-tooltip"

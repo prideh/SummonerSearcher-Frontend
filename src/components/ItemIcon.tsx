@@ -33,6 +33,7 @@ const ItemIcon: React.FC<ItemIconProps> = ({ itemId, className = 'w-8 h-8' }) =>
   return (
     <img
       src={`${CDN_URL}/img/item/${itemId}.png`}
+      loading="lazy"
       alt={item?.name || `Item ${itemId}`}
       className={`${className} rounded`}
       data-tooltip-id="item-tooltip"
