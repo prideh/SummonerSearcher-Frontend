@@ -29,6 +29,11 @@ const LoginForm: React.FC = () => {
     }
   }, [location, navigate]);
   
+  const fillDummyCredentials = () => {
+    setEmail('dummy@summonersearcher.com');
+    setPassword('Dummy123!');
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setSuccessMessage(null)
@@ -68,6 +73,21 @@ const LoginForm: React.FC = () => {
     <div className="flex items-center justify-center h-screen">
       <form onSubmit={handleSubmit} className="bg-gray-800 p-6 rounded-lg shadow-md w-full max-w-sm">
         <h2 className="text-2xl font-bold mb-4 text-white">Login</h2>
+        <div className="mb-4 p-3 bg-gray-700 rounded-lg border border-gray-600">
+          <p className="text-sm text-gray-300 text-center font-semibold mb-2">
+            Want to try it out? Use the dummy account:
+          </p>
+          <button
+            type="button"
+            onClick={fillDummyCredentials}
+            className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200"
+          >
+            Fill with Dummy Account
+          </button>
+        </div>
+        <div className="text-center mb-4">
+          <p className="text-gray-400 text-sm">Or sign in with your email</p>
+        </div>
         {successMessage && <p className="text-green-500 text-sm italic mb-4">{successMessage}</p>}
         {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
         <div className="mb-4">
@@ -77,7 +97,7 @@ const LoginForm: React.FC = () => {
             id="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-gray-300 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+            className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-opacity-50 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-200"
             required
           />
         </div>
@@ -89,7 +109,7 @@ const LoginForm: React.FC = () => {
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-gray-300 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500 pr-16"
+              className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-opacity-50 focus:ring-blue-500 focus:border-blue-500 pr-16 transition-shadow duration-200"
               required
             />
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -97,7 +117,7 @@ const LoginForm: React.FC = () => {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 tabIndex={-1}
-                className="text-sm font-bold text-gray-400 hover:text-blue-400 focus:outline-none"
+                className="text-sm font-bold text-gray-400 hover:text-blue-400 focus:outline-none transition-colors duration-200"
               >
                 {showPassword ? 'Hide' : 'Show'}
               </button>
@@ -108,7 +128,7 @@ const LoginForm: React.FC = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="bg-blue-500 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded focus:shadow-outline flex items-center"
+            className="bg-blue-500 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded focus:shadow-outline flex items-center transition-colors duration-200"
           >
              {isSubmitting && (
               <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -118,14 +138,12 @@ const LoginForm: React.FC = () => {
             )}
             {isSubmitting ? 'Signing In...' : 'Sign In'}
           </button>
-          <Link to="/register" className="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800">
-            Don't have an account?
-          </Link>
-        </div>
-        <div className="text-center mt-4">
-          <Link to="/forgot-password" className="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800">
-            Forgot Password?
-          </Link>
+          <div className="text-sm text-right">
+            <Link to="/forgot-password" className="font-bold text-blue-500 hover:text-blue-700 transition-colors duration-200">
+              Forgot Password?
+            </Link>
+            <p className="text-gray-400 mt-1">Don't have an account? <Link to="/register" className="font-bold text-blue-500 hover:text-blue-700 transition-colors duration-200">Sign Up</Link></p>
+          </div>
         </div>
       </form>
     </div>

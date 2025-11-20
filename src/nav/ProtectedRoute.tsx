@@ -10,7 +10,7 @@ const ProtectedRoute: React.FC = () => {
       <Navbar />
       <Outlet />
     </>
-  ) : <Navigate to="/login" state={{ message: 'Your session has expired.' }} />;
+  ) : <Navigate to="/login"/>;
 };
 
 export default ProtectedRoute;

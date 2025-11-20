@@ -40,7 +40,7 @@ const TwoFAPage = () => {
       setTwoFaSecret(data.secret);
     } catch (err) {
       if (axios.isAxiosError(err)) {
-        setError(err.response?.data.message || 'Failed to enable 2FA. Please try again.');
+        setError(err.response?.data || 'Failed to enable 2FA. Please try again.');
       } else {
         setError('An unexpected error occurred.');
       }
