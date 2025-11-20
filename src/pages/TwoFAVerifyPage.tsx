@@ -35,7 +35,7 @@ const TwoFAVerifyPage: React.FC = () => {
       const data = await verify2FALogin(tempToken, code);
       if (data && data.jwt) {
         // On successful verification, complete the login process
-        login(data.jwt, email, data.twoFactorEnabled);
+        login(data.jwt, email, data.twoFactorEnabled, data.darkmodePreference ?? true);
       }
     } catch (err) {
       if (axios.isAxiosError(err)) {

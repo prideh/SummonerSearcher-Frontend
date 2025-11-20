@@ -39,3 +39,9 @@ export const clearRecentSearches = async () => {
   const response = await apiClient.post('/user/recent-searches/clear');
   return response.data;
 };
+
+export const updateDarkModePreference = async (enabled: boolean) => {
+  // The apiClient from apiClient.ts automatically adds the Authorization header via an interceptor
+  const response = await apiClient.post('/user/settings/darkmode', { enabled });
+  return response.data;
+};
