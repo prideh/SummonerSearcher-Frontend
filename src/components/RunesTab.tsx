@@ -24,13 +24,13 @@ const RunesTab: React.FC<RunesTabProps> = ({ match, puuid, onPlayerClick }) => {
           const secondaryStyle = perks?.styles?.[1];
 
           return (
-            <div key={player.puuid} className={`p-3 rounded-lg ${player.puuid === puuid ? 'bg-cyan-900/30' : 'bg-gray-900/40'}`}>
+            <div key={player.puuid} className={`p-3 rounded-lg ${player.puuid === puuid ? 'bg-cyan-500/10 dark:bg-cyan-900/30' : 'bg-gray-100 dark:bg-gray-900/40'}`}>
               <div 
                 className="flex items-center space-x-2 mb-3 cursor-pointer group"
                 onClick={() => onPlayerClick(player.riotIdGameName!, player.riotIdTagline!)}
               >
                 <img src={`${CDN_URL}/img/champion/${getCorrectChampionName(player.championName)}.png`} alt={player.championName} className="w-8 h-8 rounded-full" />
-                <span className="font-semibold text-gray-200 truncate group-hover:text-cyan-400">{player.riotIdGameName}</span>
+                <span className="font-semibold text-gray-800 dark:text-gray-200 truncate group-hover:text-cyan-500 dark:group-hover:text-cyan-400">{player.riotIdGameName}</span>
               </div>
               {/* Mobile View: Single row of runes */}
               <div className="flex md:hidden justify-start items-center space-x-1.5">

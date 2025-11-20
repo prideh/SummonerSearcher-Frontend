@@ -40,21 +40,21 @@ const StatGraph: React.FC<StatGraphProps> = ({ participants, puuid, onPlayerClic
           : 'from-red-600 to-red-500';
 
         return (
-          <div key={player.puuid} className={`flex items-center space-x-3 text-sm p-1 rounded-md transition-colors ${isSearchedPlayer ? 'bg-gray-800/50' : ''}`}>
+          <div key={player.puuid} className={`flex items-center space-x-3 text-sm p-1 rounded-md transition-colors ${isSearchedPlayer ? 'bg-gray-200 dark:bg-gray-800/50' : ''}`}>
             <img src={`${CDN_URL}/img/champion/${getCorrectChampionName(player.championName)}.png`} alt={player.championName} className="w-8 h-8 rounded shrink-0" />
             <div
-              className={`w-24 md:w-32 truncate cursor-pointer ${isSearchedPlayer ? 'text-gray-100 font-bold' : 'text-gray-300 hover:text-gray-100'}`}
+              className={`w-24 md:w-32 truncate cursor-pointer ${isSearchedPlayer ? 'text-gray-900 dark:text-gray-100 font-bold' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'}`}
               onClick={() => onPlayerClick(player.riotIdGameName!, player.riotIdTagline!)}
             >
               {player.riotIdGameName}
             </div>
-            <div className="flex-1 bg-gray-900/50 rounded-full h-5 overflow-hidden">
+            <div className="flex-1 bg-gray-200 dark:bg-gray-900/50 rounded-full h-5 overflow-hidden">
               <div
                 className={`h-full rounded-full bg-gradient-to-r ${gradientClass} transition-all duration-500 ease-out`}
                 style={{ width: `${barWidth}%` }}
               />
             </div>
-            <div className="w-12 md:w-16 text-right font-semibold text-white shrink-0">{formatNumber(statValue)}</div>
+            <div className="w-12 md:w-16 text-right font-semibold text-gray-800 dark:text-white shrink-0">{formatNumber(statValue)}</div>
           </div>
         );
       })}
@@ -69,13 +69,13 @@ const GraphsTab: React.FC<GraphsTabProps> = ({ match, puuid, onPlayerClick }) =>
   const participants = match.info?.participants;
 
   if (!participants || participants.length === 0) {
-    return <p className="p-4 text-gray-400">No participant data available for analysis.</p>;
+    return <p className="p-4 text-gray-500 dark:text-gray-400">No participant data available for analysis.</p>;
   }
 
   return (
     <div className="p-4 space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-        <h3 className="text-lg font-bold text-gray-100">
+        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">
           {
             selectedGraph === 'damage' ? 'Damage to Champions' :
             selectedGraph === 'damageTaken' ? 'Damage Taken' :
@@ -100,7 +100,7 @@ const GraphsTab: React.FC<GraphsTabProps> = ({ match, puuid, onPlayerClick }) =>
         <select
           value={selectedGraph}
           onChange={(e) => setSelectedGraph(e.target.value as GraphType)}
-          className="p-1 border border-gray-700 rounded-md bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm self-end sm:self-auto"
+          className="p-1 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm self-end sm:self-auto"
         >
           <option value="damage">Damage</option>
           <option value="damageTaken">Damage Taken</option>

@@ -23,7 +23,7 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ puuid, matches, onPlayerCli
   // We just need to handle the case where there are no matches.
 
   if (!matches || matches.length === 0) {
-    return <p className="text-gray-400 text-center mt-4">No recent matches found.</p>;
+    return <p className="text-gray-500 dark:text-gray-400 text-center mt-4">No recent matches found.</p>;
   }
   
   const visibleMatches = matches.slice(0, visibleCount);
@@ -35,7 +35,7 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ puuid, matches, onPlayerCli
       ))}
       {visibleCount < matches.length && (
         <div className="mt-4 text-center">
-          <button onClick={() => setVisibleCount(prev => prev + MATCHES_PER_PAGE)} className="bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold py-3 px-8 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors duration-200">
+          <button onClick={() => setVisibleCount(prev => prev + MATCHES_PER_PAGE)} className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold py-3 px-8 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors duration-200">
             Load More
           </button>
         </div>

@@ -25,7 +25,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
 
   if (!player) {
     return (
-      <div className="bg-gray-800 p-3 rounded-lg mb-2 flex items-center justify-between text-sm">
+      <div className="bg-gray-200 dark:bg-gray-800 p-3 rounded-lg mb-2 flex items-center justify-between text-sm">
         <p>Player data not found for this match.</p>
       </div>
     );
@@ -58,25 +58,25 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
   const teamColorClass = teamId === 100 ? 'text-blue-400' : 'text-red-400';
   return (
     <div ref={ref} className={`relative border-l-4 ${outcome.container} ${showDetails ? 'rounded-t-lg' : 'rounded-lg'}`}>
-      <div className="grid grid-cols-1 md:grid-cols-[130px_1fr_auto_1fr_280px_40px] gap-4 items-center p-4 text-sm bg-gray-900/50">
+      <div className="grid grid-cols-1 md:grid-cols-[130px_1fr_auto_1fr_280px_40px] gap-4 items-center p-4 text-sm bg-white/50 dark:bg-gray-900/50">
         {/* Game Info */}
         <div className="flex justify-between items-center md:flex-col md:items-start md:justify-start pr-10 md:pr-0">
-          <p className="font-bold text-gray-100 truncate text-lg md:text-base">{getQueueType(queueId)}</p>
+          <p className="font-bold text-gray-800 dark:text-gray-100 truncate text-lg md:text-base">{getQueueType(queueId)}</p>
           <p 
-            className="text-xs text-gray-400"
+            className="text-xs text-gray-500 dark:text-gray-400"
             data-tooltip-id="player-name-tooltip"
             data-tooltip-content={gameCreation ? new Date(gameCreation).toLocaleString() : 'Unknown time'}
           >
             {timeAgo}
           </p>
-          <div className="hidden md:block w-12 border-t border-gray-700 my-1"></div>
+          <div className="hidden md:block w-12 border-t border-gray-300 dark:border-gray-700 my-1"></div>
           <div className="text-right md:text-left">
             {outcome.label === 'Remake' ? (
-              <p className="font-semibold text-gray-400">Remake</p>
+              <p className="font-semibold text-gray-500 dark:text-gray-400">Remake</p>
             ) : (
               <p className={`font-semibold ${teamColorClass}`}>{teamId === 100 ? 'Blue Side' : 'Red Side'}</p>
             )}
-            <p className="text-gray-400">{formatDuration(gameDuration)}</p>
+            <p className="text-gray-500 dark:text-gray-400">{formatDuration(gameDuration)}</p>
           </div>
         </div>
 
@@ -88,11 +88,11 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
 
         {/* "VS" Separator */}
         <div className="text-center">
-          {opponent && <span className="text-lg font-bold text-gray-600 px-2">vs</span>}
+          {opponent && <span className="text-lg font-bold text-gray-400 dark:text-gray-600 px-2">vs</span>}
         </div>
 
         {/* Opponent Stats */}
-        <div className="text-gray-400 flex justify-start w-full">
+        <div className="text-gray-500 dark:text-gray-400 flex justify-start w-full">
           {opponent && (
             <PlayerStats 
               participant={opponent}
@@ -110,7 +110,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
 
         {/* Expand Button */}
         <div className="absolute top-2 right-2 md:static flex items-center justify-center">
-          <button onClick={() => setShowDetails(!showDetails)} className={`p-2 rounded-md transition-all duration-200 ${showDetails ? 'rotate-180 bg-gray-700' : 'bg-gray-800/50 hover:bg-gray-800'}`}>
+          <button onClick={() => setShowDetails(!showDetails)} className={`p-2 rounded-md transition-all duration-200 ${showDetails ? 'rotate-180 bg-gray-300 dark:bg-gray-700' : 'bg-gray-200/50 dark:bg-gray-800/50 hover:bg-gray-300 dark:hover:bg-gray-800'}`}>
             <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>
         </div>

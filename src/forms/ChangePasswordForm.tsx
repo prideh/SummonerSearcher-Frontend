@@ -69,40 +69,40 @@ const ChangePasswordForm = () => {
   };
 
   return (
-    <div className="bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-sm">
-      <h3 className="text-xl font-bold mb-4 text-gray-100">Security</h3>
-      <p className="text-gray-400 mb-4">Update your password for enhanced security.</p>
+    <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-sm">
+      <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">Security</h3>
+      <p className="text-gray-600 dark:text-gray-400 mb-4">Update your password for enhanced security.</p>
       <button onClick={openModal} className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded focus:shadow-outline">
         Change Password
       </button>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-gray-900 p-8 rounded-lg shadow-2xl w-full max-w-2xl flex flex-col md:flex-row items-start md:space-x-8">
+          <div className="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-2xl w-full max-w-2xl flex flex-col md:flex-row items-start md:space-x-8">
             <form onSubmit={handleSubmit}>
-              <h2 className="text-2xl font-bold mb-4 text-gray-100">Change Your Password</h2>
+              <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Change Your Password</h2>
               {successMessage && <p className="text-green-500 text-sm italic mb-4">{successMessage}</p>}
               {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
 
               <div className="mb-4">
-                <label htmlFor="current-password" className="block text-gray-400 text-sm font-bold mb-2">Current Password</label>
+                <label htmlFor="current-password" className="block text-gray-600 dark:text-gray-400 text-sm font-bold mb-2">Current Password</label>
                 <div className="relative">
-                  <input type={showOldPassword ? 'text' : 'password'} id="current-password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} className="shadow appearance-none border border-gray-700 rounded w-full py-2 px-3 bg-gray-800 text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 pr-16" required autoComplete="current-password" />
-                  <button type="button" onClick={() => setShowOldPassword(!showOldPassword)} tabIndex={-1} className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm font-bold text-gray-400 hover:text-cyan-400 focus:outline-none">{showOldPassword ? 'Hide' : 'Show'}</button>
+                  <input type={showOldPassword ? 'text' : 'password'} id="current-password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} className="shadow appearance-none border border-gray-300 dark:border-gray-700 rounded w-full py-2 px-3 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 pr-16" required autoComplete="current-password" />
+                  <button type="button" onClick={() => setShowOldPassword(!showOldPassword)} tabIndex={-1} className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-cyan-500 dark:hover:text-cyan-400 focus:outline-none">{showOldPassword ? 'Hide' : 'Show'}</button>
                 </div>
               </div>
 
               <div className="mb-4">
-                <label htmlFor="new-password" className="block text-gray-400 text-sm font-bold mb-2">New Password</label>
+                <label htmlFor="new-password" className="block text-gray-600 dark:text-gray-400 text-sm font-bold mb-2">New Password</label>
                 <div className="relative">
-                  <input type={showPassword ? 'text' : 'password'} id="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="shadow appearance-none border border-gray-700 rounded w-full py-2 px-3 bg-gray-800 text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 pr-16" required autoComplete="new-password" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} tabIndex={-1} className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm font-bold text-gray-400 hover:text-cyan-400 focus:outline-none">{showPassword ? 'Hide' : 'Show'}</button>
+                  <input type={showPassword ? 'text' : 'password'} id="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="shadow appearance-none border border-gray-300 dark:border-gray-700 rounded w-full py-2 px-3 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 pr-16" required autoComplete="new-password" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} tabIndex={-1} className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-cyan-500 dark:hover:text-cyan-400 focus:outline-none">{showPassword ? 'Hide' : 'Show'}</button>
                 </div>
               </div>
 
               <div className="mb-6">
-                <label htmlFor="confirm-new-password" className="block text-gray-400 text-sm font-bold mb-2">Confirm New Password</label>
-                <input type={showPassword ? 'text' : 'password'} id="confirm-new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="shadow appearance-none border border-gray-700 rounded w-full py-2 px-3 bg-gray-800 text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" required autoComplete="new-password" />
+                <label htmlFor="confirm-new-password" className="block text-gray-600 dark:text-gray-400 text-sm font-bold mb-2">Confirm New Password</label>
+                <input type={showPassword ? 'text' : 'password'} id="confirm-new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="shadow appearance-none border border-gray-300 dark:border-gray-700 rounded w-full py-2 px-3 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" required autoComplete="new-password" />
               </div>
 
               <div className="flex items-center justify-end space-x-4">

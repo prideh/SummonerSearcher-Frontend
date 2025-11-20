@@ -49,20 +49,20 @@ const TwoFAVerifyPage: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-950">
-      <form onSubmit={handleSubmit} className="bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-sm">
-        <h2 className="text-2xl font-bold mb-4 text-gray-100">Two-Factor Authentication</h2>
-        <p className="text-gray-400 mb-4">Enter the 6-digit code from your authenticator app.</p>
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-950">
+      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-sm">
+        <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Two-Factor Authentication</h2>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">Enter the 6-digit code from your authenticator app.</p>
         {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
         <div className="mb-4">
-          <label htmlFor="2fa-code" className="block text-gray-400 text-sm font-bold mb-2">Verification Code</label>
+          <label htmlFor="2fa-code" className="block text-gray-600 dark:text-gray-400 text-sm font-bold mb-2">Verification Code</label>
           <input
             type="tel"
             id="2fa-code"
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, ''))}
             maxLength={6}
-            className="shadow appearance-none border border-gray-700 rounded w-full py-2 px-3 bg-gray-800 text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-center text-2xl tracking-widest"
+            className="shadow appearance-none border border-gray-300 dark:border-gray-700 rounded w-full py-2 px-3 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-center text-2xl tracking-widest"
             required
           />
         </div>

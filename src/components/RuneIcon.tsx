@@ -18,7 +18,7 @@ const RuneIcon: React.FC<RuneIconProps> = ({ runeId, className = 'w-6 h-6' }) =>
   }, [runeMap, fetchRuneData]);
 
   if (!runeId) {
-    return <div className={`${className} bg-gray-800/50 rounded-full`}></div>;
+    return <div className={`${className} bg-gray-200 dark:bg-gray-800/50 rounded-full`}></div>;
   }
 
   const rune = runeMap?.[runeId];

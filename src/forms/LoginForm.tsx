@@ -70,11 +70,11 @@ const LoginForm: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-950">
-      <form onSubmit={handleSubmit} className="bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-sm">
-        <h2 className="text-2xl font-bold mb-4 text-gray-100">Login</h2>
-        <div className="mb-4 p-3 bg-gray-800 rounded-lg border border-gray-700">
-          <p className="text-sm text-gray-300 text-center font-semibold mb-2">
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-950">
+      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-sm">
+        <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Login</h2>
+        <div className="mb-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <p className="text-sm text-gray-700 dark:text-gray-300 text-center font-semibold mb-2">
             Want to try it out? Use the dummy account:
           </p>
           <button
@@ -86,30 +86,30 @@ const LoginForm: React.FC = () => {
           </button>
         </div>
         <div className="text-center mb-4">
-          <p className="text-gray-400 text-sm">Or sign in with your email</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">Or sign in with your email</p>
         </div>
         {successMessage && <p className="text-green-500 text-sm italic mb-4">{successMessage}</p>}
         {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
         <div className="mb-4">
-          <label htmlFor="email" className="block text-gray-400 text-sm font-bold mb-2">Email</label>
+          <label htmlFor="email" className="block text-gray-600 dark:text-gray-400 text-sm font-bold mb-2">Email</label>
           <input
             type="email"
             id="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="shadow appearance-none border border-gray-700 rounded w-full py-2 px-3 bg-gray-800 text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+            className="shadow appearance-none border border-gray-300 dark:border-gray-700 rounded w-full py-2 px-3 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
             required
           />
         </div>
         <div className="mb-6">
-          <label htmlFor="password" className="block text-gray-400 text-sm font-bold mb-2">Password</label>
+          <label htmlFor="password" className="block text-gray-600 dark:text-gray-400 text-sm font-bold mb-2">Password</label>
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="shadow appearance-none border border-gray-700 rounded w-full py-2 px-3 bg-gray-800 text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 pr-16"
+              className="shadow appearance-none border border-gray-300 dark:border-gray-700 rounded w-full py-2 px-3 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 pr-16"
               required
             />
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -117,7 +117,7 @@ const LoginForm: React.FC = () => {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 tabIndex={-1}
-                className="text-sm font-bold text-gray-400 hover:text-cyan-400 focus:outline-none"
+                className="text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-cyan-500 dark:hover:text-cyan-400 focus:outline-none"
               >
                 {showPassword ? 'Hide' : 'Show'}
               </button>
@@ -142,7 +142,7 @@ const LoginForm: React.FC = () => {
             <Link to="/forgot-password" className="font-bold text-cyan-400 hover:text-cyan-300">
               Forgot Password?
             </Link>
-            <p className="text-gray-400 mt-1">Don't have an account? <Link to="/register" className="font-bold text-cyan-400 hover:text-cyan-300">Sign Up</Link></p>
+            <p className="text-gray-500 dark:text-gray-400 mt-1">Don't have an account? <Link to="/register" className="font-bold text-cyan-400 hover:text-cyan-300">Sign Up</Link></p>
           </div>
         </div>
       </form>

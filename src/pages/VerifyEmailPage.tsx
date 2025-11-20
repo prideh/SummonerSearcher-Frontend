@@ -61,11 +61,11 @@ const VerifyEmailPage: React.FC = () => {
 
   return (
     <div className="flex items-center justify-center h-screen">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-md w-full max-w-md text-center">
-        {status === 'verifying' && <h2 className="text-2xl font-bold text-white">Verifying your email...</h2>}
+      <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md w-full max-w-md text-center">
+        {status === 'verifying' && <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Verifying your email...</h2>}
         {status === 'success' && <h2 className="text-2xl font-bold text-green-500">Success!</h2>}
         {status === 'error' && <h2 className="text-2xl font-bold text-red-500">Verification Failed</h2>}
-        <p className="text-gray-300 mt-4">{message}</p>
+        <p className="text-gray-700 dark:text-gray-300 mt-4">{message}</p>
         {status !== 'verifying' && (
           <Link to="/login" className="mt-6 inline-block bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Go to Login</Link>
         )}

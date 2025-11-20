@@ -17,13 +17,13 @@ const MatchDetails: React.FC<MatchDetailsProps> = ({ match, puuid, onPlayerClick
   const getTabClass = (tabName: 'scoreboard' | 'graphs' | 'runes' | 'analysis') =>
     `px-4 py-2 font-semibold rounded-t-lg transition-colors shrink-0 ${
       activeTab === tabName
-        ? 'bg-gray-800 text-gray-100'
-        : 'bg-gray-900/60 text-gray-400 hover:bg-gray-800/80'
+        ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+        : 'bg-gray-100/60 dark:bg-gray-900/60 text-gray-500 dark:text-gray-400 hover:bg-white/80 dark:hover:bg-gray-800/80'
     }`;
 
   return (
-    <div className="col-span-full bg-gray-900/70 rounded-b-lg text-gray-200 border-t border-gray-800/50 overflow-hidden">
-      <div className="flex border-b border-gray-800/50 px-2 sm:px-4 overflow-x-auto">
+    <div className="col-span-full bg-white dark:bg-gray-900/70 rounded-b-lg text-gray-800 dark:text-gray-200 border-t border-gray-200 dark:border-gray-800/50 overflow-hidden">
+      <div className="flex border-b border-gray-200 dark:border-gray-800/50 px-2 sm:px-4 overflow-x-auto">
         <button onClick={() => setActiveTab('scoreboard')} className={getTabClass('scoreboard')}>
           Scoreboard
         </button>

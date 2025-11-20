@@ -55,12 +55,12 @@ const StatusPage = () => {
         </h3>
         {updates.map((item, index) => (
           <div key={`${type}-${index}`} className="bg-gray-900 p-4 rounded-lg mb-4 shadow">
-            <h4 className="text-xl font-semibold text-white">{item.title}</h4>
-            <div className="text-sm text-gray-400 capitalize flex items-center space-x-2">
+            <h4 className="text-xl font-semibold text-gray-800 dark:text-white">{item.title}</h4>
+            <div className="text-sm text-gray-500 dark:text-gray-400 capitalize flex items-center space-x-2">
               {item.severity && <span key="severity">Severity: {item.severity}</span>}
             </div>
-            <p className="text-gray-300 mt-3">{item.description}</p>
-            <p className="text-xs text-gray-500 mt-2">Platforms: {item.platforms.join(', ')}</p>
+            <p className="text-gray-700 dark:text-gray-300 mt-3">{item.description}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">Platforms: {item.platforms.join(', ')}</p>
           </div>
         ))}
       </div>
@@ -68,10 +68,10 @@ const StatusPage = () => {
   };
 
   return (
-    <div className="container mx-auto p-4 bg-gray-950 text-gray-200 min-h-screen">
+    <div className="container mx-auto p-4 min-h-screen">
       <h2 className="text-3xl font-bold mb-6 text-center">Riot Games Server Status</h2>
       <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-8">
-        <select value={region} onChange={(e) => setRegion(e.target.value)} className="p-2 border border-gray-700 rounded-md bg-gray-900 text-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+        <select value={region} onChange={(e) => setRegion(e.target.value)} className="p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-500">
         <option value="EUW1">EUW</option>
         <option value="NA1">NA</option>
         <option value="KR">KR</option>

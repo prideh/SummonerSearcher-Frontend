@@ -13,7 +13,7 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
   const [timeAgo, ref] = useTimeAgo(new Date(summonerData.lastUpdated).getTime());
 
   return (
-    <div ref={ref} className="bg-gray-900/50 border border-gray-800 p-6 rounded-lg shadow-lg">
+    <div ref={ref} className="bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-6 rounded-lg shadow-md dark:shadow-lg">
       <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
         <img
           src={`https://ddragon.leagueoflegends.com/cdn/15.21.1/img/profileicon/${summonerData.profileIconId}.png`}
@@ -22,11 +22,11 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
         />
         <div className="flex-grow text-center sm:text-left">
           <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start sm:space-x-4">
-            <h2 className="text-2xl font-bold">{summonerData.gameName} <span className="text-gray-500">#{summonerData.tagLine}</span></h2>
+            <h2 className="text-2xl font-bold">{summonerData.gameName} <span className="text-gray-400 dark:text-gray-500">#{summonerData.tagLine}</span></h2>
           </div>
-          <p className="text-gray-400 mt-1">Level {summonerData.summonerLevel}</p>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Level {summonerData.summonerLevel}</p>
           {summonerData.lastUpdated && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
               Last updated: {timeAgo}
             </p>
           )}
@@ -46,7 +46,7 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
       {summonerData.soloQueueRank ? (
         <RankedInfo rankedData={summonerData.soloQueueRank} summonerData={summonerData} />
       ) : (
-        <p className="text-center text-gray-400 mt-4">No ranked data available for this summoner.</p>
+        <p className="text-center text-gray-500 dark:text-gray-400 mt-4">No ranked data available for this summoner.</p>
       )}
     </div>
   );

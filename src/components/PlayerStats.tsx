@@ -69,22 +69,22 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
       </div>
       {/* KDA */}
       <div className="text-center min-h-[100px]">
-        <p className="text-lg font-bold text-gray-200 whitespace-nowrap">
+        <p className="text-lg font-bold text-gray-800 dark:text-gray-200 whitespace-nowrap">
           <span className="text-green-400">{kills}</span> / <span className="text-red-400">{deaths}</span> / <span className="text-yellow-400">{assists}</span>
         </p>
         {deaths === 0 ? (
           <p className="text-xs font-semibold text-yellow-400 mt-1">Infinite KDA</p>
         ) : (
-          <p className="text-xs text-gray-400 mt-1">{kda.toFixed(2)} KDA</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{kda.toFixed(2)} KDA</p>
         )}
         <p 
-          className="text-xs text-gray-300 mt-1"
+          className="text-xs text-gray-600 dark:text-gray-300 mt-1"
           data-tooltip-id="player-name-tooltip"
           data-tooltip-content={`Minions: ${totalMinionsKilled} | Jungle: ${neutralMinionsKilled}`}
         >
           CS: {cs}
         </p>
-        <p className="text-xs text-red-300 mt-1">KP: {killParticipation.toFixed(0)}%</p>
+        <p className="text-xs text-red-500 dark:text-red-300 mt-1">KP: {killParticipation.toFixed(0)}%</p>
         <div className="h-6 mt-1">
           {(challenges?.soloKills ?? 0) > 0 && (
             <p className="text-xs font-semibold text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded inline-block">Solo Kills: {challenges?.soloKills}</p>
@@ -117,10 +117,10 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
         </div>
         <div className="flex flex-col justify-center min-w-0">
           <div className="truncate" title={`${riotIdGameName}#${riotIdTagline}`}>
-            <span className="font-semibold text-gray-200 group-hover:text-cyan-400 transition-colors">
+            <span className="font-semibold text-gray-800 dark:text-gray-200 group-hover:text-cyan-500 dark:group-hover:text-cyan-400 transition-colors">
               {riotIdGameName}
             </span>
-            <span className="text-gray-500 ml-1">#{riotIdTagline}</span>
+            <span className="text-gray-500 dark:text-gray-500 ml-1">#{riotIdTagline}</span>
           </div>
           <div className="flex space-x-1 mt-1">
             <RuneIcon runeId={primaryRune} isKeystone={true} className="w-5 h-5" />
@@ -128,16 +128,16 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
           </div>
         </div>
         <div className="text-center min-h-[100px]">
-          <p className="text-lg font-bold text-gray-200 whitespace-nowrap">
+          <p className="text-lg font-bold text-gray-800 dark:text-gray-200 whitespace-nowrap">
             <span className="text-green-400">{kills}</span> / <span className="text-red-400">{deaths}</span> / <span className="text-yellow-400">{assists}</span>
           </p>
           {deaths === 0 ? (
             <p className="text-xs font-semibold text-yellow-400 mt-1">Infinite KDA</p>
           ) : (
-            <p className="text-xs text-gray-400 mt-1">{kda.toFixed(2)} KDA</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{kda.toFixed(2)} KDA</p>
           )}
-          <p className="text-xs text-gray-300 mt-1">CS: {cs}</p>
-          <p className="text-xs text-red-300 mt-1">KP: {killParticipation.toFixed(0)}%</p>
+          <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">CS: {cs}</p>
+          <p className="text-xs text-red-500 dark:text-red-300 mt-1">KP: {killParticipation.toFixed(0)}%</p>
           <div className="h-6 mt-1">
             {(challenges?.soloKills ?? 0) > 0 && (
               <p className="text-xs font-semibold text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded inline-block">Solo Kills: {challenges?.soloKills}</p>

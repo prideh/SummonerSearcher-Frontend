@@ -28,7 +28,7 @@ const TeamDetails: React.FC<{ team: ParticipantDto[]; searchedPlayerPuuid: strin
   const getHeaderInfo = () => {
     if (isRemake) {
       return {
-        bgClass: 'bg-gray-500/20',
+        bgClass: 'bg-gray-400/20 dark:bg-gray-500/20',
         textClass: 'text-gray-400',
         label: 'Remake',
       };
@@ -37,19 +37,19 @@ const TeamDetails: React.FC<{ team: ParticipantDto[]; searchedPlayerPuuid: strin
     const teamColorClass = teamId === 100 ? 'text-blue-400' : 'text-red-400';
     const outcomeLabel = isWin ? 'Victory' : 'Defeat';
 
-    return { bgClass: 'bg-gray-900/20', textClass: teamColorClass, label: outcomeLabel };
+    return { bgClass: 'bg-gray-200/50 dark:bg-gray-900/20', textClass: teamColorClass, label: outcomeLabel };
   };
   const headerInfo = getHeaderInfo();
   return (
-    <div className="bg-black/10 rounded-md">
+    <div className="bg-black/5 dark:bg-black/10 rounded-md">
       {/* Team Header */}
       <div className={`flex justify-between items-center p-2 rounded-t-md ${headerInfo.bgClass}`}>
         <p className={`font-bold ${headerInfo.textClass}`}>
           {headerInfo.label} ({teamId === 100 ? 'Blue' : 'Red'} Team)
         </p>
-        <div className="flex items-center space-x-4 text-gray-300 text-xs">
-          <span title="Gold"><span className="font-semibold text-gray-200">{formatNumber(teamGold)}</span> G</span>
-          <span className="font-semibold text-gray-200">{teamKills} / {teamDeaths} / {teamAssists}</span>
+        <div className="flex items-center space-x-4 text-gray-600 dark:text-gray-300 text-xs">
+          <span title="Gold"><span className="font-semibold text-gray-800 dark:text-gray-200">{formatNumber(teamGold)}</span> G</span>
+          <span className="font-semibold text-gray-800 dark:text-gray-200">{teamKills} / {teamDeaths} / {teamAssists}</span>
         </div>
       </div>
 
@@ -58,7 +58,7 @@ const TeamDetails: React.FC<{ team: ParticipantDto[]; searchedPlayerPuuid: strin
         {team.map((p, index) => (
           <div 
             key={p.participantId} 
-            className={`grid grid-cols-[auto_1fr_auto] md:grid-cols-[1fr_90px_60px_40px_200px] gap-x-2 items-center p-1.5 cursor-pointer hover:bg-gray-800/60 transition-colors duration-150 ${p.puuid === searchedPlayerPuuid ? 'bg-cyan-500/20' : (index % 2 === 0 ? 'bg-white/5' : 'bg-transparent')}`}
+            className={`grid grid-cols-[auto_1fr_auto] md:grid-cols-[1fr_90px_60px_40px_200px] gap-x-2 items-center p-1.5 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-800/60 transition-colors duration-150 ${p.puuid === searchedPlayerPuuid ? 'bg-cyan-500/10 dark:bg-cyan-500/20' : (index % 2 === 0 ? 'bg-black/5 dark:bg-white/5' : 'bg-transparent')}`}
             onClick={() => {
               if (p.riotIdGameName && p.riotIdTagline) {
                 onPlayerClick(p.riotIdGameName, p.riotIdTagline);
@@ -90,17 +90,17 @@ const TeamDetails: React.FC<{ team: ParticipantDto[]; searchedPlayerPuuid: strin
                 data-tooltip-id="player-name-tooltip"
                 data-tooltip-content={`${p.riotIdGameName}#${p.riotIdTagline}`}
               >
-                <span className={`font-semibold ${p.puuid === searchedPlayerPuuid ? 'text-cyan-400' : 'text-gray-200'}`}>{p.riotIdGameName}</span>
-                <span className="text-gray-500 ml-1">#{p.riotIdTagline}</span>
+                <span className={`font-semibold ${p.puuid === searchedPlayerPuuid ? 'text-cyan-600 dark:text-cyan-400' : 'text-gray-800 dark:text-gray-200'}`}>{p.riotIdGameName}</span>
+                <span className="text-gray-500 dark:text-gray-500 ml-1">#{p.riotIdTagline}</span>
               </div>
             </div>
 
             {/* KDA - Repositioned for mobile */}
-            <div className="text-right md:text-center font-semibold text-gray-200 text-[11px]">{p.kills} / {p.deaths} / {p.assists}</div>
+            <div className="text-right md:text-center font-semibold text-gray-800 dark:text-gray-200 text-[11px]">{p.kills} / {p.deaths} / {p.assists}</div>
 
             {/* Damage - Hidden on mobile */}
             <div 
-              className="hidden md:block text-center text-gray-300"
+              className="hidden md:block text-center text-gray-600 dark:text-gray-300"
               data-tooltip-id="player-name-tooltip"
               data-tooltip-content={`Physical: ${formatNumber(p.physicalDamageDealtToChampions)} | Magic: ${formatNumber(p.magicDamageDealtToChampions)} | True: ${formatNumber(p.trueDamageDealtToChampions)}`}
             >
@@ -109,7 +109,7 @@ const TeamDetails: React.FC<{ team: ParticipantDto[]; searchedPlayerPuuid: strin
 
             {/* CS - Hidden on mobile */}
             <div 
-              className="hidden md:block text-center text-gray-300"
+              className="hidden md:block text-center text-gray-600 dark:text-gray-300"
               data-tooltip-id="player-name-tooltip"
               data-tooltip-content={`Minions: ${p.totalMinionsKilled} | Jungle: ${p.neutralMinionsKilled}`}
             >
@@ -122,7 +122,7 @@ const TeamDetails: React.FC<{ team: ParticipantDto[]; searchedPlayerPuuid: strin
                 <ItemIcon key={i} itemId={item} className={`w-6 h-6 ${i === 6 ? 'ml-1' : ''}`} />
               ))}
               <div className="flex-grow flex justify-end md:hidden">
-                <div className="text-gray-300 text-right text-[10px] leading-tight">
+                <div className="text-gray-600 dark:text-gray-300 text-right text-[10px] leading-tight">
                   <p>{formatNumber(p.totalDamageDealtToChampions)} DMG</p>
                   <p>{(p.totalMinionsKilled ?? 0) + (p.neutralMinionsKilled ?? 0)} CS</p>
                 </div>

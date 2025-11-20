@@ -52,30 +52,30 @@ const RegistrationForm: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col md:flex-row items-center justify-center min-h-screen p-4 bg-gray-950">
-      <form onSubmit={handleSubmit} className="bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-sm">
-        <h2 className="text-2xl font-bold mb-4 text-gray-100">Register</h2>
+    <div className="flex flex-col md:flex-row items-center justify-center min-h-screen p-4 bg-gray-100 dark:bg-gray-950">
+      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-sm">
+        <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Register</h2>
         {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
         <div className="mb-4">
-          <label htmlFor="email" className="block text-gray-400 text-sm font-bold mb-2">Email</label>
+          <label htmlFor="email" className="block text-gray-600 dark:text-gray-400 text-sm font-bold mb-2">Email</label>
           <input
             type="email"
             id="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="shadow appearance-none border border-gray-700 rounded w-full py-2 px-3 bg-gray-800 text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+            className="shadow appearance-none border border-gray-300 dark:border-gray-700 rounded w-full py-2 px-3 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
             required
           />
         </div>
         <div className="mb-4">
-          <label htmlFor="password" className="block text-gray-400 text-sm font-bold mb-2">Password</label>
+          <label htmlFor="password" className="block text-gray-600 dark:text-gray-400 text-sm font-bold mb-2">Password</label>
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="shadow appearance-none border border-gray-700 rounded w-full py-2 px-3 bg-gray-800 text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 pr-16"
+              className="shadow appearance-none border border-gray-300 dark:border-gray-700 rounded w-full py-2 px-3 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 pr-16"
               required
             />
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -83,7 +83,7 @@ const RegistrationForm: React.FC = () => {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 tabIndex={-1}
-                className="text-sm font-bold text-gray-400 hover:text-cyan-400 focus:outline-none"
+                className="text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-cyan-500 dark:hover:text-cyan-400 focus:outline-none"
               >
                 {showPassword ? 'Hide' : 'Show'}
               </button>
@@ -91,14 +91,14 @@ const RegistrationForm: React.FC = () => {
           </div>
         </div>
         <div className="mb-6">
-          <label htmlFor="confirm-password" className="block text-gray-400 text-sm font-bold mb-2">Confirm Password</label>
+          <label htmlFor="confirm-password" className="block text-gray-600 dark:text-gray-400 text-sm font-bold mb-2">Confirm Password</label>
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
               id="confirm-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="shadow appearance-none border border-gray-700 rounded w-full py-2 px-3 bg-gray-800 text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 pr-16"
+              className="shadow appearance-none border border-gray-300 dark:border-gray-700 rounded w-full py-2 px-3 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 pr-16"
               required
             />
           </div>

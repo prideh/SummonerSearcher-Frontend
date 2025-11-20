@@ -109,19 +109,19 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
 
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
   if (championStats.length === 0 && overallStats.wins + overallStats.losses === 0) {
-    return <p className="text-sm text-gray-500 mt-4">Not enough recent games to show champion stats.</p>;
+    return <p className="text-sm text-gray-500 dark:text-gray-500 mt-4">Not enough recent games to show champion stats.</p>;
   }
 
   return (
     <div className="mt-4 md:mt-0 text-center md:text-left">
       <div className="flex justify-between items-center mb-2">
-        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Last 20 Games</h3>
+        <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last 20 Games</h3>
         <div className="text-xs text-right space-y-0.5">
-          <p className="font-semibold text-gray-300">{overallStats.wins}W {overallStats.losses}L ({overallStats.winRate.toFixed(0)}%)</p>
-          <p className="text-gray-400">{overallStats.kda === Infinity ? 'Infinite' : overallStats.kda.toFixed(2)} KDA</p>
-          <p className="text-gray-400">
+          <p className="font-semibold text-gray-700 dark:text-gray-300">{overallStats.wins}W {overallStats.losses}L ({overallStats.winRate.toFixed(0)}%)</p>
+          <p className="text-gray-500 dark:text-gray-400">{overallStats.kda === Infinity ? 'Infinite' : overallStats.kda.toFixed(2)} KDA</p>
+          <p className="text-gray-500 dark:text-gray-400">
             <span>KP {overallStats.avgKillParticipation.toFixed(0)}%</span>
-            <span className="text-gray-600 mx-1">|</span>
+            <span className="text-gray-400 dark:text-gray-600 mx-1">|</span>
             <span>{overallStats.avgCsPerMinute.toFixed(1)} CS/min</span>
           </p>
         </div>

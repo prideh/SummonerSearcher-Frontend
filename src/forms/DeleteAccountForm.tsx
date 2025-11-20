@@ -43,25 +43,25 @@ const DeleteAccountForm = () => {
   };
 
   return (
-    <div className="bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-sm mt-8">
+    <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-sm mt-8">
       <h3 className="text-xl font-bold mb-4 text-red-500">Danger Zone</h3>
-      <p className="text-gray-400 mb-4">Deleting your account is permanent and cannot be undone.</p>
+      <p className="text-gray-600 dark:text-gray-400 mb-4">Deleting your account is permanent and cannot be undone.</p>
       <button onClick={openModal} className="w-full bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-4 rounded focus:shadow-outline">
         Delete My Account
       </button>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-gray-900 p-8 rounded-lg shadow-2xl w-full max-w-md">
-            <h2 className="text-2xl font-bold mb-4 text-gray-100">Are you sure?</h2>
-            <p className="text-gray-400 mb-6">This action is irreversible. To confirm, please enter your password.</p>
+          <div className="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-2xl w-full max-w-md">
+            <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Are you sure?</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">This action is irreversible. To confirm, please enter your password.</p>
             <form onSubmit={handleDelete}>
               {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
               <div className="mb-6">
-                <label htmlFor="delete-password" className="block text-gray-400 text-sm font-bold mb-2">Password</label>
+                <label htmlFor="delete-password" className="block text-gray-600 dark:text-gray-400 text-sm font-bold mb-2">Password</label>
                 <div className="relative">
-                  <input type={showPassword ? 'text' : 'password'} id="delete-password" value={password} onChange={(e) => setPassword(e.target.value)} className="shadow appearance-none border border-gray-700 rounded w-full py-2 px-3 bg-gray-800 text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 pr-16" required />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} tabIndex={-1} className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm font-bold text-gray-400 hover:text-red-400 focus:outline-none">{showPassword ? 'Hide' : 'Show'}</button>
+                  <input type={showPassword ? 'text' : 'password'} id="delete-password" value={password} onChange={(e) => setPassword(e.target.value)} className="shadow appearance-none border border-gray-300 dark:border-gray-700 rounded w-full py-2 px-3 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 pr-16" required />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} tabIndex={-1} className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 focus:outline-none">{showPassword ? 'Hide' : 'Show'}</button>
                 </div>
               </div>
               <div className="flex items-center justify-end space-x-4">
