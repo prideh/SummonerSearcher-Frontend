@@ -31,6 +31,9 @@ const ResetPasswordForm: React.FC = () => {
         setToken(resetToken);
       } catch (error) {
         let message = 'Your password reset link is invalid or has expired.';
+        if (import.meta.env.DEV) {
+          console.error('Token validation failed:', error);
+        }
         if (axios.isAxiosError(error)) {
           message = error.response?.data?.message || error.message;
         } else if (error instanceof Error) {
@@ -72,6 +75,9 @@ const ResetPasswordForm: React.FC = () => {
       setTimeout(() => navigate('/login'), 3000);
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        if (import.meta.env.DEV) {
+          console.error('Password reset failed:', error.message);
+        }
         // Axios error (e.g., 4xx, 5xx response from server)
         setError(error.response?.data?.message || error.message);
       } else if (error instanceof Error) {

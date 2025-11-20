@@ -40,6 +40,9 @@ const TwoFAPage = () => {
       setTwoFaSecret(data.secret);
     } catch (err) {
       if (axios.isAxiosError(err)) {
+        if (import.meta.env.DEV) {
+          console.error('Failed to enable 2FA:', err.message);
+        }
         setError(err.response?.data || 'Failed to enable 2FA. Please try again.');
       } else {
         setError('An unexpected error occurred.');
@@ -66,6 +69,9 @@ const TwoFAPage = () => {
       setCode(''); // Clear the code input on success
     } catch (err) {
       if (axios.isAxiosError(err)) {
+        if (import.meta.env.DEV) {
+          console.error('2FA verification failed:', err.message);
+        }
         setError(err.response?.data || 'Verification failed. Please try again.');
       } else {
         setError('An unexpected error occurred during verification.');
@@ -88,6 +94,9 @@ const TwoFAPage = () => {
       setCode(''); // Clear the code input on success
     } catch (err) {
       if (axios.isAxiosError(err)) {
+        if (import.meta.env.DEV) {
+          console.error('Failed to disable 2FA:', err.message);
+        }
         setError(err.response?.data.message || 'Failed to disable 2FA.');
       } else {
         setError('An unexpected error occurred.');

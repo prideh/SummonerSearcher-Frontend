@@ -37,6 +37,9 @@ const RegistrationForm: React.FC = () => {
       navigate('/login', { state: { message: 'Registration successful! Please verify your email to log in.' } });
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        if (import.meta.env.DEV) {
+          console.error('Registration failed:', error.message);
+        }
         // Axios error (e.g., 4xx, 5xx response from server)
         setError(error.response?.data || error.message);
       } else if (error instanceof Error) {

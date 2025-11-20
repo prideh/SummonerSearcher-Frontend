@@ -57,7 +57,10 @@ const LoginForm: React.FC = () => {
       if (axios.isAxiosError(err)) {
         // If the error has a response and a data object with a message, use it.
         // This is typical for 401 Unauthorized or 400 Bad Request from the backend.
-        setError(err.response?.data?.message || err.response?.data || 'Invalid credentials or server error.');
+        if (import.meta.env.DEV) {
+          console.error("Login failed:", err.message);
+        }
+        setError(err.response?.data?.message || err.response?.data || 'Invalid credentials or server error.');        
       } else if (err instanceof Error) {
         setError(err.message);
       } else {

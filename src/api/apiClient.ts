@@ -25,12 +25,6 @@ apiClient.interceptors.response.use(
     if (error.response && error.response.status === 429) {
       toast.error('Rate limit exceeded, please try again later.');
     }
-
-    // Suppress console errors for 401 (Unauthorized) in production
-    // This prevents Lighthouse from flagging expected failed login attempts.
-    if (import.meta.env.PROD && error.response?.status === 401) {
-      return Promise.reject(error);
-    }
     return Promise.reject(error);
   }
 );
