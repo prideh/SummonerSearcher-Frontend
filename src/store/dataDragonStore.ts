@@ -3,6 +3,7 @@ import axios from 'axios';
 
 const CDN_URL = 'https://ddragon.leagueoflegends.com/cdn/15.23.1';
 const DDRAGON_IMG_URL = 'https://ddragon.leagueoflegends.com/cdn/img/';
+const COMMUNITY_DRAGON_URL = 'https://raw.communitydragon.org/latest/plugins';
 
 export interface ItemData {
   name: string;
@@ -76,6 +77,7 @@ interface DDragonRunePath {
 interface DataDragonState {
   cdnUrl: string;
   cdnImgUrl: string;
+  communityDragonUrl: string;
   itemMap: ItemMap | null;
   summonerSpellMap: SummonerSpellMap | null;
   runeMap: RuneMap | null;
@@ -92,6 +94,7 @@ interface DataDragonState {
 export const useDataDragonStore = create<DataDragonState>((set, get) => ({
   cdnUrl: CDN_URL,
   cdnImgUrl: DDRAGON_IMG_URL,
+  communityDragonUrl: COMMUNITY_DRAGON_URL,
   itemMap: null,
   summonerSpellMap: null,
   runeMap: null,

@@ -1,6 +1,7 @@
 import React from 'react';
 import type { LeagueEntryDto, SummonerData } from '../types/summoner';
 import RecentChampionStats from './RecentChampionStats';
+import { useDataDragonStore } from '../store/dataDragonStore';
 
 interface RankedInfoProps {
   rankedData: LeagueEntryDto;
@@ -8,6 +9,7 @@ interface RankedInfoProps {
 }
 
 const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData }) => {
+  const communityDragonUrl = useDataDragonStore(state => state.communityDragonUrl);
   const winRate = rankedData.wins + rankedData.losses > 0
     ? ((rankedData.wins / (rankedData.wins + rankedData.losses)) * 100).toFixed(1)
     : 'N/A';
@@ -19,7 +21,7 @@ const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData }) => 
         <div className="flex items-center space-x-4">
           {rankedData.tier && (
             <img
-              src={`https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/images/${rankedData.tier.toLowerCase()}.png`}
+              src={`${communityDragonUrl}/rcp-fe-lol-shared-components/global/default/images/${rankedData.tier.toLowerCase()}.png`}
               alt={rankedData.tier}
               className="w-24 h-24"
             />

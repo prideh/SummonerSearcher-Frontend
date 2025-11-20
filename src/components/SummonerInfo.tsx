@@ -2,6 +2,7 @@ import React from 'react';
 import type { SummonerData } from '../types/summoner';
 import RankedInfo from './RankedInfo';
 import { useTimeAgo } from '../hooks/useTimeAgo';
+import { useDataDragonStore } from '../store/dataDragonStore';
 
 interface SummonerInfoProps {
   summonerData: SummonerData;
@@ -11,12 +12,13 @@ interface SummonerInfoProps {
 
 const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh, loading }) => {
   const [timeAgo, ref] = useTimeAgo(new Date(summonerData.lastUpdated).getTime());
+  const CDN_URL = useDataDragonStore(state => state.cdnUrl);
 
   return (
     <div ref={ref} className="bg-white dark:bg-transparent border border-gray-200 dark:border-gray-800 p-6 rounded-lg shadow-md dark:shadow-lg">
       <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
         <img
-          src={`https://ddragon.leagueoflegends.com/cdn/15.21.1/img/profileicon/${summonerData.profileIconId}.png`}
+          src={`${CDN_URL}/img/profileicon/${summonerData.profileIconId}.png`}
           alt="Profile Icon"
           className="w-20 h-20 rounded-full border-2 border-cyan-400"
         />
