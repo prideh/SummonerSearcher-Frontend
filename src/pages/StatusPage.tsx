@@ -54,7 +54,7 @@ const StatusPage = () => {
           {type === 'Incident' ? 'Active Incidents' : 'Maintenances'}
         </h3>
         {updates.map((item, index) => (
-          <div key={`${type}-${index}`} className="bg-gray-800 p-4 rounded-lg mb-4 shadow">
+          <div key={`${type}-${index}`} className="bg-gray-900 p-4 rounded-lg mb-4 shadow">
             <h4 className="text-xl font-semibold text-white">{item.title}</h4>
             <div className="text-sm text-gray-400 capitalize flex items-center space-x-2">
               {item.severity && <span key="severity">Severity: {item.severity}</span>}
@@ -68,15 +68,15 @@ const StatusPage = () => {
   };
 
   return (
-    <div className="container mx-auto p-4 bg-gray-900 text-white min-h-screen">
+    <div className="container mx-auto p-4 bg-gray-950 text-gray-200 min-h-screen">
       <h2 className="text-3xl font-bold mb-6 text-center">Riot Games Server Status</h2>
       <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-8">
-        <select value={region} onChange={(e) => setRegion(e.target.value)} className="p-2 border border-gray-700 rounded-md bg-gray-800 text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <select value={region} onChange={(e) => setRegion(e.target.value)} className="p-2 border border-gray-700 rounded-md bg-gray-900 text-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-500">
         <option value="EUW1">EUW</option>
         <option value="NA1">NA</option>
         <option value="KR">KR</option>
       </select>
-        <button onClick={handleFetchStatus} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-blue-400 disabled:cursor-not-allowed">
+        <button onClick={handleFetchStatus} disabled={loading} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:bg-cyan-400 disabled:cursor-not-allowed">
         {loading ? 'Loading...' : 'Get Status'}
       </button>
       </div>

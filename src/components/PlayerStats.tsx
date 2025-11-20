@@ -69,7 +69,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
       </div>
       {/* KDA */}
       <div className="text-center min-h-[100px]">
-        <p className="text-lg font-bold text-white whitespace-nowrap">
+        <p className="text-lg font-bold text-gray-200 whitespace-nowrap">
           <span className="text-green-400">{kills}</span> / <span className="text-red-400">{deaths}</span> / <span className="text-yellow-400">{assists}</span>
         </p>
         {deaths === 0 ? (
@@ -117,7 +117,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
         </div>
         <div className="flex flex-col justify-center min-w-0">
           <div className="truncate" title={`${riotIdGameName}#${riotIdTagline}`}>
-            <span className="font-semibold text-white group-hover:text-blue-300 transition-colors">
+            <span className="font-semibold text-gray-200 group-hover:text-cyan-400 transition-colors">
               {riotIdGameName}
             </span>
             <span className="text-gray-500 ml-1">#{riotIdTagline}</span>
@@ -128,7 +128,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
           </div>
         </div>
         <div className="text-center min-h-[100px]">
-          <p className="text-lg font-bold text-white whitespace-nowrap">
+          <p className="text-lg font-bold text-gray-200 whitespace-nowrap">
             <span className="text-green-400">{kills}</span> / <span className="text-red-400">{deaths}</span> / <span className="text-yellow-400">{assists}</span>
           </p>
           {deaths === 0 ? (

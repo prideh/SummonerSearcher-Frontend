@@ -36,9 +36,9 @@ const ForgotPasswordForm: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-center h-screen">
-      <form onSubmit={handleSubmit} className="bg-gray-800 p-6 rounded-lg shadow-md w-full max-w-sm">
-        <h2 className="text-2xl font-bold mb-4 text-white">Forgot Password</h2>
+    <div className="flex items-center justify-center min-h-screen bg-gray-950">
+      <form onSubmit={handleSubmit} className="bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-sm">
+        <h2 className="text-2xl font-bold mb-4 text-gray-100">Forgot Password</h2>
         {successMessage && <p className="text-green-500 text-sm italic mb-4">{successMessage}</p>}
         {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
         <div className="mb-4">
@@ -48,17 +48,17 @@ const ForgotPasswordForm: React.FC = () => {
             id="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-gray-300 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+            className="shadow appearance-none border border-gray-700 rounded w-full py-2 px-3 bg-gray-800 text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
             required
           />
         </div>
         <div className="flex items-center justify-between mb-4">
-          <button type="submit" disabled={isSubmitting} className="bg-blue-500 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded focus:shadow-outline">
+          <button type="submit" disabled={isSubmitting} className="bg-cyan-600 hover:bg-cyan-700 disabled:bg-cyan-400/50 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded focus:shadow-outline">
             {isSubmitting ? 'Sending...' : 'Send Reset Link'}
           </button>
         </div>
         <div className="text-center">
-          <Link to="/login" className="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800">
+          <Link to="/login" className="inline-block align-baseline font-bold text-sm text-cyan-400 hover:text-cyan-300">
             Back to Login
           </Link>
         </div>

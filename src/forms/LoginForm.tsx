@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {  Link, useLocation, useNavigate } from 'react-router-dom';
 import { loginUser } from '../api/auth';
 import { useAuthStore } from '../store/authStore';
+import axios from 'axios';
 
 const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -52,10 +53,13 @@ const LoginForm: React.FC = () => {
         // 2FA is required, navigate to the verification page with the temp token
         navigate('/login/2fa-verify', { state: { tempToken: data.tempToken, email: email } });
       }
-    } catch (error) {
-      if (error instanceof Error) {
-        // Generic JavaScript error
-        setError(error.message);
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        // If the error has a response and a data object with a message, use it.
+        // This is typical for 401 Unauthorized or 400 Bad Request from the backend.
+        setError(err.response?.data?.message || err.response?.data || 'Invalid credentials or server error.');
+      } else if (err instanceof Error) {
+        setError(err.message);
       } else {
         // Unknown error type
         setError('An unexpected error occurred.');
@@ -66,10 +70,10 @@ const LoginForm: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-center h-screen">
-      <form onSubmit={handleSubmit} className="bg-gray-800 p-6 rounded-lg shadow-md w-full max-w-sm">
-        <h2 className="text-2xl font-bold mb-4 text-white">Login</h2>
-        <div className="mb-4 p-3 bg-gray-700 rounded-lg border border-gray-600">
+    <div className="flex items-center justify-center min-h-screen bg-gray-950">
+      <form onSubmit={handleSubmit} className="bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-sm">
+        <h2 className="text-2xl font-bold mb-4 text-gray-100">Login</h2>
+        <div className="mb-4 p-3 bg-gray-800 rounded-lg border border-gray-700">
           <p className="text-sm text-gray-300 text-center font-semibold mb-2">
             Want to try it out? Use the dummy account:
           </p>
@@ -93,7 +97,7 @@ const LoginForm: React.FC = () => {
             id="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-opacity-50 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-200"
+            className="shadow appearance-none border border-gray-700 rounded w-full py-2 px-3 bg-gray-800 text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
             required
           />
         </div>
@@ -105,7 +109,7 @@ const LoginForm: React.FC = () => {
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-opacity-50 focus:ring-blue-500 focus:border-blue-500 pr-16 transition-shadow duration-200"
+              className="shadow appearance-none border border-gray-700 rounded w-full py-2 px-3 bg-gray-800 text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 pr-16"
               required
             />
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -113,7 +117,7 @@ const LoginForm: React.FC = () => {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 tabIndex={-1}
-                className="text-sm font-bold text-gray-400 hover:text-blue-400 focus:outline-none transition-colors duration-200"
+                className="text-sm font-bold text-gray-400 hover:text-cyan-400 focus:outline-none"
               >
                 {showPassword ? 'Hide' : 'Show'}
               </button>
@@ -124,7 +128,7 @@ const LoginForm: React.FC = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-32 justify-center bg-blue-500 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded focus:shadow-outline flex items-center transition-colors duration-200"
+            className="w-32 justify-center bg-cyan-600 hover:bg-cyan-700 disabled:bg-cyan-400/50 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded focus:shadow-outline flex items-center"
           >
              {isSubmitting && (
               <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -135,10 +139,10 @@ const LoginForm: React.FC = () => {
             {isSubmitting ? 'Signing In...' : 'Sign In'}
           </button>
           <div className="text-sm text-right">
-            <Link to="/forgot-password" className="font-bold text-blue-500 hover:text-blue-700 transition-colors duration-200">
+            <Link to="/forgot-password" className="font-bold text-cyan-400 hover:text-cyan-300">
               Forgot Password?
             </Link>
-            <p className="text-gray-400 mt-1">Don't have an account? <Link to="/register" className="font-bold text-blue-500 hover:text-blue-700 transition-colors duration-200">Sign Up</Link></p>
+            <p className="text-gray-400 mt-1">Don't have an account? <Link to="/register" className="font-bold text-cyan-400 hover:text-cyan-300">Sign Up</Link></p>
           </div>
         </div>
       </form>

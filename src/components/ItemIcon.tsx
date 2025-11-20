@@ -17,14 +17,14 @@ const ItemIcon: React.FC<ItemIconProps> = ({ itemId, className = 'w-8 h-8' }) =>
   }, [itemMap, fetchItemData]);
 
   if (!itemId) {
-    return <div className={`${className} bg-gray-700/50 rounded`}></div>;
+    return <div className={`${className} bg-gray-800/50 rounded`}></div>;
   }
 
   const item = itemMap?.[itemId];
 
   const tooltipContent = item ? `
     <div class="text-left max-w-xs">
-      <div class="font-bold text-blue-300">${item.name}</div>
+      <div class="font-bold text-cyan-400">${item.name}</div>
       <div class="text-sm text-gray-300 my-2">${item.description}</div>
       <div class="text-sm text-yellow-400">Cost: ${item.gold.total}</div>
     </div>

@@ -18,14 +18,14 @@ const RuneIcon: React.FC<RuneIconProps> = ({ runeId, className = 'w-6 h-6' }) =>
   }, [runeMap, fetchRuneData]);
 
   if (!runeId) {
-    return <div className={`${className} bg-gray-700/50 rounded-full`}></div>;
+    return <div className={`${className} bg-gray-800/50 rounded-full`}></div>;
   }
 
   const rune = runeMap?.[runeId];
 
   const tooltipContent = rune ? `
     <div class="text-left max-w-xs">
-      <div class="font-bold text-yellow-300">${rune.name}</div>
+      <div class="font-bold text-yellow-400">${rune.name}</div>
       <div class="text-sm text-gray-300 mt-2">${rune.shortDesc}</div>
     </div>
   ` : 'Loading rune data...';

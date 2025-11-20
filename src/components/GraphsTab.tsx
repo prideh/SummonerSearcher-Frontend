@@ -40,17 +40,17 @@ const StatGraph: React.FC<StatGraphProps> = ({ participants, puuid, onPlayerClic
           : 'from-red-600 to-red-500';
 
         return (
-          <div key={player.puuid} className={`flex items-center space-x-3 text-sm p-1 rounded-md transition-colors ${isSearchedPlayer ? 'bg-gray-700/50' : ''}`}>
+          <div key={player.puuid} className={`flex items-center space-x-3 text-sm p-1 rounded-md transition-colors ${isSearchedPlayer ? 'bg-gray-800/50' : ''}`}>
             <img src={`${CDN_URL}/img/champion/${getCorrectChampionName(player.championName)}.png`} alt={player.championName} className="w-8 h-8 rounded shrink-0" />
             <div
-              className={`w-24 md:w-32 truncate cursor-pointer ${isSearchedPlayer ? 'text-white font-bold' : 'text-gray-300 hover:text-white'}`}
+              className={`w-24 md:w-32 truncate cursor-pointer ${isSearchedPlayer ? 'text-gray-100 font-bold' : 'text-gray-300 hover:text-gray-100'}`}
               onClick={() => onPlayerClick(player.riotIdGameName!, player.riotIdTagline!)}
             >
               {player.riotIdGameName}
             </div>
             <div className="flex-1 bg-gray-900/50 rounded-full h-5 overflow-hidden">
               <div
-                className={`h-full rounded-full bg-linear-to-r ${gradientClass} transition-all duration-500 ease-out`}
+                className={`h-full rounded-full bg-gradient-to-r ${gradientClass} transition-all duration-500 ease-out`}
                 style={{ width: `${barWidth}%` }}
               />
             </div>
@@ -75,7 +75,7 @@ const GraphsTab: React.FC<GraphsTabProps> = ({ match, puuid, onPlayerClick }) =>
   return (
     <div className="p-4 space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-        <h3 className="text-lg font-bold text-white">
+        <h3 className="text-lg font-bold text-gray-100">
           {
             selectedGraph === 'damage' ? 'Damage to Champions' :
             selectedGraph === 'damageTaken' ? 'Damage Taken' :
@@ -100,7 +100,7 @@ const GraphsTab: React.FC<GraphsTabProps> = ({ match, puuid, onPlayerClick }) =>
         <select
           value={selectedGraph}
           onChange={(e) => setSelectedGraph(e.target.value as GraphType)}
-          className="p-1 border border-gray-600 rounded-md bg-gray-700 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm self-end sm:self-auto"
+          className="p-1 border border-gray-700 rounded-md bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm self-end sm:self-auto"
         >
           <option value="damage">Damage</option>
           <option value="damageTaken">Damage Taken</option>

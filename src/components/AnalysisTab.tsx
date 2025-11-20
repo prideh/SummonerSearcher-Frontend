@@ -47,11 +47,11 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
 
           return (
             <li key={key} className={`flex justify-between break-all p-1.5 rounded-md transition-colors ${isWinner ? 'bg-green-500/10' : 'bg-transparent'}`}>
-              <span className={`${isWinner ? 'text-green-300' : 'text-gray-400'}`}>{camelCaseToTitleCase(key)}:</span>
+              <span className={`${isWinner ? 'text-green-400' : 'text-gray-400'}`}>{camelCaseToTitleCase(key)}:</span>
               {typeof playerValue === 'number' ? (
-                <span className={`font-semibold pl-2 ${isWinner ? 'text-white' : 'text-gray-500'}`}>{playerValue.toFixed(2)}</span>
+                <span className={`font-semibold pl-2 ${isWinner ? 'text-gray-200' : 'text-gray-500'}`}>{playerValue.toFixed(2)}</span>
               ) : playerValue !== undefined ? (
-                <span className={`font-semibold pl-2 ${isWinner ? 'text-white' : 'text-gray-500'}`}>{String(playerValue)}</span>
+                <span className={`font-semibold pl-2 ${isWinner ? 'text-gray-200' : 'text-gray-500'}`}>{String(playerValue)}</span>
               ) : (
                 <span className="font-semibold pl-2 text-gray-600">-</span>
               )}
@@ -64,13 +64,13 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
 
   return (
     <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto">
-      <div className="bg-gray-800/50 p-3 md:p-4 rounded-lg">
-        <h4 className="font-bold text-blue-300 border-b border-gray-700 pb-2 mb-3">{mainPlayer.riotIdGameName} (You)</h4>
+      <div className="bg-gray-900/50 p-3 md:p-4 rounded-lg">
+        <h4 className="font-bold text-cyan-400 border-b border-gray-800 pb-2 mb-3">{mainPlayer.riotIdGameName} (You)</h4>
         {renderPlayerChallenges(mainPlayer, opponent)}
       </div>
       {opponent ? (
-        <div className="bg-gray-800/50 p-3 md:p-4 rounded-lg">
-          <h4 className="font-bold text-red-400 border-b border-gray-700 pb-2 mb-3">{opponent.riotIdGameName} (Opponent)</h4>
+        <div className="bg-gray-900/50 p-3 md:p-4 rounded-lg">
+          <h4 className="font-bold text-red-400 border-b border-gray-800 pb-2 mb-3">{opponent.riotIdGameName} (Opponent)</h4>
           {renderPlayerChallenges(opponent, mainPlayer)}
         </div>
       ) : <p className="p-4 text-gray-400 text-center lg:text-left">No direct lane opponent found for analysis.</p>}

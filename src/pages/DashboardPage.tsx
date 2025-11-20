@@ -59,10 +59,10 @@ const DashboardPage = () => {
   const renderLeaderboard = () => {
     if (loading) {
       return (
-        <div className="mt-6 w-full max-w-4xl bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+        <div className="mt-6 w-full max-w-4xl bg-gray-900 rounded-lg shadow-lg overflow-hidden">
           <div className="h-144 overflow-y-auto">
             <table className="w-full text-sm text-left text-gray-300 table-fixed">
-              <thead className="text-xs text-gray-400 uppercase bg-gray-700 sticky top-0">
+              <thead className="text-xs text-gray-400 uppercase bg-gray-800 sticky top-0">
                 <tr>
                   <th scope="col" className="px-4 py-3 text-center w-16">#</th>
                   <th scope="col" className="px-6 py-3 w-1/2">Summoner</th>
@@ -72,7 +72,7 @@ const DashboardPage = () => {
               </thead>
               <tbody className="animate-pulse">
                 {Array.from({ length: 15 }).map((_, i) => (
-                  <tr key={i} className="border-b border-gray-700">
+                  <tr key={i} className="border-b border-gray-800">
                     <td className="px-4 py-5 text-center"><div className="h-4 bg-gray-700 rounded w-4 mx-auto"></div></td>
                     <td className="px-6 py-5"><div className="h-4 bg-gray-700 rounded w-3/5"></div></td>
                     <td className="px-6 py-5"><div className="h-4 bg-gray-700 rounded w-1/2 ml-auto"></div></td>
@@ -94,12 +94,12 @@ const DashboardPage = () => {
       <div className="mt-6 w-full max-w-4xl">
         {/* On mobile, the h-144 and overflow-y-auto are removed to allow natural page scroll.
             On desktop (md:), they are re-applied to contain the table in a scrollable view. */}
-        <div className="md:h-144 md:overflow-y-auto md:bg-gray-800 md:rounded-lg md:shadow-lg">
+        <div className="md:h-144 md:overflow-y-auto md:bg-gray-900 md:rounded-lg md:shadow-lg">
           {/* On mobile (<md), the table loses its table layout to allow for a card-based view.
               The `md:table` and `md:table-fixed` classes restore the default table behavior on larger screens. */}
           <table className="w-full text-sm text-left text-gray-300 border-collapse md:table md:table-fixed">
             {/* The table head is hidden on mobile and shown as a table-header-group on desktop. */}
-            <thead className="hidden md:table-header-group text-xs text-gray-400 uppercase bg-gray-700 sticky top-0">
+            <thead className="hidden md:table-header-group text-xs text-gray-400 uppercase bg-gray-800 sticky top-0">
               <tr>
                 <th scope="col" className="px-4 py-3 text-center w-16">#</th>
                 <th scope="col" className="px-6 py-3 w-1/2">Summoner</th>
@@ -115,7 +115,7 @@ const DashboardPage = () => {
                   // Each row becomes a block-level card on mobile with spacing, and a table-row on desktop.
                   <tr
                     key={`${player.gameName}-${player.tagLine}-${index}`}
-                    className="block p-4 mb-3 bg-gray-800 rounded-lg shadow-lg md:table-row md:p-0 md:mb-0 md:shadow-none md:bg-transparent md:border-b md:border-gray-700 hover:bg-gray-600 cursor-pointer"
+                    className="block p-4 mb-3 bg-gray-900 rounded-lg shadow-lg md:table-row md:p-0 md:mb-0 md:shadow-none md:bg-transparent md:border-b md:border-gray-800 hover:bg-gray-800 cursor-pointer"
                     onClick={() => handleRowClick(player.gameName, player.tagLine)}
                   >
                     {/* Each cell becomes a block with its own label on mobile, and a normal table-cell on desktop. */}
@@ -124,13 +124,13 @@ const DashboardPage = () => {
                       <span className="float-left font-bold md:hidden text-gray-400 uppercase">Rank</span>
                       {index + 1}
                     </td>
-                    <td className="block text-right py-1 text-lg font-semibold text-white truncate md:table-cell md:px-6 md:py-3 md:text-base md:text-left">
+                    <td className="block text-right py-1 text-lg font-semibold text-gray-100 truncate md:table-cell md:px-6 md:py-3 md:text-base md:text-left">
                       <span className="float-left font-bold md:hidden text-gray-400 uppercase">Summoner</span>
                       <div className="md:inline">
                         <span className="truncate">{player.gameName}</span> <span className="text-gray-400 font-normal">#{player.tagLine}</span>
                       </div>
                     </td>
-                    <td className="block text-right py-1 font-bold text-blue-300 md:table-cell md:px-6 md:py-3">
+                    <td className="block text-right py-1 font-bold text-cyan-300 md:table-cell md:px-6 md:py-3">
                       <span className="float-left font-bold md:hidden text-gray-400 uppercase">LP</span>
                       {player.leaguePoints} LP
                     </td>
@@ -153,7 +153,7 @@ const DashboardPage = () => {
       <h1 className="text-3xl font-bold mb-4 text-center">Challenger Leaderboard</h1>
       <div className="flex items-center space-x-4 mb-4">
         <label htmlFor="region-select" className="font-semibold">Region:</label>
-        <select id="region-select" value={region} onChange={(e) => setRegion(e.target.value)} className="p-2 border border-gray-700 rounded-md bg-gray-800 text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <select id="region-select" value={region} onChange={(e) => setRegion(e.target.value)} className="p-2 border border-gray-700 rounded-md bg-gray-900 text-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-500">
           <option value="EUW1">EUW</option>
           <option value="NA1">NA</option>
           <option value="KR">KR</option>

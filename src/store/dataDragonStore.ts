@@ -1,7 +1,7 @@
 import { create } from 'zustand'; 
 import axios from 'axios';
 
-const CDN_URL = 'https://ddragon.leagueoflegends.com/cdn/15.21.1';
+const CDN_URL = 'https://ddragon.leagueoflegends.com/cdn/15.23.1';
 const DDRAGON_IMG_URL = 'https://ddragon.leagueoflegends.com/cdn/img/';
 
 export interface ItemData {

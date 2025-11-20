@@ -46,8 +46,8 @@ const TeamDetails: React.FC<{ team: ParticipantDto[]; searchedPlayerPuuid: strin
           {headerInfo.label} ({teamId === 100 ? 'Blue' : 'Red'} Team)
         </p>
         <div className="flex items-center space-x-4 text-gray-300 text-xs">
-          <span title="Gold"><span className="font-semibold text-white">{formatNumber(teamGold)}</span> G</span>
-          <span className="font-semibold text-white">{teamKills} / {teamDeaths} / {teamAssists}</span>
+          <span title="Gold"><span className="font-semibold text-gray-200">{formatNumber(teamGold)}</span> G</span>
+          <span className="font-semibold text-gray-200">{teamKills} / {teamDeaths} / {teamAssists}</span>
         </div>
       </div>
 
@@ -56,7 +56,7 @@ const TeamDetails: React.FC<{ team: ParticipantDto[]; searchedPlayerPuuid: strin
         {team.map((p, index) => (
           <div 
             key={p.participantId} 
-            className={`grid grid-cols-[auto_1fr_auto] md:grid-cols-[1fr_90px_60px_40px_200px] gap-x-2 items-center p-1.5 cursor-pointer hover:bg-gray-500/20 transition-colors duration-150 ${p.puuid === searchedPlayerPuuid ? 'bg-blue-500/20' : (index % 2 === 0 ? 'bg-gray-500/5' : 'bg-transparent')}`}
+            className={`grid grid-cols-[auto_1fr_auto] md:grid-cols-[1fr_90px_60px_40px_200px] gap-x-2 items-center p-1.5 cursor-pointer hover:bg-gray-800/60 transition-colors duration-150 ${p.puuid === searchedPlayerPuuid ? 'bg-cyan-500/20' : (index % 2 === 0 ? 'bg-white/5' : 'bg-transparent')}`}
             onClick={() => {
               if (p.riotIdGameName && p.riotIdTagline) {
                 onPlayerClick(p.riotIdGameName, p.riotIdTagline);
@@ -88,13 +88,13 @@ const TeamDetails: React.FC<{ team: ParticipantDto[]; searchedPlayerPuuid: strin
                 data-tooltip-id="player-name-tooltip"
                 data-tooltip-content={`${p.riotIdGameName}#${p.riotIdTagline}`}
               >
-                <span className={`font-semibold ${p.puuid === searchedPlayerPuuid ? 'text-blue-300' : 'text-white'}`}>{p.riotIdGameName}</span>
+                <span className={`font-semibold ${p.puuid === searchedPlayerPuuid ? 'text-cyan-400' : 'text-gray-200'}`}>{p.riotIdGameName}</span>
                 <span className="text-gray-500 ml-1">#{p.riotIdTagline}</span>
               </div>
             </div>
 
             {/* KDA - Repositioned for mobile */}
-            <div className="text-right md:text-center font-semibold text-white text-[11px]">{p.kills} / {p.deaths} / {p.assists}</div>
+            <div className="text-right md:text-center font-semibold text-gray-200 text-[11px]">{p.kills} / {p.deaths} / {p.assists}</div>
 
             {/* Damage - Hidden on mobile */}
             <div 

@@ -13,8 +13,8 @@ const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData }) => 
     : 'N/A';
 
   return (
-    <div className="bg-gray-900/50 p-4 rounded-lg mt-4 border border-gray-700">
-      <h3 className="text-lg font-semibold text-blue-300 mb-2">Ranked Solo/Duo</h3>
+    <div className="bg-gray-900/50 p-4 rounded-lg mt-4 border border-gray-800">
+      <h3 className="text-lg font-semibold text-cyan-400 mb-2">Ranked Solo/Duo</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 mt-2">
         <div className="flex items-center space-x-4">
           {rankedData.tier && (

@@ -4,7 +4,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   return (
-    <div className="bg-gray-900 text-white min-h-screen">
+    <div className="bg-gray-950 text-gray-200 min-h-screen">
         <NavigationLayout />
         <ToastContainer />
     </div>

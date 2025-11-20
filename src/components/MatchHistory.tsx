@@ -35,7 +35,7 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ puuid, matches, onPlayerCli
       ))}
       {visibleCount < matches.length && (
         <div className="mt-4 text-center">
-          <button onClick={() => setVisibleCount(prev => prev + MATCHES_PER_PAGE)} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200">
+          <button onClick={() => setVisibleCount(prev => prev + MATCHES_PER_PAGE)} className="bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold py-3 px-8 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors duration-200">
             Load More
           </button>
         </div>

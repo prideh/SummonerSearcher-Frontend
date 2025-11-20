@@ -134,9 +134,9 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
 
           const tooltipContent = `
             <div class="text-center">
-              <div class="font-bold text-white">${stat.championName}</div>
+              <div class="font-bold text-gray-100">${stat.championName}</div>
               <div class="text-sm font-semibold ${parseInt(winRate as string) >= 60 ? 'text-red-400' : parseInt(winRate as string) >= 50 ? 'text-green-400' : 'text-gray-400'}">${winRate}% WR <span class="text-gray-500">(${stat.games} G)</span></div>
-              <div class="text-sm text-white mt-1">${kda === Infinity ? 'Infinite' : kda.toFixed(2)} KDA</div>
+              <div class="text-sm text-gray-100 mt-1">${kda === Infinity ? 'Infinite' : kda.toFixed(2)} KDA</div>
               <div class="text-xs text-gray-500">${avgKda}</div>
               ${stat.soloKills > 0 ? `<div class="text-xs text-yellow-400 mt-1">Solo Kills: ${stat.soloKills}</div>` : ''}
             </div>

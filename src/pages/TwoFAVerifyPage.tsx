@@ -49,9 +49,9 @@ const TwoFAVerifyPage: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-center h-screen">
-      <form onSubmit={handleSubmit} className="bg-gray-800 p-6 rounded-lg shadow-md w-full max-w-sm">
-        <h2 className="text-2xl font-bold mb-4 text-white">Two-Factor Authentication</h2>
+    <div className="flex items-center justify-center min-h-screen bg-gray-950">
+      <form onSubmit={handleSubmit} className="bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-sm">
+        <h2 className="text-2xl font-bold mb-4 text-gray-100">Two-Factor Authentication</h2>
         <p className="text-gray-400 mb-4">Enter the 6-digit code from your authenticator app.</p>
         {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
         <div className="mb-4">
@@ -62,12 +62,12 @@ const TwoFAVerifyPage: React.FC = () => {
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, ''))}
             maxLength={6}
-            className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-gray-300 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500 text-center text-2xl tracking-widest"
+            className="shadow appearance-none border border-gray-700 rounded w-full py-2 px-3 bg-gray-800 text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-center text-2xl tracking-widest"
             required
           />
         </div>
         <div className="flex items-center justify-center">
-          <button type="submit" disabled={isSubmitting} className="bg-blue-500 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded focus:shadow-outline">
+          <button type="submit" disabled={isSubmitting} className="bg-cyan-600 hover:bg-cyan-700 disabled:bg-cyan-400/50 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded focus:shadow-outline">
             {isSubmitting ? 'Verifying...' : 'Verify'}
           </button>
         </div>
