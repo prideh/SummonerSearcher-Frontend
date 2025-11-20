@@ -13,7 +13,7 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
   const [timeAgo, ref] = useTimeAgo(new Date(summonerData.lastUpdated).getTime());
 
   return (
-    <div ref={ref} className="bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-6 rounded-lg shadow-md dark:shadow-lg">
+    <div ref={ref} className="bg-white dark:bg-transparent border border-gray-200 dark:border-gray-800 p-6 rounded-lg shadow-md dark:shadow-lg">
       <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
         <img
           src={`https://ddragon.leagueoflegends.com/cdn/15.21.1/img/profileicon/${summonerData.profileIconId}.png`}
