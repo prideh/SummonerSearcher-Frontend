@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {  Link, useLocation, useNavigate } from 'react-router-dom';
 import { loginUser } from '../api/auth';
 import { useAuthStore } from '../store/authStore';
-import axios from 'axios';
 
 const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -54,10 +53,7 @@ const LoginForm: React.FC = () => {
         navigate('/login/2fa-verify', { state: { tempToken: data.tempToken, email: email } });
       }
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        // Axios error (e.g., 4xx, 5xx response from server)
-        setError(error.response?.data?.message || error.message);
-      } else if (error instanceof Error) {
+      if (error instanceof Error) {
         // Generic JavaScript error
         setError(error.message);
       } else {
@@ -128,7 +124,7 @@ const LoginForm: React.FC = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="bg-blue-500 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded focus:shadow-outline flex items-center transition-colors duration-200"
+            className="w-32 justify-center bg-blue-500 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded focus:shadow-outline flex items-center transition-colors duration-200"
           >
              {isSubmitting && (
               <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
