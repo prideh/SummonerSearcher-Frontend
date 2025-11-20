@@ -4,6 +4,10 @@ import { useAuthStore } from '../store/authStore';
 import { updateDarkModePreference } from '../api/user';
 import { toast } from 'react-toastify';
 
+/**
+ * The main navigation bar for the application.
+ * It provides links to different pages, a dark mode toggle, and user information with a logout button.
+ */
 const Navbar: React.FC = () => {
   const username = useAuthStore((state) => state.username);
   const logout = useAuthStore((state) => state.logout);
@@ -11,6 +15,10 @@ const Navbar: React.FC = () => {
   const setDarkMode = useAuthStore((state) => state.setDarkMode);
   const [isOpen, setIsOpen] = useState(false);
 
+  /**
+   * Effect to apply the dark mode class to the root HTML element
+   * whenever the `isDarkMode` state changes.
+   */
   useEffect(() => {
     const root = window.document.documentElement;
     if (isDarkMode) {
@@ -22,6 +30,11 @@ const Navbar: React.FC = () => {
     localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
+  /**
+   * Handles the theme toggle action. It optimistically updates the UI state
+   * and then sends a request to the backend to persist the user's preference.
+   * If the API call fails, it reverts the UI state.
+   */
   const handleThemeToggle = async () => {
     const newDarkModeState = !isDarkMode;
     setDarkMode(newDarkModeState); // Optimistically update the UI

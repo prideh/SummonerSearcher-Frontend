@@ -4,6 +4,11 @@ import { verify2FALogin } from '../api/auth';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
+/**
+ * A page that handles the second step of a Two-Factor Authentication login flow.
+ * It receives a temporary token from the login page and prompts the user for a
+ * 6-digit code from their authenticator app to complete the login.
+ */
 const TwoFAVerifyPage: React.FC = () => {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -12,15 +17,19 @@ const TwoFAVerifyPage: React.FC = () => {
   const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
 
-  // Retrieve the temp token and email from the navigation state
+  // Retrieve the temporary token and email from the navigation state passed by the login page.
   const { tempToken, email } = location.state || {};
 
+  // If the required state is missing, the user likely accessed this page directly.
+  // Redirect them back to the login page with an error.
   if (!tempToken || !email) {
-    // If state is missing, redirect back to login
     navigate('/login', { state: { error: 'An error occurred. Please try logging in again.' } });
     return null;
   }
 
+  /**
+   * Handles the form submission to verify the 2FA code and complete the login.
+   */
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);

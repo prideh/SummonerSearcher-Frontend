@@ -5,6 +5,11 @@ import PasswordRequirements from '../components/PasswordRequirements';
 import { registerUser } from '../api/auth';
 import axios from 'axios';
 
+/**
+ * A form for new users to register for an account.
+ * It validates password strength in real-time and ensures passwords match before submission.
+ * On success, it navigates the user to the login page with a success message.
+ */
 const RegistrationForm: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,6 +20,9 @@ const RegistrationForm: React.FC = () => {
   const navigate = useNavigate();
   const { passwordRequirements, isPasswordValid } = usePasswordValidation(password);
 
+  /**
+   * Handles the form submission to register a new user.
+   */
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -33,20 +41,17 @@ const RegistrationForm: React.FC = () => {
 
     try {
       await registerUser(email, password);
-      // Registration successful, navigate to login page
+      // Registration successful, navigate to login page with a message prompting email verification.
       navigate('/login', { state: { message: 'Registration successful! Please verify your email to log in.' } });
     } catch (error) {
       if (axios.isAxiosError(error)) {
         if (import.meta.env.DEV) {
           console.error('Registration failed:', error.message);
         }
-        // Axios error (e.g., 4xx, 5xx response from server)
         setError(error.response?.data || error.message);
       } else if (error instanceof Error) {
-        // Generic JavaScript error
         setError(error.message);
       } else {
-        // Unknown error type
         setError('An unexpected error occurred.');
       }
     } finally {

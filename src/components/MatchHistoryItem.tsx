@@ -5,14 +5,23 @@ import { getQueueType, formatDuration, getMatchOutcomeStyles } from '../utils/ma
 import PlayerStats from './PlayerStats.tsx';
 import { useTimeAgo } from '../hooks/useTimeAgo';
 
+/**
+ * Props for the MatchHistoryItem component.
+ */
 interface MatchHistoryItemProps {
+  /** The full data for a single match. */
   match: MatchDto;
-  puuid: string; // The PUUID of the summoner we are searching for
+  /** The PUUID of the summoner we are searching for, to highlight their data. */
+  puuid: string;
+  /** Callback function to handle clicks on player names, allowing for a new search. */
   onPlayerClick: (name: string, tag: string) => void;
 }
 
 import ItemList from './ItemList';
-
+/**
+ * Represents a single match in the match history list. It provides a summary view
+ * and can be expanded to show more detailed information via the MatchDetails component.
+ */
 const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPlayerClick }) => {
   const [showDetails, setShowDetails] = useState(false);
   const [timeAgo, ref] = useTimeAgo(match.info?.gameCreation);
@@ -21,6 +30,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
 
   const { gameCreation, gameDuration, participants, queueId } = match.info;
 
+  // Find the main player's data within the participants list.
   const player = participants.find(p => p.puuid === puuid);
 
   if (!player) {
@@ -31,6 +41,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
     );
   }
 
+  // Find the direct lane opponent for a quick "vs" comparison in the summary.
   const opponent = participants.find(p => 
     p.teamId !== player.teamId && 
     p.teamPosition === player.teamPosition &&
@@ -54,6 +65,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
   const mainItems = [item0, item1, item2, item3, item4, item5];
   const trinket = item6;
 
+  // Determine styling and labels based on the match outcome.
   const outcome = getMatchOutcomeStyles(win, gameEndedInEarlySurrender);
   const teamColorClass = teamId === 100 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400';
   return (

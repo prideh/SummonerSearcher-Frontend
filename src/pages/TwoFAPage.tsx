@@ -3,6 +3,10 @@ import { enable2FA, verify2FAEnable, disable2FA } from '../api/user';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
+/**
+ * The TwoFAPage allows users to enable or disable Two-Factor Authentication for their account.
+ * It guides the user through scanning a QR code and verifying with a code from their authenticator app.
+ */
 const TwoFAPage = () => {
   const is2faEnabled = useAuthStore((state) => state.is2faEnabled);
   const update2FAStatus = useAuthStore((state) => state.update2FAStatus);
@@ -16,9 +20,11 @@ const TwoFAPage = () => {
   const [copied, setCopied] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // This effect synchronizes the component's state with the global auth state.
-  // If the user logs in and is2faEnabled is already true, this resets the local
-  // state to ensure the correct view (disable 2FA) is shown.
+  /**
+   * Effect to synchronize the component's local state with the global auth state.
+   * If the global `is2faEnabled` status changes (e.g., on login), this resets the local
+   * state to ensure the correct view (enable vs. disable) is shown and clears old data.
+   */
   useEffect(() => {
     // Reset local state when the global 2FA status changes
     setQrCode(null);
@@ -29,6 +35,9 @@ const TwoFAPage = () => {
     setCopied(false);
   }, [is2faEnabled]);
 
+  /**
+   * Initiates the 2FA setup process by fetching a QR code and secret from the backend.
+   */
   const handleEnable2FA = async () => {
     setLoading(true);
     setError(null);
@@ -52,6 +61,9 @@ const TwoFAPage = () => {
     }
   };
 
+  /**
+   * Handles the form submission to verify the 2FA code and finalize the enabling process.
+   */
   const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!twoFaSecret || code.length !== 6) {
@@ -81,6 +93,9 @@ const TwoFAPage = () => {
     }
   };
 
+  /**
+   * Handles the form submission to disable 2FA, requiring a final code for confirmation.
+   */
   const handleDisable2FA = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsDisabling(true);
@@ -106,6 +121,9 @@ const TwoFAPage = () => {
     }
   };
 
+  /**
+   * Copies the 2FA secret key to the clipboard for manual entry in authenticator apps.
+   */
   const handleCopySecret = () => {
     if (twoFaSecret) {
       navigator.clipboard.writeText(twoFaSecret);

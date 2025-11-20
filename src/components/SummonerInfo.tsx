@@ -4,12 +4,23 @@ import RankedInfo from './RankedInfo';
 import { useTimeAgo } from '../hooks/useTimeAgo';
 import { useDataDragonStore } from '../store/dataDragonStore';
 
+/**
+ * Props for the SummonerInfo component.
+ */
 interface SummonerInfoProps {
+  /** The data object for the searched summoner. */
   summonerData: SummonerData;
+  /** Callback function to handle the refresh action. */
   handleRefresh: () => void;
+  /** Boolean indicating if a refresh is currently in progress. */
   loading: boolean;
 }
 
+/**
+ * Displays the main profile card for a searched summoner.
+ * It includes their profile icon, Riot ID, level, and a "Refresh" button.
+ * It also contains the `RankedInfo` component to show ranked statistics.
+ */
 const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh, loading }) => {
   const [timeAgo, ref] = useTimeAgo(new Date(summonerData.lastUpdated).getTime());
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);

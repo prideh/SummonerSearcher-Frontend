@@ -5,6 +5,11 @@ import PasswordRequirements from '../components/PasswordRequirements';
 import { validateResetToken, resetPassword } from '../api/auth';
 import axios from 'axios';
 
+/**
+ * A form for users to set a new password after following a password reset link.
+ * It first validates the token from the URL, then allows the user to enter and
+ * confirm a new password.
+ */
 const ResetPasswordForm: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -18,6 +23,10 @@ const ResetPasswordForm: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
+  /**
+   * Effect to validate the password reset token from the URL search parameters
+   * as soon as the component mounts.
+   */
   useEffect(() => {
     const resetToken = searchParams.get('token');
     if (!resetToken) {
@@ -49,6 +58,9 @@ const ResetPasswordForm: React.FC = () => {
   }, [searchParams, navigate]);
 
   const { passwordRequirements, isPasswordValid } = usePasswordValidation(password);
+  /**
+   * Handles the form submission to set the new password.
+   */
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -78,13 +90,10 @@ const ResetPasswordForm: React.FC = () => {
         if (import.meta.env.DEV) {
           console.error('Password reset failed:', error.message);
         }
-        // Axios error (e.g., 4xx, 5xx response from server)
         setError(error.response?.data?.message || error.message);
       } else if (error instanceof Error) {
-        // Generic JavaScript error
         setError(error.message);
       } else {
-        // Unknown error type
         setError('An unexpected error occurred.');
       }
     } finally {

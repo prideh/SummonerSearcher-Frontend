@@ -6,20 +6,43 @@ import RuneIcon from './RuneIcon';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import { getCorrectChampionName } from '../utils/championNameHelper';
 
+/**
+ * Props for the ScoreboardTab component.
+ */
 interface ScoreboardTabProps {
+  /** The full match data object. */
   match: MatchDto;
+  /** The PUUID of the searched player to highlight their row. */
   puuid: string;
+  /** Callback function to handle clicks on player names. */
   onPlayerClick: (name: string, tag: string) => void;
 }
 
+/**
+ * Formats a number for display, using 'k' for thousands.
+ * @param num - The number to format.
+ * @returns A formatted string (e.g., 1234 becomes '1.2k').
+ */
 const formatNumber = (num: number | undefined) => {
   if (num === undefined) return '0';
   if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
   return num.toString();
 };
 
+/**
+ * A memoized component that renders the scoreboard for a single team.
+ * `React.memo` is used to prevent re-renders if the team's data hasn't changed.
+ * @param {object} props - The component props.
+ * @param {ParticipantDto[]} props.team - Array of participants for one team.
+ * @param {string} props.searchedPlayerPuuid - The PUUID of the main player.
+ * @param {number} props.teamId - The ID of the team (100 for blue, 200 for red).
+ * @param {boolean | undefined} props.isWin - Whether the team won the match.
+ * @param {function} props.onPlayerClick - Callback for clicking a player.
+ * @param {boolean} props.isRemake - Whether the game was a remake.
+ */
 const TeamDetails: React.FC<{ team: ParticipantDto[]; searchedPlayerPuuid: string; teamId: number; isWin: boolean | undefined; onPlayerClick: (name: string, tag: string) => void; isRemake: boolean; }> = memo(({ team, searchedPlayerPuuid, teamId, isWin, onPlayerClick, isRemake }) => {
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
+  // Calculate team-wide totals for display in the header.
   const teamKills = team.reduce((acc, p) => acc + (p.kills ?? 0), 0);
   const teamDeaths = team.reduce((acc, p) => acc + (p.deaths ?? 0), 0);
   const teamAssists = team.reduce((acc, p) => acc + (p.assists ?? 0), 0);
@@ -136,6 +159,10 @@ const TeamDetails: React.FC<{ team: ParticipantDto[]; searchedPlayerPuuid: strin
   );
 });
 
+/**
+ * The ScoreboardTab component displays the classic end-of-game scoreboard,
+ * showing detailed stats for every player, separated by team.
+ */
 const ScoreboardTab: React.FC<ScoreboardTabProps> = ({ match, puuid, onPlayerClick }) => {
   if (!match.info) return null;
 

@@ -3,25 +3,46 @@ import type { MatchDto, ParticipantDto } from '../types/match';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import { getCorrectChampionName } from '../utils/championNameHelper';
 
+/**
+ * Props for the GraphsTab component.
+ */
 interface GraphsTabProps {
+  /** The full match data object. */
   match: MatchDto;
+  /** The PUUID of the player whose perspective the graphs are viewed from. */
   puuid: string;
+  /** Callback function to handle clicks on player names. */
   onPlayerClick: (name: string, tag: string) => void;
 }
 
+/**
+ * Formats a number for display, using 'k' for thousands.
+ * @param num - The number to format.
+ * @returns A formatted string (e.g., 1234 becomes '1.2k').
+ */
 const formatNumber = (num: number | undefined) => {
   if (num === undefined) return '0';
   if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
   return num.toString();
 };
 
+/**
+ * Props for the StatGraph component.
+ */
 interface StatGraphProps {
+  /** An array of all participants in the match. */
   participants: ParticipantDto[];
+  /** The PUUID of the searched player to highlight them. */
   puuid: string;
+  /** Callback function to handle clicks on player names. */
   onPlayerClick: (name: string, tag: string) => void;
+  /** A selector function that extracts a specific stat from a participant object. */
   statSelector: (p: ParticipantDto) => number;
 }
-
+/**
+ * A reusable component that displays a horizontal bar graph for a specific game statistic.
+ * It shows all players, sorted by the stat, with bars proportional to their value.
+ */
 const StatGraph: React.FC<StatGraphProps> = ({ participants, puuid, onPlayerClick, statSelector }) => {
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
 
@@ -62,8 +83,16 @@ const StatGraph: React.FC<StatGraphProps> = ({ participants, puuid, onPlayerClic
   );
 };
 
+/**
+ * Defines the types of graphs that can be displayed.
+ * Each key corresponds to a specific statistic from the match data.
+ */
 type GraphType = 'damage' | 'damageTaken' | 'damageMitigated' | 'healing' | 'shielding' | 'cs' | 'gold' | 'vision' | 'cc' | 'dpm' | 'objectiveDamage' | 'turretDamage' | 'turretPlates' | 'wardsPlaced' | 'controlWardsPlaced' | 'soloKills' | 'wardsKilled' | 'healsOnTeammates';
 
+/**
+ * The GraphsTab component provides a dropdown to select various game statistics
+ * and displays them in a bar chart format using the StatGraph component.
+ */
 const GraphsTab: React.FC<GraphsTabProps> = ({ match, puuid, onPlayerClick }) => {
   const [selectedGraph, setSelectedGraph] = useState<GraphType>('damage');
   const participants = match.info?.participants;
@@ -76,6 +105,7 @@ const GraphsTab: React.FC<GraphsTabProps> = ({ match, puuid, onPlayerClick }) =>
     <div className="p-4 space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">
+          {/* Dynamically set the title based on the selected graph type */}
           {
             selectedGraph === 'damage' ? 'Damage to Champions' :
             selectedGraph === 'damageTaken' ? 'Damage Taken' :
@@ -122,6 +152,7 @@ const GraphsTab: React.FC<GraphsTabProps> = ({ match, puuid, onPlayerClick }) =>
           <option value="wardsKilled">Wards Killed</option>
         </select>
       </div>
+      {/* Conditionally render the StatGraph component with the appropriate stat selector */}
       {selectedGraph === 'damage' && <StatGraph participants={participants} puuid={puuid} onPlayerClick={onPlayerClick} statSelector={p => p.totalDamageDealtToChampions || 0} />}
       {selectedGraph === 'damageTaken' && <StatGraph participants={participants} puuid={puuid} onPlayerClick={onPlayerClick} statSelector={p => p.totalDamageTaken || 0} />}
       {selectedGraph === 'damageMitigated' && <StatGraph participants={participants} puuid={puuid} onPlayerClick={onPlayerClick} statSelector={p => p.damageSelfMitigated || 0} />}

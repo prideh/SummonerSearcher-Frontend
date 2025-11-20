@@ -1,11 +1,20 @@
 import React from 'react';
 import type { PasswordRequirements as PasswordRequirementsType } from './usePasswordValidation';
 
+/**
+ * Props for the PasswordRequirements component.
+ */
 interface PasswordRequirementsProps {
+  /** An object indicating which password requirements have been met. */
   requirements: PasswordRequirementsType;
+  /** Optional additional CSS classes for styling. */
   className?: string;
 }
 
+/**
+ * A UI component that displays a checklist of password strength requirements.
+ * It visually indicates which criteria are met (green) and which are not (red).
+ */
 const PasswordRequirements: React.FC<PasswordRequirementsProps> = ({ requirements, className }) => {
   return (
     <div className={`p-4 w-64 bg-white dark:bg-gray-900 rounded-lg shadow-lg z-10 transition-opacity duration-300 ease-in-out ${className}`}>

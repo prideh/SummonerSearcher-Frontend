@@ -1,5 +1,8 @@
 import React from 'react';
 
+/**
+ * Props for the SearchBar component.
+ */
 interface SearchBarProps {
   searchInput: string;
   setSearchInput: (value: string) => void;
@@ -15,6 +18,11 @@ interface SearchBarProps {
   startSearch: (name: string, tag: string, region: string) => void;
 }
 
+/**
+ * A comprehensive search bar component that includes the main text input for the Riot ID,
+ * a region selector dropdown, and a search button. It also features a dropdown for recent
+ * searches that appears on hover/focus.
+ */
 const SearchBar: React.FC<SearchBarProps> = ({
   searchInput,
   setSearchInput,
@@ -40,6 +48,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           onKeyDown={handleKeyDown}
           className="p-3 border border-gray-300 dark:border-gray-700 rounded-md sm:rounded-l-md sm:rounded-r-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 w-full transition-all"
         />
+        {/* Recent searches dropdown, shown on hover/focus and if there are recent searches */}
         {showRecent && recentSearches.length > 0 && (
           <div className="absolute z-10 w-full md:w-72 top-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg">
             <div className="flex justify-between items-center px-3 py-2">

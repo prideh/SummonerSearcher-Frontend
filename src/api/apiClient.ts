@@ -1,12 +1,18 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 import { toast } from 'react-toastify';
-
+/**
+ * Creates and configures an Axios instance for making API requests.
+ * The baseURL is set from environment variables, pointing to the backend API.
+ */
 const apiClient = axios.create({
   baseURL: `${import.meta.env.VITE_API_BASE_URL}/api`,
 });
 
-// Use an interceptor to automatically add the token to every authenticated request
+/**
+ * Request interceptor to automatically add the JWT Authorization header to every request.
+ * It retrieves the token from the Zustand auth store.
+ */
 apiClient.interceptors.request.use(
   (config) => {
     const token = useAuthStore.getState().token;
@@ -18,7 +24,11 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor for error handling
+/**
+ * Response interceptor for global error handling.
+ * Specifically, it listens for 429 (Too Many Requests) errors and displays a user-friendly
+ * toast notification, preventing the app from crashing or silently failing on rate limits.
+ */
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {

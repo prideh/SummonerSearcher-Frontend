@@ -1,6 +1,10 @@
 import ChangePasswordForm from '../forms/ChangePasswordForm';
 import DeleteAccountForm from '../forms/DeleteAccountForm';
 
+/**
+ * The ProfilePage serves as a container for user account management components,
+ * such as changing a password and deleting the account.
+ */
 const ProfilePage = () => {
   return (
     <div className="container mx-auto p-4 flex flex-col items-center">

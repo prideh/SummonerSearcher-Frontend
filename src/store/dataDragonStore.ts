@@ -1,13 +1,17 @@
 import { create } from 'zustand'; 
 import axios from 'axios';
 
+/** The current version of Riot's Data Dragon, used for fetching static game data. */
 const ddragonVersion = import.meta.env.VITE_DDRAGON_VERSION || '15.23.1';
 
-// Use absolute CDN URLs for everything, with a dynamic version for data
+/** The base URL for Data Dragon's data and image assets for a specific version. */
 const CDN_URL = `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}`;
+/** The base URL for Data Dragon's general image assets (not version-specific). */
 const DDRAGON_IMG_URL = 'https://ddragon.leagueoflegends.com/cdn/img';
+/** The base URL for Community Dragon, used for assets not available in the official Data Dragon (e.g., rank emblems). */
 const COMMUNITY_DRAGON_URL = 'https://raw.communitydragon.org/latest/plugins';
 
+/** Defines the structure of the data for a single item from Data Dragon. */
 export interface ItemData {
   name: string;
   description: string;
@@ -20,10 +24,12 @@ export interface ItemData {
   };
 }
 
+/** A map of item IDs to their corresponding ItemData. */
 export interface ItemMap {
   [key: string]: ItemData;
 }
 
+/** Defines the structure of the data for a single summoner spell from Data Dragon. */
 export interface SummonerSpellData {
   id: string;
   name: string;
@@ -34,10 +40,12 @@ export interface SummonerSpellData {
   };
 }
 
+/** A map of summoner spell numeric keys to their corresponding SummonerSpellData. */
 export interface SummonerSpellMap {
   [key: string]: SummonerSpellData;
 }
 
+/** Defines the structure of the data for a single rune from Data Dragon. */
 export interface RuneData {
   id: number;
   key: string;
@@ -47,6 +55,7 @@ export interface RuneData {
   longDesc: string;
 }
 
+/** Defines the structure for a rune path (e.g., Precision, Domination). */
 export interface RunePathData {
   id: number;
   key: string;
@@ -54,6 +63,7 @@ export interface RunePathData {
   name: string;
 }
 
+/** A map of rune or rune path IDs to their corresponding RuneData. */
 export interface RuneMap {
   [key: string]: RuneData;
 }
@@ -77,6 +87,9 @@ interface DDragonRunePath {
 }
 // ----------------------------------------------------
 
+/**
+ * Defines the state and actions for the Data Dragon Zustand store.
+ */
 interface DataDragonState {
   cdnUrl: string;
   cdnImgUrl: string;
@@ -94,6 +107,11 @@ interface DataDragonState {
   fetchRuneData: () => Promise<void>;
 }
 
+/**
+ * Creates a Zustand store to manage and cache static game data from Riot's Data Dragon.
+ * This prevents redundant API calls for data like items, spells, and runes, which rarely change.
+ * The data is fetched on-demand and stored in the state.
+ */
 export const useDataDragonStore = create<DataDragonState>((set, get) => ({
   cdnUrl: CDN_URL,
   cdnImgUrl: DDRAGON_IMG_URL,
@@ -106,6 +124,9 @@ export const useDataDragonStore = create<DataDragonState>((set, get) => ({
     spells: false,
     runes: false,
   },
+  /**
+   * Fetches item data from Data Dragon and stores it in the `itemMap`.
+   */
   fetchItemData: async () => {
     if (get().itemMap || get().loading.items) return;
     set(state => ({ loading: { ...state.loading, items: true } }));
@@ -116,6 +137,9 @@ export const useDataDragonStore = create<DataDragonState>((set, get) => ({
       set(state => ({ loading: { ...state.loading, items: false } }));
     }
   },
+  /**
+   * Fetches summoner spell data from Data Dragon and stores it in the `summonerSpellMap`, keyed by spell ID.
+   */
   fetchSummonerSpellData: async () => {
     if (get().summonerSpellMap || get().loading.spells) return;
     set(state => ({ loading: { ...state.loading, spells: true } }));
@@ -131,6 +155,9 @@ export const useDataDragonStore = create<DataDragonState>((set, get) => ({
       set(state => ({ loading: { ...state.loading, spells: false } }));
     }
   },
+  /**
+   * Fetches rune and rune path data from Data Dragon and stores it in a unified `runeMap`.
+   */
   fetchRuneData: async () => {
     if (get().runeMap || get().loading.runes) return;
     set(state => ({ loading: { ...state.loading, runes: true } }));

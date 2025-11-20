@@ -15,6 +15,11 @@ import ProfilePage from '../pages/ProfilePage';
 import VerifyEmailPage from '../pages/VerifyEmailPage'; 
 import TwoFAVerifyPage from '../pages/TwoFAVerifyPage'; 
 
+/**
+ * The central routing component for the application.
+ * It defines all the application's routes and maps them to their respective page components.
+ * It uses `ProtectedRoute` and `RedirectIfLoggedIn` to manage access to different parts of the app.
+ */
 const NavigationLayout: React.FC = () => {
   return (
     <Routes>

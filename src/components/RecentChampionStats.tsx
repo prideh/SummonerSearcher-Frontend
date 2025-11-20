@@ -3,11 +3,17 @@ import type { MatchDto } from '../types/match';
 import { getCorrectChampionName } from '../utils/championNameHelper';
 import { useDataDragonStore } from '../store/dataDragonStore';
 
+/**
+ * Props for the RecentChampionStats component.
+ */
 interface RecentChampionStatsProps {
+  /** An array of the summoner's recent matches. */
   matches: MatchDto[];
+  /** The PUUID of the summoner to identify their stats in each match. */
   puuid: string;
 }
 
+/** Defines the structure for aggregated stats for a single champion. */
 interface ChampionStat {
   championName: string;
   games: number;
@@ -19,7 +25,12 @@ interface ChampionStat {
   soloKills: number;
 }
 
+/**
+ * Calculates and displays aggregated statistics for a summoner's most played champions
+ * over their last 20 games. It also shows overall performance metrics like win rate, KDA, and CS/min.
+ */
 const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puuid }) => {
+  // useMemo ensures that the complex calculation of stats is only re-run when matches or puuid change.
   const { championStats, overallStats } = useMemo(() => {
     const stats: Record<string, ChampionStat> = {};
 
@@ -34,7 +45,7 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
     let totalDurationInMinutes = 0;
     let totalKillParticipation = 0;
 
-    // Process the last 20 games
+    // Process up to the last 20 games to calculate stats.
     recentMatches.forEach(match => {
       const player = match.info?.participants.find(p => p.puuid === puuid);
       if (!player || !player.championName || !match.info?.gameDuration) return;
@@ -44,6 +55,7 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
         totalWins++;
       }
 
+      // Calculate team-wide stats for this match to determine KP.
       const teamKills = match.info.participants
         .filter(p => p.teamId === player.teamId)
         .reduce((acc, p) => acc + (p.kills ?? 0), 0);
@@ -58,8 +70,9 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
         totalKillParticipation += ((player.kills ?? 0) + (player.assists ?? 0)) / teamKills;
       }
 
-      const championKey = player.championName; // The name from API is the key, e.g., 'Fiddlesticks'
+      const championKey = player.championName;
 
+      // Initialize the stats object for a champion if it's the first time we've seen them.
       if (!stats[championKey]) {
         stats[championKey] = {
           championName: player.championName,
@@ -73,6 +86,7 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
         };
       }
 
+      // Aggregate the stats for the current champion.
       const champ = stats[championKey];
       champ.games++;
       if (player.win) {
@@ -86,6 +100,7 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
       champ.soloKills += player.challenges?.soloKills ?? 0;
     });
     
+    // Calculate overall average stats across all processed games.
     const overallWinRate = totalGames > 0 ? (totalWins / totalGames) * 100 : 0;
     const overallKda = totalDeaths > 0 ? (totalKills + totalAssists) / totalDeaths : Infinity;
     const avgCsPerMinute = totalDurationInMinutes > 0 ? totalCs / totalDurationInMinutes : 0;
@@ -132,6 +147,7 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
           const kda = stat.deaths > 0 ? ((stat.kills + stat.assists) / stat.deaths) : Infinity;
           const avgKda = `${((stat.kills) / stat.games).toFixed(1)} / ${((stat.deaths) / stat.games).toFixed(1)} / ${((stat.assists) / stat.games).toFixed(1)}`;
 
+          // Tooltip content with detailed stats for each champion.
           const tooltipContent = `
             <div class="text-center">
               <div class="font-bold text-gray-100">${stat.championName}</div>

@@ -4,6 +4,10 @@ import PasswordRequirements from '../components/PasswordRequirements';
 import { changePassword } from '../api/user';
 import axios from 'axios';
 
+/**
+ * A form component, presented within a modal, for users to change their account password.
+ * It includes validation for the new password's strength and confirmation matching.
+ */
 const ChangePasswordForm = () => {
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -16,6 +20,9 @@ const ChangePasswordForm = () => {
   const { passwordRequirements, isPasswordValid } = usePasswordValidation(newPassword);
   const [showOldPassword, setShowOldPassword] = useState(false);
 
+  /**
+   * Handles the form submission to change the user's password.
+   */
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -58,6 +65,7 @@ const ChangePasswordForm = () => {
   };
 
   const openModal = () => setIsModalOpen(true);
+  // Resets the form state when the modal is closed.
   const closeModal = () => {
     setIsModalOpen(false);
     // Reset form state when closing the modal

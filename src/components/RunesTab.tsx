@@ -4,17 +4,29 @@ import { useDataDragonStore } from '../store/dataDragonStore';
 import RuneIcon from './RuneIcon';
 import { getCorrectChampionName } from '../utils/championNameHelper';
 
+/**
+ * Props for the RunesTab component.
+ */
 interface RunesTabProps {
+  /** The full match data object. */
   match: MatchDto;
+  /** The PUUID of the searched player to highlight their runes. */
   puuid: string;
+  /** Callback function to handle clicks on player names. */
   onPlayerClick: (name: string, tag: string) => void;
 }
 
+/**
+ * The RunesTab component displays the rune setups for all players in a match,
+ * separated by team. It provides a responsive view, showing a compact version
+ * on mobile and the full rune trees on larger screens.
+ */
 const RunesTab: React.FC<RunesTabProps> = ({ match, puuid, onPlayerClick }) => {
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
 
   if (!match.info) return null;
 
+  // A reusable function to render the rune display for a single team.
   const renderTeamRunes = (team: ParticipantDto[]) => {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -60,6 +72,7 @@ const RunesTab: React.FC<RunesTabProps> = ({ match, puuid, onPlayerClick }) => {
     );
   };
 
+  // Separate participants into blue and red teams.
   const blueTeam = match.info.participants.filter(p => p.teamId === 100);
   const redTeam = match.info.participants.filter(p => p.teamId === 200);
 

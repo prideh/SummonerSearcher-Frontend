@@ -4,6 +4,11 @@ import { deleteUser } from '../api/user';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
+/**
+ * A form component, presented within a modal, for users to permanently delete their account.
+ * It requires password confirmation for this destructive action.
+ * On success, it logs the user out and redirects them.
+ */
 const DeleteAccountForm = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -13,6 +18,9 @@ const DeleteAccountForm = () => {
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
 
+  /**
+   * Handles the form submission to delete the user's account.
+   */
   const handleDelete = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -20,7 +28,7 @@ const DeleteAccountForm = () => {
 
     try {
       await deleteUser(password);
-      // On successful deletion, call the logout function from the auth context
+      // On successful deletion, call the logout action from the auth store and navigate away.
       logout();
       navigate('/login', { replace: true, state: { message: 'Your account has been successfully deleted.' } });
     } catch (error) {
@@ -36,6 +44,7 @@ const DeleteAccountForm = () => {
   };
 
   const openModal = () => setIsModalOpen(true);
+  // Resets the form state when the modal is closed.
   const closeModal = () => {
     setIsModalOpen(false);
     setPassword('');

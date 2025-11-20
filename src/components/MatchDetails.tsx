@@ -5,16 +5,28 @@ import AnalysisTab from './AnalysisTab';
 import ScoreboardTab from './ScoreboardTab';
 import GraphsTab from './GraphsTab';
 
+/**
+ * Props for the MatchDetails component.
+ */
 interface MatchDetailsProps {
+  /** The full data for the match. */
   match: MatchDto;
+  /** The PUUID of the searched player to highlight their data in the details. */
   puuid: string;
+  /** Callback function to handle clicks on player names. */
   onPlayerClick: (name: string, tag: string) => void;
+  /** An optional ID for accessibility and linking. */
   id?: string;
 }
 
+/**
+ * A container component that renders detailed information about a single match.
+ * It uses a tabbed interface to switch between different views: Scoreboard, Graphs, Runes, and Analysis.
+ */
 const MatchDetails: React.FC<MatchDetailsProps> = ({ match, puuid, onPlayerClick, id }) => {
   const [activeTab, setActiveTab] = useState<'scoreboard' | 'graphs' | 'runes' | 'analysis'>('scoreboard');
 
+  // Helper function to determine the CSS classes for a tab based on whether it's active.
   const getTabClass = (tabName: 'scoreboard' | 'graphs' | 'runes' | 'analysis') =>
     `px-4 py-2 font-semibold rounded-t-lg transition-colors shrink-0 ${
       activeTab === tabName
@@ -38,6 +50,7 @@ const MatchDetails: React.FC<MatchDetailsProps> = ({ match, puuid, onPlayerClick
           Analysis
         </button>
       </div>
+      {/* Conditionally render the content of the active tab. */}
       {activeTab === 'scoreboard' && <ScoreboardTab match={match} puuid={puuid} onPlayerClick={onPlayerClick} />}
       {activeTab === 'graphs' && <GraphsTab match={match} puuid={puuid} onPlayerClick={onPlayerClick} />}
       {activeTab === 'runes' && <RunesTab match={match} puuid={puuid} onPlayerClick={onPlayerClick} />}

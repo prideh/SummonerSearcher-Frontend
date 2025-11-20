@@ -6,13 +6,25 @@ import RuneIcon from './RuneIcon';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import { getCorrectChampionName } from '../utils/championNameHelper';
 
+/**
+ * Props for the PlayerStats component.
+ */
 interface PlayerStatsProps {
+  /** The participant data for the player whose stats are being displayed. */
   participant: ParticipantDto;
+  /** Callback function to handle clicks on the player's name. */
   onPlayerClick?: (name: string, tag: string) => void;
+  /** Flag to indicate if this player is the opponent, which alters the layout. */
   isOpponent?: boolean;
+  /** An array of all participants on the same team as the player, used for calculating team-wide stats like KP. */
   teamParticipants: ParticipantDto[];
 }
 
+/**
+ * Displays a detailed summary of a single player's performance in a match.
+ * This includes champion, spells, runes, KDA, CS, and kill participation.
+ * It has a different layout when displaying an opponent versus the main player.
+ */
 const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, isOpponent = false, teamParticipants }) => {
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
 
@@ -32,6 +44,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
     riotIdTagline,
   } = participant;
 
+  // Calculate derived stats like KDA, total CS, and Kill Participation.
   const kda = ((kills ?? 0) + (assists ?? 0)) / (deaths === 0 ? 1 : (deaths ?? 1));
   const cs = (totalMinionsKilled ?? 0) + (neutralMinionsKilled ?? 0);
   
@@ -39,9 +52,12 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
   const primaryRune = playerStyles[0]?.selections?.[0]?.perk;
   const secondaryPath = playerStyles[1]?.style;
 
+  // Calculate total kills for the player's team.
   const teamKills = teamParticipants.reduce((acc, p) => acc + (p.kills ?? 0), 0);
+  // Calculate the player's kill participation percentage.
   const killParticipation = teamKills > 0 ? (((kills ?? 0) + (assists ?? 0)) / teamKills) * 100 : 0;
 
+  // JSX for the core stats block, shared between main player and opponent views.
   const playerStatsContent = (
     <>
       {/* Champion & Spells */}
@@ -95,6 +111,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
     </>
   );
 
+  // Render the opponent-specific layout, which is more compact and includes their name.
   if (isOpponent) {
     return (
       <div 
@@ -150,6 +167,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
     );
   }
 
+  // Render the default layout for the main searched player.
   return (
     <div className="flex items-center space-x-4 justify-between">
       {playerStatsContent}

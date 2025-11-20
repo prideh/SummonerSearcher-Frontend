@@ -3,13 +3,23 @@ import type { LeagueEntryDto, SummonerData } from '../types/summoner';
 import RecentChampionStats from './RecentChampionStats';
 import { useDataDragonStore } from '../store/dataDragonStore';
 
+/**
+ * Props for the RankedInfo component.
+ */
 interface RankedInfoProps {
+  /** The ranked data for the summoner (tier, rank, LP, etc.). */
   rankedData: LeagueEntryDto;
+  /** The full summoner data object, passed down to RecentChampionStats. */
   summonerData: SummonerData;
 }
 
+/**
+ * Displays a summoner's ranked information, including their tier emblem, rank, LP, and win/loss record.
+ * It also includes the `RecentChampionStats` component to show performance on recently played champions.
+ */
 const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData }) => {
   const communityDragonUrl = useDataDragonStore(state => state.communityDragonUrl);
+  // Calculate the win rate, handling the case of zero total games.
   const winRate = rankedData.wins + rankedData.losses > 0
     ? ((rankedData.wins / (rankedData.wins + rankedData.losses)) * 100).toFixed(1)
     : 'N/A';
@@ -32,6 +42,7 @@ const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData }) => 
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{rankedData.wins}W / {rankedData.losses}L ({winRate}%)</p>
           </div>
         </div>
+        {/* Display stats for recently played champions. */}
         {summonerData && <RecentChampionStats matches={summonerData.recentMatches} puuid={summonerData.puuid} />}
       </div>
     </div>

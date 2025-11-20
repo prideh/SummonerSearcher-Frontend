@@ -12,7 +12,10 @@ import SearchBar from '../components/SearchBar';
 
 import SummonerInfo from '../components/SummonerInfo';
 
-const SearchPage = () => {
+/**
+ * The main page for searching for summoners and viewing their profile and match history.
+ */
+const SearchPage: React.FC = () => {
   const [summonerData, setSummonerData] = useState<SummonerData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +23,7 @@ const SearchPage = () => {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [showRecent, setShowRecent] = useState(false);
 
+  // Zustand store for managing global state like search input, region, and last search results.
   const searchInput = useAuthStore((state) => state.searchInput);
   const setSearchInput = useAuthStore((state) => state.setSearchInput);
   const region = useAuthStore((state) => state.region);
@@ -27,6 +31,9 @@ const SearchPage = () => {
   const lastSearchedSummoner = useAuthStore((state) => state.lastSearchedSummoner);
   const setLastSearchedSummoner = useAuthStore((state) => state.setLastSearchedSummoner);
 
+  /**
+   * Fetches the list of recent searches for the logged-in user.
+   */
   const fetchRecentSearches = useCallback(async () => {
     try {
       const searches: string[] = await getRecentSearches();
@@ -40,6 +47,12 @@ const SearchPage = () => {
     }
   }, []);
 
+  /**
+   * Core function to perform a summoner search via the API.
+   * @param name - The summoner's game name.
+   * @param tag - The summoner's tag line.
+   * @param searchRegion - The region to search in.
+   */
   const performSearch = useCallback(async (name: string, tag: string, searchRegion: string) => {
     try {
       const apiData: Omit<SummonerData, 'region' | 'lastUpdated'> = await getSummonerByName(searchRegion, name, tag);
@@ -47,7 +60,7 @@ const SearchPage = () => {
       const fullData: SummonerData = { ...apiData, region: searchRegion, lastUpdated: updatedTimestamp };
       setSummonerData(fullData);
       setLastSearchedSummoner(fullData);
-      // Re-fetch recent searches after a successful search
+      // Re-fetch recent searches to include the new one.
       fetchRecentSearches();
     } catch (err) {
       if (err instanceof Error && err.message === 'NOT_FOUND') {
@@ -63,6 +76,12 @@ const SearchPage = () => {
     }
   }, [fetchRecentSearches, setLastSearchedSummoner]);
 
+  /**
+   * Initiates a search, setting loading states and resetting previous results.
+   * @param name - The summoner's game name.
+   * @param tag - The summoner's tag line.
+   * @param searchRegion - The region to search in.
+   */
   const startSearch = useCallback((name: string, tag: string, searchRegion: string) => {
     if (!name || !tag) {
       setError('Please enter both a summoner name and a tagline.');
@@ -74,6 +93,9 @@ const SearchPage = () => {
     performSearch(name, tag, searchRegion);
   }, [performSearch]);
 
+  /**
+   * Handles the click event of the main search button.
+   */
   const handleSearchClick = () => {
     const parts = searchInput.split('#');
     if (parts.length !== 2 || !parts[0].trim() || !parts[1].trim()) {
@@ -84,12 +106,19 @@ const SearchPage = () => {
     startSearch(name, tag, region);
   };
 
+  /**
+   * Handles the refresh button on the summoner info card, re-fetching their data.
+   */
   const handleRefresh = () => {
     if (summonerData) {
       startSearch(summonerData.gameName, summonerData.tagLine, summonerData.region);
     }
   };
 
+  /**
+   * Handles clicks on player names within the match history,
+   * triggering a new search for that player.
+   */
   const handlePlayerClick = (name: string, tag: string) => {
     const combined = `${name}#${tag}`;
     setSearchInput(combined);
@@ -97,6 +126,9 @@ const SearchPage = () => {
     window.scrollTo(0, 0); // Scroll to top for the new search
   };
 
+  /**
+   * Allows users to press 'Enter' in the search input to trigger a search.
+   */
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       handleSearchClick();
@@ -105,8 +137,10 @@ const SearchPage = () => {
 
   const initialSearchPerformed = useRef(false);
 
-  // This effect will run only once when the component mounts.
-  // It checks for search params from the URL and triggers a search if they exist.
+  /**
+   * Effect to handle initial page load. It checks for search parameters in the URL
+   * (e.g., from a shared link) or loads the last searched summoner from the store.
+   */
   useEffect(() => {
     if (initialSearchPerformed.current) return;
 
@@ -129,12 +163,17 @@ const SearchPage = () => {
       }
     }
   }, [searchParams, lastSearchedSummoner, setSearchInput, region, startSearch]);
-  // This effect will run once when the component mounts to fetch recent searches.
+  
+  /**
+   * Effect to fetch the user's recent searches on component mount.
+   */
   useEffect(() => {
     fetchRecentSearches();
   }, [fetchRecentSearches]);
 
-
+  /**
+   * Handles the action to clear the user's recent search history.
+   */
   const handleClearRecentSearches = async () => {
     try {
       setError(null); // Clear previous errors
@@ -153,6 +192,9 @@ const SearchPage = () => {
     }
   };
 
+  /**
+   * Renders a skeleton loading state for the summoner info card while data is being fetched.
+   */
   const renderSkeleton = () => (
     <div className="bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-6 rounded-lg shadow-lg animate-pulse">
       <div className="flex items-center space-x-4">
@@ -180,6 +222,9 @@ const SearchPage = () => {
     </div>
   );
 
+  /**
+   * Renders an appropriate error message based on the error state.
+   */
   const renderError = () => {
     if (!error) return null;
 

@@ -1,5 +1,8 @@
 import { Link } from 'react-router-dom';
 
+/**
+ * A simple 404 "Not Found" page that is displayed for any routes that are not defined.
+ */
 const NotFoundPage = () => {
   return (
     <div className="flex flex-col items-center justify-center h-screen">

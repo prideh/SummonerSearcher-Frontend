@@ -1,17 +1,32 @@
 import React from 'react';
 import type { MatchDto, ParticipantDto } from '../types/match';
 
+/**
+ * Props for the AnalysisTab component.
+ */
 interface AnalysisTabProps {
+  /** The full match data object. */
   match: MatchDto;
+  /** The PUUID of the player whose perspective the analysis is from. */
   puuid: string;
+  /** Callback function to handle clicks on player names. */
   onPlayerClick: (name: string, tag: string) => void;
 }
 
+/**
+ * A utility function to convert camelCase strings to Title Case for display.
+ * e.g., 'damagePerMinute' becomes 'Damage Per Minute'.
+ * @param text - The camelCase string to convert.
+ * @returns The converted Title Case string.
+ */
 const camelCaseToTitleCase = (text: string) => {
   const result = text.replace(/([A-Z])/g, ' $1');
   return result.charAt(0).toUpperCase() + result.slice(1);
 };
-
+/**
+ * The AnalysisTab component displays a side-by-side comparison of the main player's
+ * and their lane opponent's performance metrics (challenges) from the match.
+ */
 const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
   const participants = match.info?.participants;
   const mainPlayer = participants?.find(p => p.puuid === puuid);
@@ -20,6 +35,7 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
     return <p className="p-4 text-gray-500 dark:text-gray-400">Main player data not found for analysis.</p>;
   }
 
+  // Find the direct lane opponent by matching team position and ensuring they are on the opposite team.
   const opponent = participants?.find(p =>
     p.teamId !== mainPlayer.teamId &&
     p.teamPosition === mainPlayer.teamPosition &&
@@ -27,10 +43,19 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
     mainPlayer.teamPosition !== 'NONE'
   );
 
+  /**
+   * Renders a list of challenges for a given player, comparing their values against an opponent.
+   * It highlights challenges where the player performed better.
+   * @param player - The participant data for the player to display.
+   * @param opponentData - Optional participant data for the opponent to compare against.
+   * @returns A React element containing the list of challenges.
+   */
   const renderPlayerChallenges = (player: ParticipantDto, opponentData?: ParticipantDto) => {
+    // Filter out challenges that are null, undefined, or zero.
     const playerChallenges = Object.fromEntries(Object.entries(player.challenges || {}).filter(([, v]) => v != null && v > 0));
     const opponentChallenges = opponentData ? Object.fromEntries(Object.entries(opponentData.challenges || {}).filter(([, v]) => v != null && v > 0)) : {};
 
+    // Combine all unique challenge keys from both players and sort them alphabetically.
     const allChallengeKeys = [...new Set([...Object.keys(playerChallenges), ...Object.keys(opponentChallenges)])].sort();
 
     if (allChallengeKeys.length === 0) {
@@ -43,6 +68,7 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
           const playerValue = playerChallenges[key] as number | undefined;
           const opponentValue = opponentChallenges[key] as number | undefined;
 
+          // A player is considered the "winner" of a challenge if their value is higher, or if the opponent has no value for it.
           const isWinner = playerValue !== undefined && (opponentValue === undefined || playerValue > opponentValue);
 
           return (

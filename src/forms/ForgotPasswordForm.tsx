@@ -3,12 +3,19 @@ import { Link } from 'react-router-dom';
 import { forgotPassword } from '../api/auth';
 import axios from 'axios';
 
+/**
+ * A form for users who have forgotten their password.
+ * It takes an email address and sends a request to the backend to initiate the password reset process.
+ */
 const ForgotPasswordForm: React.FC = () => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  /**
+   * Handles the form submission to request a password reset link.
+   */
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -21,13 +28,10 @@ const ForgotPasswordForm: React.FC = () => {
 
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        // Axios error (e.g., 4xx, 5xx response from server)
         setError(error.response?.data || error.message);
       } else if (error instanceof Error) {
-        // Generic JavaScript error
         setError(error.message);
       } else {
-        // Unknown error type
         setError('An unexpected error occurred.');
       }
     } finally {

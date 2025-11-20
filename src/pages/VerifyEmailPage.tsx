@@ -3,17 +3,22 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { verifyEmail } from '../api/auth';
 
+/**
+ * A page that handles the email verification process.
+ * It reads a token from the URL, sends it to the backend for validation,
+ * and displays a success or error message to the user.
+ */
 const VerifyEmailPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
   const [message, setMessage] = useState<string>('');
-  const effectRan = useRef(false); // Flag to track if effect has run
+  const effectRan = useRef(false); // Flag to prevent useEffect from running twice in StrictMode development.
 
   useEffect(() => {
-    // In development, StrictMode mounts, unmounts, and remounts components.
-    // This causes useEffect to run twice. We want our API call to run only once.
-    // This flag ensures the API call is made only on the "real" mount.
+    /**
+     * In development with React.StrictMode, this effect runs twice. This check ensures the API call is only made once.
+     */
     if (effectRan.current === false && import.meta.env.DEV) {
       effectRan.current = true;
       return; // Skip the first run in StrictMode development
@@ -28,9 +33,12 @@ const VerifyEmailPage: React.FC = () => {
       return;
     }
 
+    /**
+     * Performs the asynchronous email verification API call.
+     */
     const doVerification = async () => {
       try {
-        // Pass the signal to the API call
+        // Pass the AbortController's signal to the API call to allow for cancellation.
         const response = await verifyEmail(token, controller.signal);
         const successMessage = response?.message || 'Your email has been successfully verified. You can now log in.';
         setStatus('success');
@@ -56,7 +64,7 @@ const VerifyEmailPage: React.FC = () => {
     doVerification();
 
     return () => {
-      controller.abort(); // Abort the request if the component unmounts or the effect re-runs
+      controller.abort(); // Cleanup: Abort the request if the component unmounts.
       effectRan.current = false; // Reset the flag for potential future remounts
     };
   }, [searchParams, navigate]); // `navigate` is used in setTimeout, so it should be in dependencies.

@@ -4,6 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { getLeaderboard } from '../api/riot';
 import axios from 'axios';
 
+/**
+ * Defines the structure of a single entry in the Challenger leaderboard.
+ */
 interface LeaderboardEntry {
   gameName: string;
   tagLine: string;
@@ -13,6 +16,10 @@ interface LeaderboardEntry {
   rank: string;
 }
 
+/**
+ * The DashboardPage displays the Challenger leaderboard for a selected region.
+ * It allows users to switch regions and click on a player to navigate to their search page.
+ */
 const DashboardPage = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -22,6 +29,9 @@ const DashboardPage = () => {
   const setRegion = useAuthStore((state) => state.setRegion);
   const navigate = useNavigate();
 
+  /**
+   * Effect to fetch the leaderboard data whenever the selected region changes.
+   */
   useEffect(() => {
     const fetchLeaderboard = async () => {
       setLoading(true);
@@ -50,12 +60,18 @@ const DashboardPage = () => {
     fetchLeaderboard();
   }, [region]);
 
+  /**
+   * Handles clicks on a leaderboard row, navigating to the search page for that player.
+   */
   const handleRowClick = useCallback((gameName: string, tagLine: string) => {
     if (gameName && tagLine) {
       navigate(`/search?gameName=${encodeURIComponent(gameName)}&tagLine=${encodeURIComponent(tagLine)}`);
     }
   }, [navigate]);
 
+  /**
+   * Renders the leaderboard table, including a skeleton loading state and an error state.
+   */
   const renderLeaderboard = () => {
     if (loading) {
       return (

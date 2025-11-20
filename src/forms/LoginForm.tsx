@@ -4,6 +4,11 @@ import { loginUser } from '../api/auth';
 import { useAuthStore } from '../store/authStore';
 import axios from 'axios';
 
+/**
+ * The main login form for the application.
+ * It handles user authentication, including the initial step of a 2FA login flow.
+ * It also provides a button to pre-fill credentials for a dummy/demo account.
+ */
 const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,11 +20,13 @@ const LoginForm: React.FC = () => {
   const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
 
+  /**
+   * Effect to display success or error messages passed via navigation state,
+   * for example, after a successful registration or a failed password reset.
+   */
   useEffect(() => {
-   
     if (location.state?.message) {
       setSuccessMessage(location.state.message);
-   
       window.history.replaceState({}, document.title);
     }
     // Display error message from password reset or other navigations
@@ -29,11 +36,17 @@ const LoginForm: React.FC = () => {
     }
   }, [location, navigate]);
   
+  /**
+   * A helper function to quickly fill the form with credentials for a demo account.
+   */
   const fillDummyCredentials = () => {
     setEmail('dummy@summonersearcher.com');
     setPassword('Dummy123!');
   };
 
+  /**
+   * Handles the form submission for user login.
+   */
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setSuccessMessage(null)
@@ -48,15 +61,14 @@ const LoginForm: React.FC = () => {
     try {
       const data = await loginUser(email, password);
       if (data && data.jwt) {
+        // Standard login success: store token and user data.
         login(data.jwt, email, data.twoFactorEnabled, data.darkmodePreference ?? true);
       } else if (data && data.twoFactorRequired && data.tempToken) {
-        // 2FA is required, navigate to the verification page with the temp token
+        // 2FA is required: navigate to the verification page with a temporary token.
         navigate('/login/2fa-verify', { state: { tempToken: data.tempToken, email: email } });
       }
     } catch (err) {
       if (axios.isAxiosError(err)) {
-        // If the error has a response and a data object with a message, use it.
-        // This is typical for 401 Unauthorized or 400 Bad Request from the backend.
         if (import.meta.env.DEV) {
           console.error("Login failed:", err.message);
         }
@@ -64,7 +76,6 @@ const LoginForm: React.FC = () => {
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
-        // Unknown error type
         setError('An unexpected error occurred.');
       }
     } finally {

@@ -3,6 +3,7 @@ import { getRiotServerStatus } from '../api/riot';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
+/** Defines the structure for a single status update (maintenance or incident). */
 interface StatusItemDto {
   status: string | null;
   severity: string | null;
@@ -11,12 +12,17 @@ interface StatusItemDto {
   platforms: string[];
 }
 
+/** Defines the structure for the overall platform status response. */
 interface PlatformStatusDto {
   name: string;
   maintenances: StatusItemDto[];
   incidents: StatusItemDto[];
 }
 
+/**
+ * The StatusPage allows users to check the live server status for various Riot Games regions.
+ * It fetches and displays any ongoing maintenances or incidents for the selected region.
+ */
 const StatusPage = () => {
   const region = useAuthStore((state) => state.region);
   const setRegion = useAuthStore((state) => state.setRegion);
@@ -24,6 +30,9 @@ const StatusPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Fetches the server status for the currently selected region from the backend API.
+   */
   const handleFetchStatus = async () => {
     setLoading(true);
     setError(null);
@@ -43,6 +52,11 @@ const StatusPage = () => {
     setLoading(false);
   };
 
+  /**
+   * Renders a list of status updates (either maintenances or incidents).
+   * @param updates - An array of status items to render.
+   * @param type - The type of update, used for titling and styling.
+   */
   const renderUpdates = (updates: StatusItemDto[], type: 'Maintenance' | 'Incident'): ReactNode => {
     if (!updates || updates.length === 0) {
       return null;

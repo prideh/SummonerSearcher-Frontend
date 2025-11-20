@@ -1,11 +1,20 @@
 import React from 'react';
 import ItemIcon from './ItemIcon';
 
+/**
+ * Props for the ItemList component.
+ */
 interface ItemListProps {
+  /** An array of item IDs for the main 6 inventory slots. */
   mainItems: (number | undefined)[];
+  /** The item ID for the trinket slot. */
   trinket: number | undefined;
 }
 
+/**
+ * A component that displays a player's item build in a responsive layout.
+ * It shows items in a single row on mobile and a 3x2 grid with a separate trinket on desktop.
+ */
 const ItemList: React.FC<ItemListProps> = ({ mainItems, trinket }) => {
   return (
     <>
