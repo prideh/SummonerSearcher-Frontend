@@ -210,6 +210,7 @@ const SearchPage = () => {
         style={{ backgroundColor: 'rgb(17 24 39 / var(--tw-bg-opacity, 1))', borderRadius: '6px', padding: '8px 12px', border: '1px solid rgb(31 41 55)', zIndex: 50 }}
         noArrow
         offset={10}
+        render={({ content }) => <div dangerouslySetInnerHTML={{ __html: content ?? '' }} />}
         opacity={1}
       />
       <h1 className="text-4xl font-bold mb-8 text-center text-gray-800 dark:text-gray-100 tracking-wider">Summoner Search</h1>

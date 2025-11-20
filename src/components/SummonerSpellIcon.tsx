@@ -36,7 +36,7 @@ const SummonerSpellIcon: React.FC<SummonerSpellIconProps> = ({ spellId, classNam
       alt={spell?.name || `Spell ${spellId}`}
       className={`${className} rounded`}
       data-tooltip-id="item-tooltip" // We can reuse the item tooltip style
-      data-tooltip-html={tooltipContent}
+      data-tooltip-content={tooltipContent}
     />
   );
 };

@@ -37,7 +37,7 @@ const RuneIcon: React.FC<RuneIconProps> = ({ runeId, className = 'w-6 h-6' }) =>
       alt={rune?.name || `Rune ${runeId}`}
       className={className}
       data-tooltip-id="item-tooltip"
-      data-tooltip-html={tooltipContent}
+      data-tooltip-content={tooltipContent}
     />
   );
 };

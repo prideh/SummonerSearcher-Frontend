@@ -37,7 +37,7 @@ const ItemIcon: React.FC<ItemIconProps> = ({ itemId, className = 'w-8 h-8' }) =>
       alt={item?.name || `Item ${itemId}`}
       className={`${className} rounded`}
       data-tooltip-id="item-tooltip"
-      data-tooltip-html={tooltipContent}
+      data-tooltip-content={tooltipContent}
     />
   );
 };

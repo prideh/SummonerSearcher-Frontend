@@ -149,7 +149,7 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
               alt={stat.championName} 
               className="w-10 h-10 rounded-md"
               data-tooltip-id="item-tooltip"
-              data-tooltip-html={tooltipContent}
+              data-tooltip-content={tooltipContent}
             />
           );
         })}
