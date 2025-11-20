@@ -25,7 +25,7 @@ const getRelativeTime = (timestamp: number | undefined) => {
   return 'just now';
 };
 
-export const useTimeAgo = (timestamp: number | undefined): [string, React.RefObject<HTMLDivElement>] => {
+export const useTimeAgo = (timestamp: number | undefined): [string, React.RefObject<HTMLDivElement | null>] => {
   const [timeAgo, setTimeAgo] = useState(() => getRelativeTime(timestamp));
   const [isVisible, setIsVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -53,10 +53,10 @@ export const useTimeAgo = (timestamp: number | undefined): [string, React.RefObj
   }, []);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout | undefined;
+    let interval: number | undefined;
 
     if (isVisible) {
-      interval = setInterval(() => {
+      interval = window.setInterval(() => {
         setTimeAgo(getRelativeTime(timestamp));
       }, 30000); // Update every 30 seconds
     }
