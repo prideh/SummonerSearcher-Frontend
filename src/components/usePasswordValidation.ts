@@ -14,7 +14,7 @@ export const usePasswordValidation = (password: string) => {
     hasUpper: /[A-Z]/.test(password),
     hasLower: /[a-z]/.test(password),
     hasNumber: /\d/.test(password),
-    hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+    hasSpecial: /[!@#$%^&*(),.?":{}|<>+\-=_`~;\\[\]\\']/.test(password),
   }), [password]);
 
   const isPasswordValid = useMemo(() => Object.values(passwordRequirements).every(Boolean), [passwordRequirements]);
