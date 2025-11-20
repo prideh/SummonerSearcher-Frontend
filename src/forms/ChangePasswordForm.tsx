@@ -79,7 +79,7 @@ const ChangePasswordForm = () => {
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-2xl w-full max-w-2xl flex flex-col md:flex-row items-start md:space-x-8">
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} className="w-full">
               <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Change Your Password</h2>
               {successMessage && <p className="text-green-500 text-sm italic mb-4">{successMessage}</p>}
               {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}

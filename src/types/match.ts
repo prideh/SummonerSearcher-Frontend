@@ -152,6 +152,7 @@ export interface PerkStyleSelectionDto {
 }
 
 export interface MatchInfo {
+  gameId: number;
   gameCreation?: number;
   gameDuration?: number;
   gameMode?: string;

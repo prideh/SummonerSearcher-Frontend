@@ -70,7 +70,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
       {/* KDA */}
       <div className="text-center min-h-[100px]">
         <p className="text-lg font-bold text-gray-800 dark:text-gray-200 whitespace-nowrap">
-          <span className="text-green-400">{kills}</span> / <span className="text-red-400">{deaths}</span> / <span className="text-yellow-400">{assists}</span>
+          <span className="text-green-700 dark:text-green-400">{kills}</span> / <span className="text-red-700 dark:text-red-400">{deaths}</span> / <span className="text-yellow-600 dark:text-yellow-400">{assists}</span>
         </p>
         {deaths === 0 ? (
           <p className="text-xs font-semibold text-yellow-400 mt-1">Infinite KDA</p>
@@ -84,10 +84,10 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
         >
           CS: {cs}
         </p>
-        <p className="text-xs text-red-500 dark:text-red-300 mt-1">KP: {killParticipation.toFixed(0)}%</p>
+        <p className="text-xs text-red-600 dark:text-red-300 mt-1">KP: {killParticipation.toFixed(0)}%</p>
         <div className="h-6 mt-1">
           {(challenges?.soloKills ?? 0) > 0 && (
-            <p className="text-xs font-semibold text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded inline-block">Solo Kills: {challenges?.soloKills}</p>
+            <p className="text-xs font-semibold text-yellow-700 dark:text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded inline-block">Solo Kills: {challenges?.soloKills}</p>
           )}
         </div>
       </div>
@@ -129,7 +129,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
         </div>
         <div className="text-center min-h-[100px]">
           <p className="text-lg font-bold text-gray-800 dark:text-gray-200 whitespace-nowrap">
-            <span className="text-green-400">{kills}</span> / <span className="text-red-400">{deaths}</span> / <span className="text-yellow-400">{assists}</span>
+            <span className="text-green-700 dark:text-green-400">{kills}</span> / <span className="text-red-700 dark:text-red-400">{deaths}</span> / <span className="text-yellow-600 dark:text-yellow-400">{assists}</span>
           </p>
           {deaths === 0 ? (
             <p className="text-xs font-semibold text-yellow-400 mt-1">Infinite KDA</p>
@@ -137,10 +137,10 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{kda.toFixed(2)} KDA</p>
           )}
           <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">CS: {cs}</p>
-          <p className="text-xs text-red-500 dark:text-red-300 mt-1">KP: {killParticipation.toFixed(0)}%</p>
+          <p className="text-xs text-red-600 dark:text-red-300 mt-1">KP: {killParticipation.toFixed(0)}%</p>
           <div className="h-6 mt-1">
             {(challenges?.soloKills ?? 0) > 0 && (
-              <p className="text-xs font-semibold text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded inline-block">Solo Kills: {challenges?.soloKills}</p>
+              <p className="text-xs font-semibold text-yellow-700 dark:text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded inline-block">Solo Kills: {challenges?.soloKills}</p>
             )}
           </div>
         </div>

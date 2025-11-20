@@ -9,9 +9,10 @@ interface MatchDetailsProps {
   match: MatchDto;
   puuid: string;
   onPlayerClick: (name: string, tag: string) => void;
+  id?: string;
 }
 
-const MatchDetails: React.FC<MatchDetailsProps> = ({ match, puuid, onPlayerClick }) => {
+const MatchDetails: React.FC<MatchDetailsProps> = ({ match, puuid, onPlayerClick, id }) => {
   const [activeTab, setActiveTab] = useState<'scoreboard' | 'graphs' | 'runes' | 'analysis'>('scoreboard');
 
   const getTabClass = (tabName: 'scoreboard' | 'graphs' | 'runes' | 'analysis') =>
@@ -22,7 +23,7 @@ const MatchDetails: React.FC<MatchDetailsProps> = ({ match, puuid, onPlayerClick
     }`;
 
   return (
-    <div className="col-span-full bg-white dark:bg-gray-900/70 rounded-b-lg text-gray-800 dark:text-gray-200 border-t border-gray-200 dark:border-gray-800/50 overflow-hidden">
+    <div id={id} className="col-span-full bg-white dark:bg-gray-900/70 rounded-b-lg text-gray-800 dark:text-gray-200 border-t border-gray-200 dark:border-gray-800/50 overflow-hidden">
       <div className="flex border-b border-gray-200 dark:border-gray-800/50 px-2 sm:px-4 overflow-x-auto">
         <button onClick={() => setActiveTab('scoreboard')} className={getTabClass('scoreboard')}>
           Scoreboard

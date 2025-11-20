@@ -150,7 +150,7 @@ const SearchPage = () => {
   };
 
   const renderSkeleton = () => (
-    <div className="bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-6 rounded-lg shadow-lg animate-pulse">
+    <div className="bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-6 rounded-lg shadow-lg animate-pulse">
       <div className="flex items-center space-x-4">
         <div className="w-20 h-20 rounded-full bg-gray-300 dark:bg-gray-700"></div>
         <div>
@@ -181,15 +181,15 @@ const SearchPage = () => {
 
     if (error === 'NOT_FOUND') {
       return (
-        <div className="bg-yellow-900/20 border border-yellow-700/30 text-yellow-200 p-6 rounded-lg text-center" role="alert">
+        <div className="bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-400 dark:border-yellow-700/30 text-yellow-800 dark:text-yellow-200 p-6 rounded-lg text-center" role="alert">
           <h3 className="font-bold text-xl mb-2">Summoner Not Found</h3>
-          <p className="text-yellow-300">Please double-check the Summoner Name, Tagline, and selected Region, then try again.</p>
+          <p className="text-yellow-700 dark:text-yellow-300">Please double-check the Summoner Name, Tagline, and selected Region, then try again.</p>
         </div>
       );
     }
 
     return (
-      <div className="bg-red-500/10 border border-red-500/30 text-red-300 p-4 rounded-lg flex items-center space-x-3" role="alert">
+      <div className="bg-red-100 dark:bg-red-500/10 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-300 p-4 rounded-lg flex items-center space-x-3" role="alert">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>

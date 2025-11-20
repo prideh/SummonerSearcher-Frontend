@@ -66,11 +66,11 @@ const RunesTab: React.FC<RunesTabProps> = ({ match, puuid, onPlayerClick }) => {
   return (
     <div className="p-4 space-y-6">
       <div>
-        <h3 className="text-lg font-bold text-blue-400 mb-2">Blue Team</h3>
+        <h3 className="text-lg font-bold text-blue-600 dark:text-blue-400 mb-2">Blue Team</h3>
         {renderTeamRunes(blueTeam)}
       </div>
       <div>
-        <h3 className="text-lg font-bold text-red-400 mb-2">Red Team</h3>
+        <h3 className="text-lg font-bold text-red-600 dark:text-red-400 mb-2">Red Team</h3>
         {renderTeamRunes(redTeam)}
       </div>
     </div>

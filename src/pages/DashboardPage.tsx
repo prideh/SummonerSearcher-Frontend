@@ -136,7 +136,7 @@ const DashboardPage = () => {
                     </td>
                     <td className="block text-right py-1 md:table-cell md:px-6 md:py-3">
                       <span className="float-left font-bold md:hidden text-gray-500 dark:text-gray-400 uppercase">Win/Loss</span>
-                      <div><span className="text-green-500 dark:text-green-400">{player.wins}W</span> / <span className="text-red-500 dark:text-red-400">{player.losses}L</span> <span className="text-gray-500 dark:text-gray-400 ml-2">({winRate}%)</span></div>
+                      <div><span className="text-green-600 dark:text-green-400">{player.wins}W</span> / <span className="text-red-600 dark:text-red-400">{player.losses}L</span> <span className="text-gray-500 dark:text-gray-400 ml-2">({winRate}%)</span></div>
                     </td>
                   </tr>
                 );
