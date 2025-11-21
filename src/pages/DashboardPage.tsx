@@ -40,15 +40,17 @@ const DashboardPage = () => {
         const response = await getLeaderboard(region);
         const leaderboardData = response.entries;
         if (!Array.isArray(leaderboardData)) {
-          throw new TypeError('Leaderboard data is not an array. Check the backend response.');
+          throw new TypeError('Invalid leaderboard data format.');
         }
         leaderboardData.sort((a, b) => b.leaguePoints - a.leaguePoints);
         setLeaderboard(leaderboardData);
       } catch (err) {
         if (axios.isAxiosError(err)) {
-          setError(err.response?.data?.message || 'Failed to fetch leaderboard data.');
+          setError('Failed to fetch leaderboard data.');
+        } else if (err instanceof TypeError) {
+          setError('Failed to process leaderboard data.');
         } else if (err instanceof Error) {
-          setError(err.message);
+          setError('An unexpected error occurred.');
         } else {
           setError('An unexpected error occurred.');
         }
