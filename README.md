@@ -1,5 +1,17 @@
+# Link to the page http://summonersearcher.com/
+
+# Desktop View
 <img width="1286" height="857" alt="image" src="https://github.com/user-attachments/assets/85b47f13-1e00-4a4b-ba66-c4697507c92a" />
-http://summonersearcher.com/
+<img width="1314" height="898" alt="image" src="https://github.com/user-attachments/assets/49eee0b7-527a-4e4d-8ef8-c901ee48f45c" />
+<img width="1294" height="644" alt="image" src="https://github.com/user-attachments/assets/3815449c-aeb7-4a9c-8987-29e9f9ee0a3f" />
+<img width="1227" height="755" alt="image" src="https://github.com/user-attachments/assets/c4863683-b854-4427-986d-7cc163d33bc3" />
+
+
+# Mobile View
+<img width="387" height="855" alt="image" src="https://github.com/user-attachments/assets/08637f6b-67fd-4bb8-8d6b-b0a5e2ae0a8d" />
+<img width="385" height="858" alt="image" src="https://github.com/user-attachments/assets/19e3b0fd-3b50-4261-bdfa-a98ece1f1b06" />
+<img width="384" height="859" alt="image" src="https://github.com/user-attachments/assets/cb676f58-53d6-493f-a4b4-8ce0d2d0d3b3" />
+
 
 # 🏗️ Technical Architecture
 
