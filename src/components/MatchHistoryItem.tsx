@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { MatchDto } from '../types/match';
 import MatchDetails from './MatchDetails.tsx';
 import { getQueueType, formatDuration, getMatchOutcomeStyles } from '../utils/matchHistoryHelper';
@@ -25,6 +25,28 @@ import ItemList from './ItemList';
 const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPlayerClick }) => {
   const [showDetails, setShowDetails] = useState(false);
   const [timeAgo, ref] = useTimeAgo(match.info?.gameCreation);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to card when details are expanded
+  useEffect(() => {
+    if (showDetails && cardRef.current) {
+      // Wait for the details to render, then scroll
+      setTimeout(() => {
+        if (cardRef.current) {
+          const rect = cardRef.current.getBoundingClientRect();
+          const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+          
+          // Only scroll if the bottom of the card is not fully visible
+          if (!isVisible) {
+            cardRef.current.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'nearest' 
+            });
+          }
+        }
+      }, 100); // Small delay to ensure MatchDetails has rendered
+    }
+  }, [showDetails]);
 
   if (!match.info) return null;
 
@@ -69,7 +91,16 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
   const outcome = getMatchOutcomeStyles(win, gameEndedInEarlySurrender);
   const teamColorClass = teamId === 100 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400';
   return (
-    <div ref={ref} className={`relative border-l-4 ${outcome.container} ${showDetails ? 'rounded-t-lg' : 'rounded-lg'}`}>
+    <div 
+      ref={(el) => {
+        // Assign to both refs
+        if (ref && 'current' in ref) {
+          (ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
+        }
+        cardRef.current = el;
+      }}
+      className={`relative border-l-4 ${outcome.container} ${showDetails ? 'rounded-t-lg' : 'rounded-lg'}`}
+    >
       <div className="grid grid-cols-1 md:grid-cols-[130px_1fr_auto_1fr_280px_40px] gap-4 items-center p-4 text-sm bg-white/50 dark:bg-gray-900/50">
         {/* Game Info */}
         <div className="flex justify-between items-center md:flex-col md:items-start md:justify-start pr-10 md:pr-0">
