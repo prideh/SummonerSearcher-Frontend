@@ -1,3 +1,4 @@
+<img width="1286" height="857" alt="image" src="https://github.com/user-attachments/assets/85b47f13-1e00-4a4b-ba66-c4697507c92a" />
 http://summonersearcher.com/
 
 # 🏗️ Technical Architecture
