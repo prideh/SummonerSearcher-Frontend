@@ -14,6 +14,8 @@ interface SummonerInfoProps {
   handleRefresh: () => void;
   /** Boolean indicating if a refresh is currently in progress. */
   loading: boolean;
+  /** Boolean indicating if a refresh operation is in progress (keeps data visible). */
+  refreshing: boolean;
 }
 
 /**
@@ -21,7 +23,7 @@ interface SummonerInfoProps {
  * It includes their profile icon, Riot ID, level, and a "Refresh" button.
  * It also contains the `RankedInfo` component to show ranked statistics.
  */
-const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh, loading }) => {
+const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh, loading, refreshing }) => {
   const [timeAgo, ref] = useTimeAgo(new Date(summonerData.lastUpdated).getTime());
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
 
@@ -48,9 +50,19 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
           <div className="shrink-0">
             <button
               onClick={handleRefresh}
-              className="flex items-center space-x-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-md transition-colors"
+              disabled={refreshing}
+              className="flex items-center space-x-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-md transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 11.667 0l3.181-3.183m-4.991-2.691V5.25a8.25 8.25 0 0 0-11.667 0v3.183" /></svg>
+              <svg 
+                className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} 
+                xmlns="http://www.w3.org/2000/svg" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                strokeWidth={1.5} 
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 11.667 0l3.181-3.183m-4.991-2.691V5.25a8.25 8.25 0 0 0-11.667 0v3.183" />
+              </svg>
               <span>Refresh</span>
             </button>
           </div>

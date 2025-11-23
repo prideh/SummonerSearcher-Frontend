@@ -18,6 +18,7 @@ import SummonerInfo from '../components/SummonerInfo';
 const SearchPage: React.FC = () => {
   const [summonerData, setSummonerData] = useState<SummonerData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
@@ -52,8 +53,9 @@ const SearchPage: React.FC = () => {
    * @param name - The summoner's game name.
    * @param tag - The summoner's tag line.
    * @param searchRegion - The region to search in.
+   * @param isRefresh - Whether this is a refresh operation (doesn't clear input)
    */
-  const performSearch = useCallback(async (name: string, tag: string, searchRegion: string) => {
+  const performSearch = useCallback(async (name: string, tag: string, searchRegion: string, isRefresh = false) => {
     try {
       const apiData: Omit<SummonerData, 'region' | 'lastUpdated'> = await getSummonerByName(searchRegion, name, tag);
       const updatedTimestamp = new Date().toISOString();
@@ -73,8 +75,13 @@ const SearchPage: React.FC = () => {
       }
     } finally {
       setLoading(false);
+      setRefreshing(false);
+      // Clear the search input after search completes (but not on refresh)
+      if (!isRefresh) {
+        setSearchInput('');
+      }
     }
-  }, [fetchRecentSearches, setLastSearchedSummoner]);
+  }, [fetchRecentSearches, setLastSearchedSummoner, setSearchInput]);
 
   /**
    * Initiates a search, setting loading states and resetting previous results.
@@ -82,7 +89,7 @@ const SearchPage: React.FC = () => {
    * @param tag - The summoner's tag line.
    * @param searchRegion - The region to search in.
    */
-  const startSearch = useCallback((name: string, tag: string, searchRegion: string) => {
+  const startSearch = useCallback(async (name: string, tag: string, searchRegion: string) => {
     if (!name || !tag) {
       setError('Please enter both a summoner name and a tagline.');
       return;
@@ -90,7 +97,7 @@ const SearchPage: React.FC = () => {
     setLoading(true);
     setError(null);
     setSummonerData(null);
-    performSearch(name, tag, searchRegion);
+    await performSearch(name, tag, searchRegion);
   }, [performSearch]);
 
   /**
@@ -108,10 +115,14 @@ const SearchPage: React.FC = () => {
 
   /**
    * Handles the refresh button on the summoner info card, re-fetching their data.
+   * Uses refreshing state instead of loading to avoid layout shift.
    */
-  const handleRefresh = () => {
-    if (summonerData) {
-      startSearch(summonerData.gameName, summonerData.tagLine, summonerData.region);
+  const handleRefresh = async () => {
+    if (summonerData && !refreshing) {
+      setRefreshing(true);
+      setError(null);
+      // Don't clear summonerData - keep it visible during refresh
+      await performSearch(summonerData.gameName, summonerData.tagLine, summonerData.region, true);
     }
   };
 
@@ -282,6 +293,7 @@ const SearchPage: React.FC = () => {
             summonerData={summonerData}
             handleRefresh={handleRefresh}
             loading={loading}
+            refreshing={refreshing}
           />
         )}
         {summonerData && (
