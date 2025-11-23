@@ -11,6 +11,7 @@
 <img width="387" height="855" alt="image" src="https://github.com/user-attachments/assets/08637f6b-67fd-4bb8-8d6b-b0a5e2ae0a8d" />
 <img width="385" height="858" alt="image" src="https://github.com/user-attachments/assets/19e3b0fd-3b50-4261-bdfa-a98ece1f1b06" />
 <img width="384" height="859" alt="image" src="https://github.com/user-attachments/assets/cb676f58-53d6-493f-a4b4-8ce0d2d0d3b3" />
+<img width="386" height="863" alt="image" src="https://github.com/user-attachments/assets/36cc4333-4523-42b1-9698-7ac97fd0fd54" />
 
 
 # 🏗️ Technical Architecture
