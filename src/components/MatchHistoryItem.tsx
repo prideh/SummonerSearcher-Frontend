@@ -101,8 +101,11 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
       }}
       className={`relative border-l-4 ${outcome.container} ${showDetails ? 'rounded-t-lg' : 'rounded-lg'}`}
     >
-      <div className={showDetails ? "flex items-center justify-between p-2 text-sm bg-white/50 dark:bg-gray-900/50" : "grid grid-cols-1 md:grid-cols-[130px_1fr_auto_1fr_280px_40px] gap-4 items-center p-4 text-sm bg-white/50 dark:bg-gray-900/50"}>
-        {/* Title when expanded */}
+      <div className="flex items-center bg-white/50 dark:bg-gray-900/50">
+        {/* Main content area that changes on expand/collapse */}
+        <div className={`flex-grow ${showDetails ? "flex items-center justify-between p-2 text-sm" : "grid grid-cols-1 md:grid-cols-[130px_1fr_auto_1fr_280px] gap-4 items-center p-4 text-sm"}`}>
+          
+          {/* Title when expanded */}
         {showDetails && (
           <div className="flex-1">
             <p className="font-semibold text-gray-800 dark:text-gray-100">
@@ -115,7 +118,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
           </div>
         )}
 
-        {/* Game Info - Hidden when details are shown */}
+          {/* Game Info - Hidden when details are shown */}
         {!showDetails && (
           <div className="flex justify-between items-center md:flex-col md:items-start md:justify-start pr-10 md:pr-0">
             <p className="font-bold text-gray-800 dark:text-gray-100 truncate text-lg md:text-base">{getQueueType(queueId)}</p>
@@ -138,7 +141,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
           </div>
         )}
 
-        {/* Player Stats - Hidden when details are shown */}
+          {/* Player Stats - Hidden when details are shown */}
         {!showDetails && (
           <PlayerStats 
             participant={player} 
@@ -146,14 +149,14 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
           />
         )}
 
-        {/* "VS" Separator - Hidden when details are shown */}
+          {/* "VS" Separator - Hidden when details are shown */}
         {!showDetails && (
           <div className="text-center">
             {opponent && <span className="text-lg font-bold text-gray-400 dark:text-gray-600 px-2">vs</span>}
           </div>
         )}
 
-        {/* Opponent Stats - Hidden when details are shown */}
+          {/* Opponent Stats - Hidden when details are shown */}
         {!showDetails && (
           <div className="text-gray-500 dark:text-gray-400 flex justify-start w-full">
             {opponent && (
@@ -167,15 +170,16 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
           </div>
         )}
 
-        {/* Items - Hidden when details are shown */}
+          {/* Items - Hidden when details are shown */}
         {!showDetails && (
           <div className="flex items-center justify-center">
             <ItemList mainItems={mainItems} trinket={trinket} />
           </div>
         )}
+        </div>
 
         {/* Expand Button */}
-        <div className="absolute top-2 right-2 md:static flex items-center justify-center">
+        <div className="flex-shrink-0 flex items-center justify-center w-16 h-full">
           <button 
             onClick={() => setShowDetails(!showDetails)} 
             className={`p-2 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${showDetails ? 'rotate-180 bg-gray-300 dark:bg-gray-700' : 'bg-gray-200 dark:bg-gray-800/50 hover:bg-gray-300 dark:hover:bg-gray-800'}`}
