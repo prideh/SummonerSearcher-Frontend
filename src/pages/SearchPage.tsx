@@ -4,7 +4,7 @@ import { getSummonerByName } from '../api/riot';
 import { useSearchParams } from 'react-router-dom';
 import type { SummonerData } from '../types/summoner';
 import MatchHistory from '../components/MatchHistory';
-import { getRecentSearches, clearRecentSearches } from '../api/user';
+import { getRecentSearches, clearRecentSearches, type RecentSearch } from '../api/user';
 import { Tooltip } from 'react-tooltip';
 import 'react-tooltip/dist/react-tooltip.css';
 
@@ -20,7 +20,7 @@ const SearchPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [showRecent, setShowRecent] = useState(false);
 
   // Zustand store for managing global state like search input, region, and last search results.
@@ -36,7 +36,7 @@ const SearchPage: React.FC = () => {
    */
   const fetchRecentSearches = useCallback(async () => {
     try {
-      const searches: string[] = await getRecentSearches();
+      const searches: RecentSearch[] = await getRecentSearches();
       if (Array.isArray(searches)) {
         setRecentSearches(searches);
       }

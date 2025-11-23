@@ -1,4 +1,5 @@
 import React from 'react';
+import type { RecentSearch } from '../api/user';
 
 /**
  * Props for the SearchBar component.
@@ -11,7 +12,7 @@ interface SearchBarProps {
   handleSearchClick: () => void;
   handleKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void;
   loading: boolean;
-  recentSearches: string[];
+  recentSearches: RecentSearch[];
   showRecent: boolean;
   setShowRecent: (value: boolean) => void;
   handleClearRecentSearches: () => void;
@@ -37,6 +38,12 @@ const SearchBar: React.FC<SearchBarProps> = ({
   handleClearRecentSearches,
   startSearch,
 }) => {
+  // Filter recent searches by region and current input text
+  const filteredRecentSearches = recentSearches.filter(search => 
+    search.server === region && 
+    search.query.toLowerCase().includes(searchInput.toLowerCase())
+  );
+
   return (
     <div className="w-full max-w-lg flex flex-col sm:flex-row items-stretch sm:items-start space-y-2 sm:space-y-0 sm:space-x-0">
       <div className="relative flex-grow" onMouseEnter={() => setShowRecent(true)} onMouseLeave={() => setShowRecent(false)}>
@@ -44,12 +51,16 @@ const SearchBar: React.FC<SearchBarProps> = ({
           type="text"
           placeholder="SummonerName#TagLine"
           value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
+          onChange={(e) => {
+            setSearchInput(e.target.value);
+            setShowRecent(true); // Show dropdown when typing
+          }}
+          onFocus={() => setShowRecent(true)} // Also show on focus
           onKeyDown={handleKeyDown}
           className="p-3 border border-gray-300 dark:border-gray-700 rounded-md sm:rounded-l-md sm:rounded-r-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 w-full transition-all"
         />
-        {/* Recent searches dropdown, shown on hover/focus and if there are recent searches */}
-        {showRecent && recentSearches.length > 0 && (
+        {/* Recent searches dropdown, shown on hover/focus and if there are matching recent searches */}
+        {showRecent && filteredRecentSearches.length > 0 && (
           <div className="absolute z-10 w-full md:w-72 top-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg">
             <div className="flex justify-between items-center px-3 py-2">
               <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase">Recent Searches</span>
@@ -58,18 +69,18 @@ const SearchBar: React.FC<SearchBarProps> = ({
               </button>
             </div>
             <ul className="py-1 max-h-60 overflow-y-auto rounded-b-md">
-              {recentSearches.map((search, index) => (
+              {filteredRecentSearches.map((search, index) => (
                 <li
                   key={index}
                   className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer truncate"
                   onClick={() => {
-                    setSearchInput(search);
-                    const [name, tag] = search.split('#');
+                    setSearchInput(search.query);
+                    const [name, tag] = search.query.split('#');
                     startSearch(name, tag, region);
                     setShowRecent(false);
                   }}
                 >
-                  {search}
+                  {search.query}
                 </li>
               ))}
             </ul>

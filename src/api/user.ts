@@ -55,13 +55,18 @@ export const changePassword = async (oldPassword: string, newPassword: string): 
   return response.data;
 };
 
+export interface RecentSearch {
+  query: string;
+  server: string;
+}
+
 /**
  * Fetches the recent search history for the logged-in user.
- * @returns A promise that resolves with an array of recent search strings.
+ * @returns A promise that resolves with an array of recent search objects.
  */
-export const getRecentSearches = async () => {
+export const getRecentSearches = async (): Promise<RecentSearch[]> => {
   // The apiClient from apiClient.ts automatically adds the Authorization header via an interceptor
-  const response = await apiClient.get('/user/recent-searches');
+  const response = await apiClient.get<RecentSearch[]>('/user/recent-searches');
   return response.data;
 };
 
