@@ -247,6 +247,3 @@ All these actions:
 * Hosted on Render, with a domain purchased from Cloudflare. http://summonersearcher.com/
 
 This ensures SPA routing works without server intervention.
-
-✅ A full rewritten README including backend + frontend
-Just tell me what format you want.
