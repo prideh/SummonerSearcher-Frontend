@@ -5,7 +5,9 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E)](https://vitejs.dev/)
 [![Zustand](https://img.shields.io/badge/Zustand-443E38?style=for-the-badge&logo=react&logoColor=white)](https://github.com/pmndrs/zustand)
-
+  <a href="https://github.com/prideh/SummonerSearcher-Backend/">
+    <img src="https://img.shields.io/badge/🔗_View_Backend_Repo-Spring_Boot-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white" alt="View Backend Repo" />
+  </a>
 Summoner Searcher is a comprehensive League of Legends player analysis tool.
 
 ---
