@@ -287,6 +287,22 @@ const SearchPage: React.FC = () => {
 
       <div className="mt-8 w-full max-w-7xl">
         {renderError()}
+        {!loading && !summonerData && !error && (
+          <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+            <p>
+              Don't know who to search for? Try an example:
+              <button
+                onClick={() => {
+                  setRegion('euw1');
+                  startSearch('pride', 'persi', 'euw1');
+                }}
+                className="ml-1 font-semibold text-cyan-600 hover:text-cyan-500 dark:text-cyan-400 dark:hover:text-cyan-500 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded"
+              >
+                pride#persi on EUW
+              </button>
+            </p>
+          </div>
+        )}
         {loading && renderSkeleton()}
         {summonerData && (
           <SummonerInfo
