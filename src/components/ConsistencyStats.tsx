@@ -14,10 +14,81 @@ interface StatConsistency {
   consistency: number;
 }
 
+const STAT_ROLE_MAPPING: Record<string, 'ALL' | 'JUNGLE' | 'SUPPORT'> = {
+  // Support Only
+  controlWardTimeCoverageInRiverOrEnemyHalf: 'SUPPORT',
+  fasterSupportQuestCompletion: 'SUPPORT',
+  mostWardsDestroyedOneSweeper: 'SUPPORT',
+  threeWardsOneSweeperCount: 'SUPPORT',
+  visionScoreAdvantageLaneOpponent: 'SUPPORT',
+  completeSupportQuestInTime: 'SUPPORT',
+  effectiveHealAndShielding: 'SUPPORT',
+
+  // Jungle Only
+  earliestBaron: 'JUNGLE',
+  earliestDragonTakedown: 'JUNGLE',
+  junglerKillsEarlyJungle: 'JUNGLE',
+  killsOnLanersEarlyJungleAsJungler: 'JUNGLE',
+  voidMonsterKill: 'JUNGLE',
+  buffsStolen: 'JUNGLE',
+  dragonTakedowns: 'JUNGLE',
+  epicMonsterKillsNearEnemyJungler: 'JUNGLE',
+  epicMonsterKillsWithin30SecondsOfSpawn: 'JUNGLE',
+
+  // All Roles (Explicitly listed for clarity, default is ALL)
+  earlyLaningPhaseGoldExpAdvantage: 'ALL',
+  highestChampionDamage: 'ALL',
+  highestCrowdControlScore: 'ALL',
+  laningPhaseGoldExpAdvantage: 'ALL',
+  legendaryCount: 'ALL',
+  maxCsAdvantageOnLaneOpponent: 'ALL',
+  maxLevelLeadLaneOpponent: 'ALL',
+  soloTurretsLategame: 'ALL',
+  takedownsFirst25Minutes: 'ALL',
+  teleportTakedowns: 'ALL',
+  turretPlatesTaken: 'ALL',
+  InfernalScalePickup: 'ALL',
+  alliedJungleMonsterKills: 'ALL',
+  bountyGold: 'ALL',
+  controlWardsPlaced: 'ALL',
+  damagePerMinute: 'ALL',
+  damageTakenOnTeamPercentage: 'ALL',
+  dodgeSkillShotsSmallWindow: 'ALL',
+  enemyChampionImmobilizations: 'ALL',
+  enemyJungleMonsterKills: 'ALL',
+  epicMonsterSteals: 'ALL',
+  epicMonsterStolenWithoutSmite: 'ALL',
+  firstTurretKilled: 'ALL',
+};
+
 const ConsistencyStats: React.FC<ConsistencyStatsProps> = ({ matches, puuid }) => {
   const consistentStats = useMemo(() => {
     const statsMap: Record<string, { wins: number; totalGames: number }> = {};
     const recentMatches = matches.slice(0, 20); // Analyze last 20 games
+
+    // Calculate Main Role
+    const roleCounts: Record<string, number> = {};
+    let roleTotalGames = 0;
+    recentMatches.forEach(match => {
+        const p = match.info?.participants.find(part => part.puuid === puuid);
+        if (p && p.teamPosition && p.teamPosition !== 'NONE') {
+            roleCounts[p.teamPosition] = (roleCounts[p.teamPosition] || 0) + 1;
+            roleTotalGames++;
+        }
+    });
+
+    let mainRole: 'JUNGLE' | 'SUPPORT' | 'ALL' = 'ALL';
+    if (roleTotalGames > 0) {
+        const sortedRoles = Object.entries(roleCounts).sort((a, b) => b[1] - a[1]);
+        if (sortedRoles.length > 0) {
+            const [bestRole, count] = sortedRoles[0];
+            const percentage = (count / roleTotalGames) * 100;
+            if (percentage >= 60) {
+                if (bestRole === 'JUNGLE') mainRole = 'JUNGLE';
+                else if (bestRole === 'UTILITY') mainRole = 'SUPPORT';
+            }
+        }
+    }
 
     recentMatches.forEach(match => {
       const participants = match.info?.participants;
@@ -41,12 +112,22 @@ const ConsistencyStats: React.FC<ConsistencyStatsProps> = ({ matches, puuid }) =
       const allKeys = new Set([...Object.keys(playerChallenges), ...Object.keys(opponentChallenges)]);
       
       allKeys.forEach(key => {
+        // Exclusions
         if (key === 'legendaryItemUsed' || 
             key === 'playedChampSelectPosition' || 
             key === 'soloKills' || 
             key === 'abilityUses' ||
             key === 'fullTeamTakedown' ||
-            key === 'flawlessAces') return;
+            key === 'flawlessAces' ||
+            key === 'acesBefore15Minutes' ||
+            key === 'firstTurretKilledTime' ||
+            key === 'bountyGold' ||
+            key === 'getTakedownsInAllLanesEarlyJungleAsLaner') return;
+
+        // Role Filtering
+        const requiredRole = STAT_ROLE_MAPPING[key];
+        if (requiredRole === 'JUNGLE' && mainRole !== 'JUNGLE') return;
+        if (requiredRole === 'SUPPORT' && mainRole !== 'SUPPORT') return;
 
         const playerValue = playerChallenges[key];
         const opponentValue = opponentChallenges[key];
@@ -128,7 +209,7 @@ const ConsistencyStats: React.FC<ConsistencyStatsProps> = ({ matches, puuid }) =
             <div className="text-center md:text-left">
                 <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Top Strengths</h3>
                 <ul className="space-y-0.5">
-                    {consistentStats.bestStats.slice(0, 3).map(stat => (
+                    {consistentStats.bestStats.slice(0, 5).map(stat => (
                         <li key={stat.key} className="text-xs text-gray-700 dark:text-gray-300 flex justify-between items-center">
                             <span className="flex-1 min-w-0 truncate mr-2" title={camelCaseToTitleCase(stat.key)}>{camelCaseToTitleCase(stat.key)}</span>
                             <span className="font-semibold text-green-600 dark:text-green-400 whitespace-nowrap">{stat.consistency.toFixed(0)}%</span>
@@ -142,7 +223,7 @@ const ConsistencyStats: React.FC<ConsistencyStatsProps> = ({ matches, puuid }) =
             <div className="text-center md:text-left">
                 <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Top Weaknesses</h3>
                 <ul className="space-y-0.5">
-                    {consistentStats.worstStats.slice(0, 3).map(stat => (
+                    {consistentStats.worstStats.slice(0, 5).map(stat => (
                         <li key={stat.key} className="text-xs text-gray-700 dark:text-gray-300 flex justify-between items-center">
                             <span className="flex-1 min-w-0 truncate mr-2" title={camelCaseToTitleCase(stat.key)}>{camelCaseToTitleCase(stat.key)}</span>
                             <span className="font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">{stat.consistency.toFixed(0)}%</span>
