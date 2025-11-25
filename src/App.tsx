@@ -1,12 +1,11 @@
 import { useEffect } from 'react';
 import NavigationLayout from './nav/NavigationLayout';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import RateLimitBanner from './components/RateLimitBanner';
 import { useDataDragonStore } from './store/dataDragonStore';
 
 /**
  * The root component of the application.
- * It sets up the main layout, routing, and global components like ToastContainer.
+ * It sets up the main layout, routing, and global components like RateLimitBanner.
  * It also triggers the pre-fetching of static game data.
  */
 function App() {
@@ -20,9 +19,9 @@ function App() {
   }, [fetchItemData, fetchSummonerSpellData, fetchRuneData]);
 
   return (
-    <div className="bg-gray-100 dark:bg-gray-950 text-gray-800 dark:text-gray-200 min-h-screen">
+    <div className="bg-gray-100 dark:bg-gray-950 text-gray-800 dark:text-gray-200 h-screen flex flex-col overflow-hidden">
+        <RateLimitBanner />
         <NavigationLayout />
-        <ToastContainer />
     </div>
   );
 }

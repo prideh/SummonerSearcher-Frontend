@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
-import { toast } from 'react-toastify';
+import { useErrorStore } from '../store/errorStore';
+
 /**
  * Creates and configures an Axios instance for making API requests.
  * The baseURL is set from environment variables, pointing to the backend API.
@@ -26,14 +27,14 @@ apiClient.interceptors.request.use(
 
 /**
  * Response interceptor for global error handling.
- * Specifically, it listens for 429 (Too Many Requests) errors and displays a user-friendly
- * toast notification, preventing the app from crashing or silently failing on rate limits.
+ * Specifically, it listens for 429 (Too Many Requests) errors and displays a
+ * prominent banner notification via the error store.
  */
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 429) {
-      toast.error('Rate limit exceeded, please try again later.');
+      useErrorStore.getState().setShowRateLimitError(true);
     }
     return Promise.reject(error);
   }
