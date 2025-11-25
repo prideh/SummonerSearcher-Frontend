@@ -1,5 +1,6 @@
 import React from 'react';
 import type { LeagueEntryDto, SummonerData } from '../types/summoner';
+import ConsistencyStats from './ConsistencyStats';
 import RecentChampionStats from './RecentChampionStats';
 import { useDataDragonStore } from '../store/dataDragonStore';
 
@@ -25,25 +26,42 @@ const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData }) => 
     : 'N/A';
 
   return (
-    <div className="bg-transparent dark:bg-transparent p-4 rounded-lg mt-4 border border-gray-200 dark:border-gray-800">
-      <h3 className="text-lg font-semibold text-cyan-600 dark:text-cyan-400 mb-2">Ranked Solo/Duo</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 mt-2">
-        <div className="flex items-center space-x-4">
-          {rankedData.tier && (
-            <img
-              src={`${communityDragonUrl}/rcp-fe-lol-shared-components/global/default/images/${rankedData.tier.toLowerCase()}.png`}
-              alt={rankedData.tier}
-              className="w-24 h-24"
-            />
-          )}
-          <div>
-            <p className="text-xl font-bold capitalize">{rankedData.tier?.toLowerCase() || 'Unranked'} {rankedData.rank}</p>
-            <p className="text-gray-700 dark:text-gray-300">{rankedData.leaguePoints} LP</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{rankedData.wins}W / {rankedData.losses}L ({winRate}%)</p>
+    <div className="bg-transparent dark:bg-transparent rounded-xl mt-4 border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-gray-200 dark:divide-gray-700">
+        <div className="p-4 flex flex-col justify-center">
+          <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Ranked Solo/Duo</h3>
+          <div className="flex items-center space-x-3">
+            {rankedData.tier && (
+              <img
+                src={`${communityDragonUrl}/rcp-fe-lol-shared-components/global/default/images/${rankedData.tier.toLowerCase()}.png`}
+                alt={rankedData.tier}
+                className="w-14 h-14"
+              />
+            )}
+            <div>
+              <p className="text-lg font-bold capitalize text-gray-900 dark:text-white leading-tight">
+                {rankedData.tier?.toLowerCase() || 'Unranked'} {rankedData.rank}
+              </p>
+              <div className="flex items-center text-sm text-gray-600 dark:text-gray-300 space-x-2">
+                <span>{rankedData.leaguePoints} LP</span>
+                <span className="text-gray-300 dark:text-gray-600">|</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {rankedData.wins}W / {rankedData.losses}L (<span className={`${parseFloat(winRate) >= 50 ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-500 dark:text-gray-400'}`}>{winRate}%</span>)
+                </span>
+              </div>
+            </div>
           </div>
         </div>
-        {/* Display stats for recently played champions. */}
-        {summonerData && <RecentChampionStats matches={summonerData.recentMatches} puuid={summonerData.puuid} />}
+        
+        <div className="p-4">
+          {/* Display stats for recently played champions. */}
+          {summonerData && <RecentChampionStats matches={summonerData.recentMatches} puuid={summonerData.puuid} />}
+        </div>
+        
+        <div className="p-4">
+          {/* Display consistent stats (best and worst). */}
+          {summonerData && <ConsistencyStats matches={summonerData.recentMatches} puuid={summonerData.puuid} />}
+        </div>
       </div>
     </div>
   );

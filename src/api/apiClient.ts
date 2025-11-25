@@ -44,13 +44,10 @@ apiClient.interceptors.response.use(
     }
 
     // Handle 401 Unauthorized (Token Expired)
-    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+    if (error.response && error.response.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/auth/login')) {
       originalRequest._retry = true;
 
       try {
-        // Attempt to refresh the token
-        // We use a new axios instance or direct axios call to avoid infinite loops
-        // if the refresh endpoint itself returns 401.
         const response = await axios.post(
           `${import.meta.env.VITE_API_BASE_URL}/api/auth/refresh-token`,
           {},

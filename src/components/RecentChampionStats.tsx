@@ -44,6 +44,12 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
     let totalCs = 0;
     let totalDurationInMinutes = 0;
     let totalKillParticipation = 0;
+    let totalSoloKills = 0;
+
+    let blueSideGames = 0;
+    let blueSideWins = 0;
+    let redSideGames = 0;
+    let redSideWins = 0;
 
     // Process up to the last X games to calculate stats.
     recentMatches.forEach(match => {
@@ -55,6 +61,14 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
         totalWins++;
       }
 
+      if (player.teamId === 100) {
+        blueSideGames++;
+        if (player.win) blueSideWins++;
+      } else if (player.teamId === 200) {
+        redSideGames++;
+        if (player.win) redSideWins++;
+      }
+
       // Calculate team-wide stats for this match to determine KP.
       const teamKills = match.info.participants
         .filter(p => p.teamId === player.teamId)
@@ -63,6 +77,7 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
       totalKills += player.kills ?? 0;
       totalDeaths += player.deaths ?? 0;
       totalAssists += player.assists ?? 0;
+      totalSoloKills += player.challenges?.soloKills ?? 0;
 
       totalCs += (player.totalMinionsKilled ?? 0) + (player.neutralMinionsKilled ?? 0);
       totalDurationInMinutes += match.info.gameDuration / 60;
@@ -105,6 +120,10 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
     const overallKda = totalDeaths > 0 ? (totalKills + totalAssists) / totalDeaths : Infinity;
     const avgCsPerMinute = totalDurationInMinutes > 0 ? totalCs / totalDurationInMinutes : 0;
     const avgKillParticipation = totalGames > 0 ? (totalKillParticipation / totalGames) * 100 : 0;
+    const avgSoloKills = totalGames > 0 ? totalSoloKills / totalGames : 0;
+
+    const blueSideWinRate = blueSideGames > 0 ? (blueSideWins / blueSideGames) * 100 : 0;
+    const redSideWinRate = redSideGames > 0 ? (redSideWins / redSideGames) * 100 : 0;
 
     return {
       championStats: Object.values(stats).sort((a, b) => b.games - a.games),
@@ -115,9 +134,20 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
         losses: totalGames - totalWins,
         avgCsPerMinute: avgCsPerMinute,
         avgKillParticipation: avgKillParticipation,
+        avgSoloKills: avgSoloKills,
         avgKills: totalGames > 0 ? totalKills / totalGames : 0,
         avgDeaths: totalGames > 0 ? totalDeaths / totalGames : 0,
         avgAssists: totalGames > 0 ? totalAssists / totalGames : 0,
+        blueSide: {
+          games: blueSideGames,
+          wins: blueSideWins,
+          winRate: blueSideWinRate
+        },
+        redSide: {
+          games: redSideGames,
+          wins: redSideWins,
+          winRate: redSideWinRate
+        }
       }
     };
   }, [matches, puuid]);
@@ -128,20 +158,16 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
   }
 
   return (
-    <div className="mt-4 md:mt-0 text-center md:text-left">
+    <div className="text-center md:text-left">
       <div className="flex justify-between items-center mb-2">
-        <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last 10 Games</h3>
-        <div className="text-xs text-right space-y-0.5">
-          <p className="font-semibold text-gray-700 dark:text-gray-300">{overallStats.wins}W {overallStats.losses}L ({overallStats.winRate.toFixed(0)}%)</p>
-          <p className="text-gray-500 dark:text-gray-400">{overallStats.kda === Infinity ? 'Infinite' : overallStats.kda.toFixed(2)} KDA</p>
-          <p className="text-gray-500 dark:text-gray-400">
-            <span>KP {overallStats.avgKillParticipation.toFixed(0)}%</span>
-            <span className="text-gray-400 dark:text-gray-600 mx-1">|</span>
-            <span>{overallStats.avgCsPerMinute.toFixed(1)} CS/min</span>
-          </p>
+        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last {overallStats.wins + overallStats.losses} Games</h3>
+        <div className="text-xs text-right">
+          <span className={`font-semibold ${overallStats.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-gray-300'}`}>
+            {overallStats.wins}W {overallStats.losses}L ({overallStats.winRate.toFixed(0)}%)
+          </span>
         </div>
       </div>
-      <div className="flex space-x-2 justify-center md:justify-start mt-1">
+      <div className="flex space-x-2 justify-center md:justify-start mb-3">
         {championStats.slice(0, 5).map(stat => {
           const winRate = stat.games > 0 ? ((stat.wins / stat.games) * 100).toFixed(0) : 0;
           const kda = stat.deaths > 0 ? ((stat.kills + stat.assists) / stat.deaths) : Infinity;
@@ -163,12 +189,45 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
               key={stat.championName}
               src={`${CDN_URL}/img/champion/${getCorrectChampionName(stat.championName)}.png`} 
               alt={stat.championName} 
-              className="w-10 h-10 rounded-md"
+              className="w-12 h-12 rounded-md transition-transform hover:scale-110"
               data-tooltip-id="item-tooltip"
               data-tooltip-content={tooltipContent}
             />
           );
         })}
+      </div>
+      
+      <div className="text-xs border-t border-gray-100 dark:border-gray-700 pt-2 flex justify-between items-start">
+          <div className="flex flex-col space-y-1">
+              <div className="flex items-center space-x-1">
+                  <span className="text-blue-500 font-bold">Blue:</span>
+                  <span className="text-gray-600 dark:text-gray-400">{overallStats.blueSide.games}G</span>
+                  <span className={`font-semibold ${overallStats.blueSide.winRate >= 50 ? 'text-green-500' : 'text-gray-500'}`}>({overallStats.blueSide.winRate.toFixed(0)}%)</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                  <span className="text-red-500 font-bold">Red:</span>
+                  <span className="text-gray-600 dark:text-gray-400">{overallStats.redSide.games}G</span>
+                  <span className={`font-semibold ${overallStats.redSide.winRate >= 50 ? 'text-green-500' : 'text-gray-500'}`}>({overallStats.redSide.winRate.toFixed(0)}%)</span>
+              </div>
+          </div>
+          <div className="flex flex-col space-y-1 text-gray-500 dark:text-gray-400 text-right">
+              <div className="flex items-center justify-end space-x-1">
+                  <span>KDA:</span>
+                  <span className="text-gray-700 dark:text-gray-300 font-semibold">{overallStats.kda === Infinity ? 'Inf' : overallStats.kda.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-end space-x-1">
+                  <span>KP:</span>
+                  <span className="text-gray-700 dark:text-gray-300 font-semibold">{overallStats.avgKillParticipation.toFixed(0)}%</span>
+              </div>
+              <div className="flex items-center justify-end space-x-1">
+                  <span>CS/m:</span>
+                  <span className="text-gray-700 dark:text-gray-300 font-semibold">{overallStats.avgCsPerMinute.toFixed(1)}</span>
+              </div>
+              <div className="flex items-center justify-end space-x-1">
+                  <span>Avg Solokills:</span>
+                  <span className="text-gray-700 dark:text-gray-300 font-semibold">{overallStats.avgSoloKills.toFixed(1)}</span>
+              </div>
+          </div>
       </div>
     </div>
   );

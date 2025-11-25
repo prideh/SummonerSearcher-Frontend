@@ -1,5 +1,13 @@
 import React from 'react';
 import type { MatchDto, ParticipantDto } from '../types/match';
+import {
+  camelCaseToTitleCase,
+  formatDuration,
+  isTimeChallenge,
+  formatPercentage,
+  isPercentageChallenge,
+  formatNumber
+} from '../utils/formatters';
 
 /**
  * Props for the AnalysisTab component.
@@ -12,56 +20,6 @@ interface AnalysisTabProps {
   /** Callback function to handle clicks on player names. */
   onPlayerClick: (name: string, tag: string) => void;
 }
-
-/**
- * A utility function to convert camelCase strings to Title Case for display.
- * e.g., 'damagePerMinute' becomes 'Damage Per Minute'.
- * @param text - The camelCase string to convert.
- * @returns The converted Title Case string.
- */
-const camelCaseToTitleCase = (text: string) => {
-  const result = text.replace(/([A-Z])/g, ' $1');
-  return result.charAt(0).toUpperCase() + result.slice(1);
-};
-
-const formatDuration = (seconds: number) => {
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}m ${s}s`;
-};
-
-const isTimeChallenge = (key: string) => {
-  const lowerKey = key.toLowerCase();
-  return (
-    (lowerKey.startsWith('earliest') ||
-    lowerKey.startsWith('fastest') ||
-    lowerKey.startsWith('shortest') ||
-    (lowerKey.includes('time') && !lowerKey.includes('times') && !lowerKey.includes('perminute') && !lowerKey.includes('intime'))) &&
-    lowerKey !== 'controlwardtimecoverageinriverorenemyhalf'
-  );
-};
-
-const formatPercentage = (value: number) => {
-  return `${(value * 100).toFixed(1)}%`;
-};
-
-const isPercentageChallenge = (key: string) => {
-  const lowerKey = key.toLowerCase();
-  return (
-    lowerKey.includes('percent') ||
-    lowerKey.includes('pct') ||
-    lowerKey.includes('participation') ||
-    lowerKey === 'controlwardtimecoverageinriverorenemyhalf' ||
-    lowerKey === 'visionscoreadvantagelaneopponent'
-  );
-};
-
-const formatNumber = (value: number) => {
-  if (Number.isInteger(value)) {
-    return value.toString();
-  }
-  return value.toFixed(2);
-};
 
 /**
  * The AnalysisTab component displays a side-by-side comparison of the main player's
@@ -96,7 +54,9 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
     const opponentChallenges = opponentData ? Object.fromEntries(Object.entries(opponentData.challenges || {}).filter(([, v]) => v != null && v > 0)) : {};
 
     // Combine all unique challenge keys from both players and sort them alphabetically.
-    const allChallengeKeys = [...new Set([...Object.keys(playerChallenges), ...Object.keys(opponentChallenges)])].sort();
+    const allChallengeKeys = [...new Set([...Object.keys(playerChallenges), ...Object.keys(opponentChallenges)])]
+        .filter(key => key !== 'legendaryItemUsed')
+        .sort();
 
     if (allChallengeKeys.length === 0) {
       return <p className="text-gray-500 dark:text-gray-400 text-center mt-4">No challenges data available for {player.riotIdGameName}.</p>;
