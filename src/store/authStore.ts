@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import axios from 'axios';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { SummonerData } from '../types/summoner';
 
@@ -16,7 +17,7 @@ interface AuthState {
   region: string;
   // Actions to update the state
   login: (token: string, email: string, is2faEnabled: boolean, darkMode: boolean) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   update2FAStatus: (isEnabled: boolean) => void;
   setDarkMode: (enabled: boolean) => void;
   setRegion: (region: string) => void;
@@ -53,8 +54,15 @@ export const useAuthStore = create<AuthState>()(
         }),
       /**
        * Clears all authentication and user-specific data from the state and localStorage.
+       * Also calls the backend to clear the refresh token cookie.
        */
-      logout: () => {
+      logout: async () => {
+        try {
+          await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/logout`, {}, { withCredentials: true });
+        } catch (error) {
+          console.error('Logout failed:', error);
+        }
+
         // Also clear other user-specific data from localStorage if needed
         localStorage.removeItem('darkmodePreference');
         localStorage.removeItem('recentSearches');
