@@ -259,62 +259,64 @@ const SearchPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto p-4 md:p-8 flex flex-col items-center">
-      <Tooltip 
-        id="item-tooltip" 
-        place="top"
-        style={{ backgroundColor: 'rgb(17 24 39 / var(--tw-bg-opacity, 1))', borderRadius: '6px', padding: '8px 12px', border: '1px solid rgb(31 41 55)', zIndex: 50 }}
-        noArrow
-        offset={10}
-        render={({ content }) => <div dangerouslySetInnerHTML={{ __html: content ?? '' }} />}
-        opacity={1}
-      />
-      <h1 className="text-4xl font-bold mb-8 text-center text-gray-800 dark:text-gray-100 tracking-wider">Summoner Search</h1>
-      <SearchBar
-        searchInput={searchInput}
-        setSearchInput={setSearchInput}
-        region={region}
-        setRegion={setRegion}
-        handleSearchClick={handleSearchClick}
-        handleKeyDown={handleKeyDown}
-        loading={loading}
-        recentSearches={recentSearches}
-        showRecent={showRecent}
-        setShowRecent={setShowRecent}
-        handleClearRecentSearches={handleClearRecentSearches}
-        startSearch={startSearch}
-      />
+    <div className="flex-1 h-full overflow-y-auto w-full">
+      <div className="container mx-auto p-4 md:p-8 flex flex-col items-center">
+        <Tooltip 
+          id="item-tooltip" 
+          place="top"
+          style={{ backgroundColor: 'rgb(17 24 39 / var(--tw-bg-opacity, 1))', borderRadius: '6px', padding: '8px 12px', border: '1px solid rgb(31 41 55)', zIndex: 50 }}
+          noArrow
+          offset={10}
+          render={({ content }) => <div dangerouslySetInnerHTML={{ __html: content ?? '' }} />}
+          opacity={1}
+        />
+        <h1 className="text-4xl font-bold mb-8 text-center text-gray-800 dark:text-gray-100 tracking-wider">Summoner Search</h1>
+        <SearchBar
+          searchInput={searchInput}
+          setSearchInput={setSearchInput}
+          region={region}
+          setRegion={setRegion}
+          handleSearchClick={handleSearchClick}
+          handleKeyDown={handleKeyDown}
+          loading={loading}
+          recentSearches={recentSearches}
+          showRecent={showRecent}
+          setShowRecent={setShowRecent}
+          handleClearRecentSearches={handleClearRecentSearches}
+          startSearch={startSearch}
+        />
 
-      <div className="mt-8 w-full max-w-7xl">
-        {renderError()}
-        {!loading && !summonerData && !error && (
-          <div className="text-center text-sm text-gray-500 dark:text-gray-400">
-            <p>
-              Don't know who to search for? Try an example:
-              <button
-                onClick={() => {
-                  setRegion('euw1');
-                  startSearch('pride', 'persi', 'euw1');
-                }}
-                className="ml-1 font-semibold text-cyan-600 hover:text-cyan-500 dark:text-cyan-400 dark:hover:text-cyan-500 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded"
-              >
-                pride#persi on EUW
-              </button>
-            </p>
-          </div>
-        )}
-        {loading && renderSkeleton()}
-        {summonerData && (
-          <SummonerInfo
-            summonerData={summonerData}
-            handleRefresh={handleRefresh}
-            loading={loading}
-            refreshing={refreshing}
-          />
-        )}
-        {summonerData && (
-          <MatchHistory puuid={summonerData.puuid} matches={summonerData.recentMatches} onPlayerClick={handlePlayerClick} />
-        )}
+        <div className="mt-8 w-full max-w-7xl">
+          {renderError()}
+          {!loading && !summonerData && !error && (
+            <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+              <p>
+                Don't know who to search for? Try an example:
+                <button
+                  onClick={() => {
+                    setRegion('euw1');
+                    startSearch('pride', 'persi', 'euw1');
+                  }}
+                  className="ml-1 font-semibold text-cyan-600 hover:text-cyan-500 dark:text-cyan-400 dark:hover:text-cyan-500 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded"
+                >
+                  pride#persi on EUW
+                </button>
+              </p>
+            </div>
+          )}
+          {loading && renderSkeleton()}
+          {summonerData && (
+            <SummonerInfo
+              summonerData={summonerData}
+              handleRefresh={handleRefresh}
+              loading={loading}
+              refreshing={refreshing}
+            />
+          )}
+          {summonerData && (
+            <MatchHistory puuid={summonerData.puuid} matches={summonerData.recentMatches} onPlayerClick={handlePlayerClick} />
+          )}
+        </div>
       </div>
     </div>
   );
