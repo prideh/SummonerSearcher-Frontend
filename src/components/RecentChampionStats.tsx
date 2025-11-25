@@ -34,7 +34,7 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
   const { championStats, overallStats } = useMemo(() => {
     const stats: Record<string, ChampionStat> = {};
 
-    const recentMatches = matches.slice(0, 20);
+    const recentMatches = matches;
     let totalGames = 0;
     let totalWins = 0;
     let totalKills = 0;

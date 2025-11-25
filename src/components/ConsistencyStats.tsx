@@ -64,7 +64,7 @@ const STAT_ROLE_MAPPING: Record<string, 'ALL' | 'JUNGLE' | 'SUPPORT'> = {
 const ConsistencyStats: React.FC<ConsistencyStatsProps> = ({ matches, puuid }) => {
   const consistentStats = useMemo(() => {
     const statsMap: Record<string, { wins: number; totalGames: number }> = {};
-    const recentMatches = matches.slice(0, 20); // Analyze last 20 games
+    const recentMatches = matches;
 
     // Calculate Main Role
     const roleCounts: Record<string, number> = {};
