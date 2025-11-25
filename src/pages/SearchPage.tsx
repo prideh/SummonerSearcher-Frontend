@@ -23,6 +23,7 @@ const SearchPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [showRecent, setShowRecent] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(10);
 
   // Zustand store for managing global state like search input, region, and last search results.
   const searchInput = useAuthStore((state) => state.searchInput);
@@ -312,10 +313,17 @@ const SearchPage: React.FC = () => {
               handleRefresh={handleRefresh}
               loading={loading}
               refreshing={refreshing}
+              visibleMatches={summonerData.recentMatches.slice(0, visibleCount)}
             />
           )}
           {summonerData && (
-            <MatchHistory puuid={summonerData.puuid} matches={summonerData.recentMatches} onPlayerClick={handlePlayerClick} />
+            <MatchHistory 
+              puuid={summonerData.puuid} 
+              matches={summonerData.recentMatches.slice(0, visibleCount)} 
+              onPlayerClick={handlePlayerClick}
+              onLoadMore={() => setVisibleCount(prev => prev + 10)}
+              hasMore={visibleCount < summonerData.recentMatches.length}
+            />
           )}
         </div>
       </div>

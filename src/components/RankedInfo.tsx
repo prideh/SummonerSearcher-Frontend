@@ -1,5 +1,6 @@
 import React from 'react';
 import type { LeagueEntryDto, SummonerData } from '../types/summoner';
+import type { MatchDto } from '../types/match';
 import ConsistencyStats from './ConsistencyStats';
 import RecentChampionStats from './RecentChampionStats';
 import { useDataDragonStore } from '../store/dataDragonStore';
@@ -10,15 +11,17 @@ import { useDataDragonStore } from '../store/dataDragonStore';
 interface RankedInfoProps {
   /** The ranked data for the summoner (tier, rank, LP, etc.). */
   rankedData: LeagueEntryDto;
-  /** The full summoner data object, passed down to RecentChampionStats. */
+  /** The full summoner data object. */
   summonerData: SummonerData;
+  /** The subset of matches currently visible in the match history. */
+  matches: MatchDto[];
 }
 
 /**
  * Displays a summoner's ranked information, including their tier emblem, rank, LP, and win/loss record.
  * It also includes the `RecentChampionStats` component to show performance on recently played champions.
  */
-const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData }) => {
+const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData, matches }) => {
   const communityDragonUrl = useDataDragonStore(state => state.communityDragonUrl);
   // Calculate the win rate, handling the case of zero total games.
   const winRate = rankedData.wins + rankedData.losses > 0
@@ -43,12 +46,12 @@ const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData }) => 
                 {rankedData.tier?.toLowerCase() || 'Unranked'} {rankedData.rank}
               </p>
               {(() => {
-                if (!summonerData?.recentMatches || summonerData.recentMatches.length === 0) return null;
+                if (!matches || matches.length === 0) return null;
                 
                 const roleCounts: Record<string, number> = {};
                 let totalGames = 0;
 
-                summonerData.recentMatches.forEach(match => {
+                matches.forEach(match => {
                   const participant = match.info?.participants.find(p => p.puuid === summonerData.puuid);
                   if (participant && participant.teamPosition && participant.teamPosition !== 'NONE') {
                     roleCounts[participant.teamPosition] = (roleCounts[participant.teamPosition] || 0) + 1;
@@ -86,12 +89,12 @@ const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData }) => 
         
         <div className="p-4">
           {/* Display stats for recently played champions. */}
-          {summonerData && <RecentChampionStats matches={summonerData.recentMatches} puuid={summonerData.puuid} />}
+          {summonerData && <RecentChampionStats matches={matches} puuid={summonerData.puuid} />}
         </div>
         
         <div className="p-4">
           {/* Display consistent stats (best and worst). */}
-          {summonerData && <ConsistencyStats matches={summonerData.recentMatches} puuid={summonerData.puuid} />}
+          {summonerData && <ConsistencyStats matches={matches} puuid={summonerData.puuid} />}
         </div>
       </div>
     </div>

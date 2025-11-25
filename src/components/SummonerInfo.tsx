@@ -1,5 +1,6 @@
 import React from 'react';
 import type { SummonerData } from '../types/summoner';
+import type { MatchDto } from '../types/match';
 import RankedInfo from './RankedInfo';
 import { useTimeAgo } from '../hooks/useTimeAgo';
 import { useDataDragonStore } from '../store/dataDragonStore';
@@ -16,6 +17,8 @@ interface SummonerInfoProps {
   loading: boolean;
   /** Boolean indicating if a refresh operation is in progress (keeps data visible). */
   refreshing: boolean;
+  /** The subset of matches currently visible in the match history. */
+  visibleMatches: MatchDto[];
 }
 
 /**
@@ -23,7 +26,7 @@ interface SummonerInfoProps {
  * It includes their profile icon, Riot ID, level, and a "Refresh" button.
  * It also contains the `RankedInfo` component to show ranked statistics.
  */
-const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh, loading, refreshing }) => {
+const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh, loading, refreshing, visibleMatches }) => {
   const [timeAgo, ref] = useTimeAgo(new Date(summonerData.lastUpdated).getTime());
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
 
@@ -69,7 +72,7 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
         )}
       </div>
       {summonerData.soloQueueRank ? (
-        <RankedInfo rankedData={summonerData.soloQueueRank} summonerData={summonerData} />
+        <RankedInfo rankedData={summonerData.soloQueueRank} summonerData={summonerData} matches={visibleMatches} />
       ) : (
         <p className="text-center text-gray-500 dark:text-gray-400 mt-4">No ranked data available for this summoner.</p>
       )}
