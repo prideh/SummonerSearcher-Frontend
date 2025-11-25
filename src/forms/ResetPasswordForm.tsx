@@ -103,7 +103,7 @@ const ResetPasswordForm: React.FC = () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-950">
-      <div className="flex items-start space-x-8">
+      <div className="flex flex-col md:flex-row items-center md:items-start space-y-8 md:space-y-0 md:space-x-8 w-full max-w-4xl justify-center px-4">
         {isTokenValidating ? (
           <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-sm text-center">
             <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Verifying Token...</h2>
