@@ -69,6 +69,11 @@ export const useTimeAgo = (timestamp: number | undefined): [string, React.RefObj
     };
   }, []);
 
+  // Effect to immediately update when timestamp changes (e.g., after a refresh)
+  useEffect(() => {
+    setTimeAgo(getRelativeTime(timestamp));
+  }, [timestamp]);
+
   // Effect to set up an interval that updates the time string, but only when the element is visible.
   useEffect(() => {
     let interval: number | undefined;
