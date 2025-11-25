@@ -1,31 +1,62 @@
-# Link to the page http://summonersearcher.com/
+# 🔍 Summoner Searcher
 
-# Desktop View
-<img width="1286" height="857" alt="image" src="https://github.com/user-attachments/assets/85b47f13-1e00-4a4b-ba66-c4697507c92a" />
-<img width="1314" height="898" alt="image" src="https://github.com/user-attachments/assets/49eee0b7-527a-4e4d-8ef8-c901ee48f45c" />
-<img width="1294" height="644" alt="image" src="https://github.com/user-attachments/assets/3815449c-aeb7-4a9c-8987-29e9f9ee0a3f" />
-<img width="1227" height="755" alt="image" src="https://github.com/user-attachments/assets/c4863683-b854-4427-986d-7cc163d33bc3" />
+[![Live Site](https://img.shields.io/badge/Live_Site-summonersearcher.com-3b82f6?style=for-the-badge&logo=google-chrome&logoColor=white)](http://summonersearcher.com/)
+[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E)](https://vitejs.dev/)
+[![Zustand](https://img.shields.io/badge/Zustand-443E38?style=for-the-badge&logo=react&logoColor=white)](https://github.com/pmndrs/zustand)
 
+  <a href="https://github.com/prideh/SummonerSearcher-Backend/">
+    <img src="https://img.shields.io/badge/🔗_View_Backend_Repo-Spring_Boot-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white" alt="View Backend Repo" />
+  </a>
 
-# Mobile View
-<img width="387" height="855" alt="image" src="https://github.com/user-attachments/assets/08637f6b-67fd-4bb8-8d6b-b0a5e2ae0a8d" />
-<img width="385" height="858" alt="image" src="https://github.com/user-attachments/assets/19e3b0fd-3b50-4261-bdfa-a98ece1f1b06" />
-<img width="384" height="859" alt="image" src="https://github.com/user-attachments/assets/cb676f58-53d6-493f-a4b4-8ce0d2d0d3b3" />
-<img width="386" height="863" alt="image" src="https://github.com/user-attachments/assets/36cc4333-4523-42b1-9698-7ac97fd0fd54" />
+  
+Summoner Searcher is a comprehensive League of Legends player analysis tool.
 
+---
 
-# 🏗️ Technical Architecture
+## 📸 Gallery
+
+### Desktop View
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="https://github.com/user-attachments/assets/85b47f13-1e00-4a4b-ba66-c4697507c92a" alt="Desktop 1" width="100%">
+    </td>
+    <td align="center" width="50%">
+      <img src="https://github.com/user-attachments/assets/49eee0b7-527a-4e4d-8ef8-c901ee48f45c" alt="Desktop 2" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="https://github.com/user-attachments/assets/3815449c-aeb7-4a9c-8987-29e9f9ee0a3f" alt="Desktop 3" width="100%">
+    </td>
+    <td align="center" width="50%">
+      <img src="https://github.com/user-attachments/assets/c4863683-b854-4427-986d-7cc163d33bc3" alt="Desktop 4" width="100%">
+    </td>
+  </tr>
+</table>
+
+### Mobile View
+<table>
+  <tr>
+    <td align="center"><img src="https://github.com/user-attachments/assets/08637f6b-67fd-4bb8-8d6b-b0a5e2ae0a8d" alt="Mobile 1"></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/19e3b0fd-3b50-4261-bdfa-a98ece1f1b06" alt="Mobile 2"></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/cb676f58-53d6-493f-a4b4-8ce0d2d0d3b3" alt="Mobile 3"></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/36cc4333-4523-42b1-9698-7ac97fd0fd54" alt="Mobile 4"></td>
+  </tr>
+</table>
+
+---
+
+## 🏗️ Technical Architecture
 
 The frontend is a **React + TypeScript + Vite** single-page application built with a modern client-side architecture that emphasizes **state isolation**, **predictable data flow**, and **API-driven rendering**.
 
 The application uses the following architectural patterns:
 
----
-
-## **1. Component-Driven Architecture (React 19)**
-
+### 1. Component-Driven Architecture (React 19)
 The UI is constructed from composable functional components that follow React’s declarative/render-only philosophy. Components are organized into **feature-oriented modules** such as:
-
 * **Match Analysis** (`AnalysisTab`)
 * **Graphing / Visual Comparisons** (`GraphsTab`)
 * **Navigation Layout**
@@ -33,220 +64,70 @@ The UI is constructed from composable functional components that follow React’
 
 Components remain stateless whenever possible; state is externalized into **Zustand stores** to ensure deterministic re-renders and predictable data lifecycles.
 
----
-
-## **2. Global State Management via Zustand (Flux-like State Store)**
-
+### 2. Global State Management via Zustand
 Zustand is used as the central global store for:
-
 * Authentication and JWT persistence (`authStore`)
 * Riot static data (items, spells, runes) (`dataDragonStore`)
 * Dark mode state
 * Cached CDN paths
 
 This follows a **Flux-like one-directional data flow**:
-
 1. UI dispatches actions (e.g., `fetchItemData()`).
 2. Store mutates internal state in a predictable, synchronous way.
 3. Components re-render based on updated state slices.
 
-This prevents prop drilling, stabilizes derived data, and optimizes re-renders by leveraging Zustand’s shallow comparison.
-
----
-
-## **3. Service Layer Pattern (API Client Abstraction)**
-
-All backend communication is abstracted behind strongly typed service modules:
-
-* `api/auth.ts`
-* `api/user.ts`
-* `api/riot.ts`
-
-These modules use a centralized Axios instance (`apiClient`) with:
-
-* **JWT injection through interceptors** 
+### 3. Service Layer Pattern (API Client Abstraction)
+All backend communication is abstracted behind strongly typed service modules (`api/auth.ts`, `api/user.ts`, `api/riot.ts`). These modules use a centralized Axios instance (`apiClient`) with:
+* **JWT injection through interceptors**
 * **Global error handling** (e.g., auto toast on 429 rate limits)
 * **Configurable base URL via Vite environment variables**
 
-This isolates network concerns from UI components and ensures consistent API contract enforcement.
+### 4. Declarative Routing (React Router v7)
+`BrowserRouter` provides route-based code organization. All authenticated views rely on Zustand’s `authStore` token state; no legacy route guards exist because API endpoints enforce authentication.
 
----
+### 5. Optimized Asset Loading + CDN-Driven Media
+High-volume static assets (champion icons, item icons) are loaded from Riot’s CDN (`ddragon`) using pre-fetched metadata stored in Zustand. This reduces client load and accelerates cold starts.
 
-## **4. Declarative Routing (React Router v7)**
+### 6. TailwindCSS Utility-First Styling
+Styling follows a utility-first, atomic class pattern with responsive/dark-mode variants and zero runtime CSS generation.
 
-`BrowserRouter` provides route-based code organization and navigational state management. All authenticated views rely on Zustand’s `authStore` token state; no legacy route guards exist because API endpoints enforce authentication.
-
----
-
-## **5. Optimized Asset Loading + CDN-Driven Media**
-
-High-volume static assets (champion icons, item icons) are loaded from Riot’s CDN (`ddragon`) using pre-fetched metadata stored in Zustand. This reduces client load, avoids unnecessary backend requests, and accelerates cold starts.
-
----
-
-## **6. TailwindCSS Utility-First Styling**
-
-Styling follows a utility-first, atomic class pattern with:
-
-* Responsive and dark-mode variants
-* Zero runtime CSS generation
-* Theme initialization in `main.tsx` based on persisted preferences 
-
----
-
-## **7. Algorithmic Logic & Data Processing**
-
+### 7. Algorithmic Logic & Data Processing
 Even though the app is primarily UI-bound, several components implement non-trivial domain logic:
-
-### **AnalysisTab**
-
-* Derives lane opponent by comparing team + lane roles
-* Normalizes “challenges” maps by filtering null/zero values
-* Computes stat “wins” for side-by-side comparison
-
-### **GraphsTab**
-
-* Sorts players by dynamic metrics
-* Computes proportional bar widths based on the maximum stat
-* Uses reusable `StatGraph` abstraction for dozens of metric types
-
-This logic is encapsulated directly inside components for transparency and performance, avoiding global state contamination.
+* **AnalysisTab:** Derives lane opponent by comparing team + lane roles, normalizes “challenges” maps, and computes stat “wins”.
+* **GraphsTab:** Sorts players by dynamic metrics, computes proportional bar widths, and uses reusable `StatGraph` abstractions.
 
 ---
 
-# 🔄 How It Works
+## 🔄 How It Works
 
-This describes the complete data flow between **user → frontend → backend → Riot API** and how UI state evolves over time.
+This describes the complete data flow between **user → frontend → backend → Riot API**.
 
----
-
-## **1. Application Boot Phase**
-
-When the app loads:
-
+### 1. Application Boot Phase
 1. `main.tsx` initializes the theme from localStorage.
 2. Zustand stores are created.
-3. `App.tsx` triggers prefetching of static assets:
+3. `App.tsx` triggers prefetching of static assets (Items, Spells, Runes) into memory.
 
-   * Items
-   * Summoner spells
-   * Rune trees
-     These are cached in-memory to avoid repeated CDN calls.
+### 2. Authentication Flow
+All authentication flows rely on the shared Axios instance.
+* **Login:** User submits credentials → Backend returns `jwt` or triggers 2FA flow (`verify2FALogin`).
+* **State:** `authStore` persists JWT and dark mode preferences.
 
----
+### 3. Summoner Search Flow
+1. Component calls `getSummonerByName`.
+2. Backend fetches via Riot API (PUUID → Summoner → Matchlist → Matches).
+3. Frontend receives a large `SummonerProfile` object.
+4. Match details populate components like `AnalysisTab` and `GraphsTab`.
 
-## **2. Authentication Flow**
+### 4. Match Analysis Algorithms
+* **AnalysisTab:** Locates the “main player” by `puuid` and identifies their lane opponent.
+* **GraphsTab:** Configurable graph type determines stat selector; uses O(n log n) sorting and builds team-colored gradient bars.
 
-All authentication flows rely on the shared Axios instance, which automatically adds JWTs via an interceptor .
-
-### **Login (with or without 2FA)**
-
-1. User submits email/password → `loginUser()`.
-2. Backend may return:
-
-   * `jwt` (normal login)
-   * or `{ twoFactorRequired: true, tempToken }`
-3. If 2FA is required:
-
-   * User enters TOTP code → `verify2FALogin(tempToken, code)`
-   * Final JWT is returned.
-
-### **State updates:**
-
-* `authStore` persists JWT and dark mode preferences.
-* Recent search history is hydrated into the store.
+### 5. User Settings & Recent Searches
+Authenticated users can toggle 2FA, change passwords, or modify dark mode. These actions hit `/api/user/**` endpoints and update Zustand state.
 
 ---
 
-## **3. Summoner Search Flow**
+## 🚀 Deployment
 
-When a user searches for a summoner:
-
-1. Component calls `getSummonerByName(region, name, tag)`.
-2. Axios client attaches JWT.
-3. Backend fetches via Riot API (PUUID → Summoner → Matchlist → Matches).
-4. Frontend receives a large `SummonerProfile` object containing:
-
-   * Basic profile
-   * Rank info
-   * 10–20 match details
-   * Role metadata
-
-### **Frontend processing:**
-
-* Match details populate components like:
-
-  * Overview
-  * `AnalysisTab`
-  * `GraphsTab`
-
-These components derive opponent relationships, compute challenge highlights, and generate horizontal graph bars.
-
----
-
-## **4. Match Analysis Algorithms**
-
-### **AnalysisTab**
-
-* Locates the “main player” by `puuid`.
-* Identifies their lane opponent by:
-
-  ```
-  teamPosition matches AND teamId differs
-  ```
-* Extracts challenge metrics and:
-
-  * Filters invalid metrics
-  * Normalizes values
-  * Renders “wins” with green highlighting
-
-### **GraphsTab**
-
-* Configurable graph type determines stat selector
-* All participants sorted by selected stat
-* Calculates max value for percent scaling
-* Builds team-colored gradient bars with dynamic width
-
-This entire system is designed for:
-
-* O(n log n) stat sorting
-* O(n) challenge comparison
-* Smooth rendering for large match histories
-
----
-
-## **5. User Settings & Recent Searches**
-
-Authenticated users can:
-
-* Toggle 2FA
-* Change password
-* Modify dark mode (persisted to DB)
-* Load or clear recent searches
-
-All these actions:
-
-* Hit `/api/user/**` endpoints
-* Update Zustand `authStore` state
-* Influence UI layout/theme
-
----
-
-## **6. Deployment Architecture (Frontend)**
-
-### Local
-
-* Vite dev server (HMR)
-* Backend on separate port (proxied via nginx in production)
-
-### Production
-
-* React built into static assets (ESM)
-* Served by NGINX with fallback routing (`try_files`) 
-* `/api/**` is proxied to the backend container
-* Hosted on Render, with a domain purchased from Cloudflare. http://summonersearcher.com/
-
-This ensures SPA routing works without server intervention.
-
-✅ A full rewritten README including backend + frontend
-Just tell me what format you want.
+* **Local:** Vite dev server (HMR).
+* **Production:** React built into static assets (ESM), served by NGINX with fallback routing (`try_files`), hosted on Render.
