@@ -23,6 +23,46 @@ const camelCaseToTitleCase = (text: string) => {
   const result = text.replace(/([A-Z])/g, ' $1');
   return result.charAt(0).toUpperCase() + result.slice(1);
 };
+
+const formatDuration = (seconds: number) => {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}m ${s}s`;
+};
+
+const isTimeChallenge = (key: string) => {
+  const lowerKey = key.toLowerCase();
+  return (
+    (lowerKey.startsWith('earliest') ||
+    lowerKey.startsWith('fastest') ||
+    lowerKey.startsWith('shortest') ||
+    (lowerKey.includes('time') && !lowerKey.includes('times') && !lowerKey.includes('perminute') && !lowerKey.includes('intime'))) &&
+    lowerKey !== 'controlwardtimecoverageinriverorenemyhalf'
+  );
+};
+
+const formatPercentage = (value: number) => {
+  return `${(value * 100).toFixed(1)}%`;
+};
+
+const isPercentageChallenge = (key: string) => {
+  const lowerKey = key.toLowerCase();
+  return (
+    lowerKey.includes('percent') ||
+    lowerKey.includes('pct') ||
+    lowerKey.includes('participation') ||
+    lowerKey === 'controlwardtimecoverageinriverorenemyhalf' ||
+    lowerKey === 'visionscoreadvantagelaneopponent'
+  );
+};
+
+const formatNumber = (value: number) => {
+  if (Number.isInteger(value)) {
+    return value.toString();
+  }
+  return value.toFixed(2);
+};
+
 /**
  * The AnalysisTab component displays a side-by-side comparison of the main player's
  * and their lane opponent's performance metrics (challenges) from the match.
@@ -69,13 +109,28 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
           const opponentValue = opponentChallenges[key] as number | undefined;
 
           // A player is considered the "winner" of a challenge if their value is higher, or if the opponent has no value for it.
-          const isWinner = playerValue !== undefined && (opponentValue === undefined || playerValue > opponentValue);
+          // For time-based challenges (earliest/fastest/shortest), lower is usually better.
+          const isLowerBetter = key.toLowerCase().startsWith('earliest') || key.toLowerCase().startsWith('fastest') || key.toLowerCase().startsWith('shortest');
+          
+          let isWinner = false;
+          if (playerValue !== undefined) {
+             if (opponentValue === undefined) {
+                 isWinner = true;
+             } else {
+                 isWinner = isLowerBetter ? playerValue < opponentValue : playerValue > opponentValue;
+             }
+          }
+
+          const isTime = isTimeChallenge(key);
+          const isPercentage = isPercentageChallenge(key);
 
           return (
             <li key={key} className={`flex justify-between break-all p-1.5 rounded-md transition-colors ${isWinner ? 'bg-green-500/10 dark:bg-green-500/10' : 'bg-transparent'}`}>
               <span className={`${isWinner ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>{camelCaseToTitleCase(key)}:</span>
               {typeof playerValue === 'number' ? (
-                <span className={`font-semibold pl-2 ${isWinner ? 'text-gray-800 dark:text-gray-200' : 'text-gray-500 dark:text-gray-500'}`}>{playerValue.toFixed(2)}</span>
+                <span className={`font-semibold pl-2 ${isWinner ? 'text-gray-800 dark:text-gray-200' : 'text-gray-500 dark:text-gray-500'}`}>
+                    {isTime ? formatDuration(playerValue) : isPercentage ? formatPercentage(playerValue) : formatNumber(playerValue)}
+                </span>
               ) : playerValue !== undefined ? (
                 <span className={`font-semibold pl-2 ${isWinner ? 'text-gray-800 dark:text-gray-200' : 'text-gray-500 dark:text-gray-500'}`}>{String(playerValue)}</span>
               ) : (

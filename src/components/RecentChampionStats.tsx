@@ -27,7 +27,7 @@ interface ChampionStat {
 
 /**
  * Calculates and displays aggregated statistics for a summoner's most played champions
- * over their last 20 games. It also shows overall performance metrics like win rate, KDA, and CS/min.
+ * over their last X games. It also shows overall performance metrics like win rate, KDA, and CS/min.
  */
 const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puuid }) => {
   // useMemo ensures that the complex calculation of stats is only re-run when matches or puuid change.
@@ -45,7 +45,7 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
     let totalDurationInMinutes = 0;
     let totalKillParticipation = 0;
 
-    // Process up to the last 20 games to calculate stats.
+    // Process up to the last X games to calculate stats.
     recentMatches.forEach(match => {
       const player = match.info?.participants.find(p => p.puuid === puuid);
       if (!player || !player.championName || !match.info?.gameDuration) return;
@@ -130,7 +130,7 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
   return (
     <div className="mt-4 md:mt-0 text-center md:text-left">
       <div className="flex justify-between items-center mb-2">
-        <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last 20 Games</h3>
+        <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last 10 Games</h3>
         <div className="text-xs text-right space-y-0.5">
           <p className="font-semibold text-gray-700 dark:text-gray-300">{overallStats.wins}W {overallStats.losses}L ({overallStats.winRate.toFixed(0)}%)</p>
           <p className="text-gray-500 dark:text-gray-400">{overallStats.kda === Infinity ? 'Infinite' : overallStats.kda.toFixed(2)} KDA</p>
