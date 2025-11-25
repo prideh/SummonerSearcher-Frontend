@@ -42,6 +42,37 @@ const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData }) => 
               <p className="text-lg font-bold capitalize text-gray-900 dark:text-white leading-tight">
                 {rankedData.tier?.toLowerCase() || 'Unranked'} {rankedData.rank}
               </p>
+              {(() => {
+                if (!summonerData?.recentMatches || summonerData.recentMatches.length === 0) return null;
+                
+                const roleCounts: Record<string, number> = {};
+                let totalGames = 0;
+
+                summonerData.recentMatches.forEach(match => {
+                  const participant = match.info?.participants.find(p => p.puuid === summonerData.puuid);
+                  if (participant && participant.teamPosition && participant.teamPosition !== 'NONE') {
+                    roleCounts[participant.teamPosition] = (roleCounts[participant.teamPosition] || 0) + 1;
+                    totalGames++;
+                  }
+                });
+
+                if (totalGames === 0) return null;
+
+                const sortedRoles = Object.entries(roleCounts).sort((a, b) => b[1] - a[1]);
+                if (sortedRoles.length === 0) return null;
+
+                const [bestRole, count] = sortedRoles[0];
+                const percentage = (count / totalGames) * 100;
+
+                if (percentage >= 60) {
+                  const roleName = bestRole === 'UTILITY' ? 'Support' : 
+                                   bestRole === 'BOTTOM' ? 'ADC' : 
+                                   bestRole === 'MIDDLE' ? 'Mid' : 
+                                   bestRole.charAt(0) + bestRole.slice(1).toLowerCase();
+                  return <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{roleName} Main</p>;
+                }
+                return null;
+              })()}
               <div className="flex items-center text-sm text-gray-600 dark:text-gray-300 space-x-2">
                 <span>{rankedData.leaguePoints} LP</span>
                 <span className="text-gray-300 dark:text-gray-600">|</span>
