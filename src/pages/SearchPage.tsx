@@ -192,7 +192,8 @@ const SearchPage: React.FC = () => {
         setSummonerData(lastSearchedSummoner);
       }
     }
-  }, [searchParams, performSearch, lastSearchedSummoner, setSearchInput, summonerData, setRegion, region]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, performSearch, lastSearchedSummoner, setSearchInput, summonerData, setRegion]);
   
   /**
    * Effect to fetch the user's recent searches on component mount.
