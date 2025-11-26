@@ -25,7 +25,7 @@ const getRelativeTime = (timestamp: number | undefined) => {
   const elapsed = (timestamp - Date.now()) / 1000;
 
   for (const [unit, secondsInUnit] of timeUnits) {
-    if (Math.abs(elapsed) > secondsInUnit || unit === 'second') {
+    if (Math.abs(elapsed) >= secondsInUnit || unit === 'second') {
       const value = Math.round(elapsed / secondsInUnit);
       return rtf.format(value, unit);
     }
