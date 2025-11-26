@@ -1,3 +1,10 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import RegistrationForm from './RegistrationForm';
+import userEvent from '@testing-library/user-event';
+import { registerUser } from '../api/auth';
+
+// Mock dependencies
 vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
   Link: ({ children, to }: any) => <a href={to}>{children}</a>,
