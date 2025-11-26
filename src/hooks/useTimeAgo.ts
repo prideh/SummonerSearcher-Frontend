@@ -58,12 +58,12 @@ export const useTimeAgo = (timestamp: number | undefined): [string, React.RefObj
       }
     );
 
-    if (ref.current) {
-      observer.observe(ref.current);
+    const element = ref.current;
+    if (element) {
+      observer.observe(element);
     }
 
     return () => {
-      const element = ref.current;
       if (element) {
         observer.unobserve(element);
       }

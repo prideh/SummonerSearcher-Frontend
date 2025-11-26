@@ -192,7 +192,7 @@ const SearchPage: React.FC = () => {
         setSummonerData(lastSearchedSummoner);
       }
     }
-  }, [searchParams, performSearch, lastSearchedSummoner, setSearchInput, summonerData, setRegion]);
+  }, [searchParams, performSearch, lastSearchedSummoner, setSearchInput, summonerData, setRegion, region]);
   
   /**
    * Effect to fetch the user's recent searches on component mount.
