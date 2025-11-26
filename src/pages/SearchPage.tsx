@@ -11,6 +11,7 @@ import 'react-tooltip/dist/react-tooltip.css';
 import SearchBar from '../components/SearchBar';
 
 import SummonerInfo from '../components/SummonerInfo';
+import { toApiRegion, toUrlRegion } from '../utils/regionUtils';
 
 /**
  * The main page for searching for summoners and viewing their profile and match history.
@@ -97,7 +98,7 @@ const SearchPage: React.FC = () => {
     }
     // Update the URL with the search parameters.
     // The useEffect hook will detect this change and trigger the actual search.
-    setSearchParams({ gameName: name, tagLine: tag, region: searchRegion });
+    setSearchParams({ gameName: name, tagLine: tag, region: toUrlRegion(searchRegion) });
   }, [setSearchParams]);
 
   /**
@@ -156,9 +157,11 @@ const SearchPage: React.FC = () => {
     const regionFromUrl = searchParams.get('region');
 
     if (gameNameFromUrl && tagLineFromUrl && regionFromUrl) {
+      const apiRegion = toApiRegion(regionFromUrl);
+      
       // Sync region from URL to store if different
-      if (regionFromUrl !== region) {
-        setRegion(regionFromUrl);
+      if (apiRegion !== region) {
+        setRegion(apiRegion);
       }
 
       // Avoid re-fetching if the data is already displayed for the current URL params and region
@@ -166,7 +169,7 @@ const SearchPage: React.FC = () => {
         summonerData &&
         summonerData.gameName.toLowerCase() === gameNameFromUrl.toLowerCase() &&
         summonerData.tagLine.toLowerCase() === tagLineFromUrl.toLowerCase() &&
-        summonerData.region === regionFromUrl
+        summonerData.region === apiRegion
       ) {
         return;
       }
@@ -175,11 +178,11 @@ const SearchPage: React.FC = () => {
       setLoading(true);
       setError(null);
       // Only clear data if we are actually searching for a different person/region
-      if (!summonerData || summonerData.gameName !== gameNameFromUrl || summonerData.tagLine !== tagLineFromUrl || summonerData.region !== regionFromUrl) {
+      if (!summonerData || summonerData.gameName !== gameNameFromUrl || summonerData.tagLine !== tagLineFromUrl || summonerData.region !== apiRegion) {
           setSummonerData(null);
       }
 
-      performSearch(gameNameFromUrl, tagLineFromUrl, regionFromUrl);
+      performSearch(gameNameFromUrl, tagLineFromUrl, apiRegion);
     }
     // If no search from URL, load the last searched summoner from the store
     else if (lastSearchedSummoner && !gameNameFromUrl && !tagLineFromUrl) {
@@ -189,7 +192,7 @@ const SearchPage: React.FC = () => {
         setSummonerData(lastSearchedSummoner);
       }
     }
-  }, [searchParams, region, performSearch, lastSearchedSummoner, setSearchInput, summonerData, setRegion]);
+  }, [searchParams, performSearch, lastSearchedSummoner, setSearchInput, summonerData, setRegion]);
   
   /**
    * Effect to fetch the user's recent searches on component mount.

@@ -87,7 +87,7 @@ describe('SearchPage', () => {
     (riotApi.getSummonerByName as any).mockResolvedValue(mockSummonerData);
 
     render(
-      <MemoryRouter initialEntries={['/search?gameName=Test&tagLine=123&region=EUW1']}>
+      <MemoryRouter initialEntries={['/search?gameName=Test&tagLine=123&region=eu']}>
         <Routes>
           <Route path="/search" element={<SearchPage />} />
         </Routes>
@@ -133,7 +133,7 @@ describe('SearchPage', () => {
       (riotApi.getSummonerByName as any).mockResolvedValue(mockSummonerData);
   
       render(
-        <MemoryRouter initialEntries={['/search?gameName=Test&tagLine=123&region=NA1']}>
+        <MemoryRouter initialEntries={['/search?gameName=Test&tagLine=123&region=na']}>
           <Routes>
             <Route path="/search" element={<SearchPage />} />
           </Routes>

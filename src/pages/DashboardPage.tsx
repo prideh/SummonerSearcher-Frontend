@@ -2,11 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { getLeaderboard } from '../api/riot';
+import { toUrlRegion } from '../utils/regionUtils';
 import axios from 'axios';
 
-/**
- * Defines the structure of a single entry in the Challenger leaderboard.
- */
 interface LeaderboardEntry {
   gameName: string;
   tagLine: string;
@@ -85,7 +83,7 @@ const DashboardPage = () => {
    */
   const handleRowClick = useCallback((gameName: string, tagLine: string) => {
     if (gameName && tagLine) {
-      navigate(`/search?gameName=${encodeURIComponent(gameName)}&tagLine=${encodeURIComponent(tagLine)}&region=${region}`);
+      navigate(`/search?gameName=${encodeURIComponent(gameName)}&tagLine=${encodeURIComponent(tagLine)}&region=${toUrlRegion(region)}`);
     }
   }, [navigate, region]);
 

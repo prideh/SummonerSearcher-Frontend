@@ -1,5 +1,7 @@
 import React from 'react';
 import type { RecentSearch } from '../api/user';
+import { Search } from 'lucide-react';
+import { toApiRegion, toUrlRegion } from '../utils/regionUtils';
 
 /**
  * Props for the SearchBar component.
@@ -38,11 +40,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
   handleClearRecentSearches,
   startSearch,
 }) => {
-  // Filter recent searches by region and current input text
-  const filteredRecentSearches = recentSearches.filter(search => 
-    search.server === region && 
-    search.query.toLowerCase().includes(searchInput.toLowerCase())
-  );
+  // Filter recent searches by the currently selected region (API format)
+  // Ensure we are comparing API regions (e.g. EUW1)
+  const apiRegion = toApiRegion(toUrlRegion(region)); 
+  const filteredRecentSearches = recentSearches.filter(search => search.server === apiRegion && search.query.toLowerCase().includes(searchInput.toLowerCase()));
 
   const inputRef = React.useRef<HTMLInputElement>(null);
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -123,7 +124,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
                     onClick={() => {
                       setSearchInput(search.query);
                       const [name, tag] = search.query.split('#');
-                      startSearch(name, tag, region);
+                      startSearch(name, tag, apiRegion);
                       setShowRecent(false);
                     }}
                   >
@@ -180,9 +181,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           ) : (
             <>
               <span>Search</span>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <Search className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
             </>
           )}
         </button>
