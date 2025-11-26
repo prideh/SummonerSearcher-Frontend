@@ -7,6 +7,7 @@ import { registerUser } from '../api/auth';
 // Mock dependencies
 vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
+   
   Link: ({ children, to }: any) => <a href={to}>{children}</a>,
 }));
 

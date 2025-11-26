@@ -25,10 +25,12 @@ describe('DeleteAccountForm', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+     
     (useAuthStore as any).mockImplementation((selector: any) => {
       if (selector) return selector({ logout: mockLogout });
       return { logout: mockLogout };
     });
+     
     (useNavigate as any).mockReturnValue(mockNavigate);
   });
 
@@ -66,6 +68,7 @@ describe('DeleteAccountForm', () => {
 
   it('displays error message on failed deletion', async () => {
     const errorMessage = 'Incorrect password';
+     
     (deleteUser as any).mockRejectedValue(new Error(errorMessage));
 
     render(<DeleteAccountForm />);

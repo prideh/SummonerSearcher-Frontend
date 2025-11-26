@@ -70,7 +70,7 @@ describe('RankedInfo', () => {
   const defaultProps = {
     rankedData: mockSummonerData.soloQueueRank,
     summonerData: mockSummonerData,
-    matches: mockMatches as any[],
+    matches: mockMatches as any[],  
   };
 
   beforeEach(() => {

@@ -16,7 +16,7 @@ describe('useTimeAgo', () => {
       unobserve() {}
       disconnect() {}
       takeRecords(): IntersectionObserverEntry[] { return []; }
-    } as any;
+    } as any;  
     
     // Mock Date.now to have consistent time
     vi.useFakeTimers();

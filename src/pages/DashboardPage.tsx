@@ -85,9 +85,9 @@ const DashboardPage = () => {
    */
   const handleRowClick = useCallback((gameName: string, tagLine: string) => {
     if (gameName && tagLine) {
-      navigate(`/search?gameName=${encodeURIComponent(gameName)}&tagLine=${encodeURIComponent(tagLine)}`);
+      navigate(`/search?gameName=${encodeURIComponent(gameName)}&tagLine=${encodeURIComponent(tagLine)}&region=${region}`);
     }
-  }, [navigate]);
+  }, [navigate, region]);
 
   /**
    * Helper to determine rank color styling

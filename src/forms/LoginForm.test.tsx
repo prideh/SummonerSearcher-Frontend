@@ -9,6 +9,7 @@ import { useAuthStore } from '../store/authStore';
 vi.mock('react-router-dom', () => ({
   useLocation: () => ({ state: {} }),
   useNavigate: () => vi.fn(),
+   
   Link: ({ children, to }: any) => <a href={to}>{children}</a>,
 }));
 

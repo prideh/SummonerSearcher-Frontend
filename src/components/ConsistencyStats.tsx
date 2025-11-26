@@ -105,8 +105,8 @@ const ConsistencyStats: React.FC<ConsistencyStatsProps> = ({ matches, puuid }) =
 
       if (!opponent) return;
 
-      const playerChallenges = (player.challenges || {}) as Record<string, any>;
-      const opponentChallenges = (opponent.challenges || {}) as Record<string, any>;
+      const playerChallenges = (player.challenges || {}) as Record<string, number | undefined>;
+      const opponentChallenges = (opponent.challenges || {}) as Record<string, number | undefined>;
       
       // Get all unique keys from both player and opponent
       const allKeys = new Set([...Object.keys(playerChallenges), ...Object.keys(opponentChallenges)]);

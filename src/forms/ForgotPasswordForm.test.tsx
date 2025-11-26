@@ -32,7 +32,7 @@ describe('ForgotPasswordForm', () => {
   });
 
   it('calls forgotPassword on successful submission', async () => {
-    (forgotPassword as any).mockResolvedValue('Reset link sent');
+    (forgotPassword as any).mockResolvedValue('Reset link sent');  
     renderComponent();
 
     await userEvent.type(screen.getByLabelText(/email/i), 'test@example.com');
@@ -44,7 +44,7 @@ describe('ForgotPasswordForm', () => {
 
   it('displays error message on failed submission', async () => {
     const errorMessage = 'Email not found';
-    (forgotPassword as any).mockRejectedValue(new Error(errorMessage));
+    (forgotPassword as any).mockRejectedValue(new Error(errorMessage));  
 
     renderComponent();
 

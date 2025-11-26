@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { getSummonerByName } from '../api/riot';
 import { useSearchParams } from 'react-router-dom';
@@ -20,7 +20,7 @@ const SearchPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [showRecent, setShowRecent] = useState(false);
   const [visibleCount, setVisibleCount] = useState(10);
@@ -90,16 +90,15 @@ const SearchPage: React.FC = () => {
    * @param tag - The summoner's tag line.
    * @param searchRegion - The region to search in.
    */
-  const startSearch = useCallback(async (name: string, tag: string, searchRegion: string) => {
+  const startSearch = useCallback((name: string, tag: string, searchRegion: string) => {
     if (!name || !tag) {
       setError('Please enter both a summoner name and a tagline.');
       return;
     }
-    setLoading(true);
-    setError(null);
-    setSummonerData(null);
-    await performSearch(name, tag, searchRegion);
-  }, [performSearch]);
+    // Update the URL with the search parameters.
+    // The useEffect hook will detect this change and trigger the actual search.
+    setSearchParams({ gameName: name, tagLine: tag, region: searchRegion });
+  }, [setSearchParams]);
 
   /**
    * Handles the click event of the main search button.
@@ -147,34 +146,50 @@ const SearchPage: React.FC = () => {
     }
   };
 
-  const initialSearchPerformed = useRef(false);
-
   /**
-   * Effect to handle initial page load. It checks for search parameters in the URL
-   * (e.g., from a shared link) or loads the last searched summoner from the store.
+   * Effect to handle search based on URL parameters.
+   * This acts as the source of truth for the current search state.
    */
   useEffect(() => {
-    if (initialSearchPerformed.current) return;
-
     const gameNameFromUrl = searchParams.get('gameName');
     const tagLineFromUrl = searchParams.get('tagLine');
+    const regionFromUrl = searchParams.get('region');
 
-    initialSearchPerformed.current = true;
+    if (gameNameFromUrl && tagLineFromUrl && regionFromUrl) {
+      // Sync region from URL to store if different
+      if (regionFromUrl !== region) {
+        setRegion(regionFromUrl);
+      }
 
-    if (gameNameFromUrl && tagLineFromUrl) {
-      const combinedInput = `${gameNameFromUrl}#${tagLineFromUrl}`;
-      setSearchInput(combinedInput);
-      startSearch(gameNameFromUrl, tagLineFromUrl, region);
+      // Avoid re-fetching if the data is already displayed for the current URL params and region
+      if (
+        summonerData &&
+        summonerData.gameName.toLowerCase() === gameNameFromUrl.toLowerCase() &&
+        summonerData.tagLine.toLowerCase() === tagLineFromUrl.toLowerCase() &&
+        summonerData.region === regionFromUrl
+      ) {
+        return;
+      }
+
+      setSearchInput(`${gameNameFromUrl}#${tagLineFromUrl}`);
+      setLoading(true);
+      setError(null);
+      // Only clear data if we are actually searching for a different person/region
+      if (!summonerData || summonerData.gameName !== gameNameFromUrl || summonerData.tagLine !== tagLineFromUrl || summonerData.region !== regionFromUrl) {
+          setSummonerData(null);
+      }
+
+      performSearch(gameNameFromUrl, tagLineFromUrl, regionFromUrl);
     }
     // If no search from URL, load the last searched summoner from the store
-    else if (lastSearchedSummoner) {
+    else if (lastSearchedSummoner && !gameNameFromUrl && !tagLineFromUrl) {
       if (lastSearchedSummoner === 'NOT_FOUND') {
         setError('NOT_FOUND');
       } else {
         setSummonerData(lastSearchedSummoner);
       }
     }
-  }, [searchParams, lastSearchedSummoner, setSearchInput, region, startSearch]);
+  }, [searchParams, region, performSearch, lastSearchedSummoner, setSearchInput, summonerData, setRegion]);
   
   /**
    * Effect to fetch the user's recent searches on component mount.
