@@ -116,7 +116,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
                   Clear History
                 </button>
               </div>
-              <ul className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
+              <ul className="">
                 {filteredRecentSearches.map((search, index) => (
                   <li
                     key={index}
