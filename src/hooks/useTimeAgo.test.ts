@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useTimeAgo } from './useTimeAgo';
 
@@ -10,7 +10,7 @@ describe('useTimeAgo', () => {
       readonly rootMargin: string = '';
       readonly thresholds: ReadonlyArray<number> = [];
       
-      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {}
+      constructor() {}
       
       observe() {}
       unobserve() {}

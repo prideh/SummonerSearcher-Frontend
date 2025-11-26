@@ -1,10 +1,3 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import LoginForm from './LoginForm';
-import userEvent from '@testing-library/user-event';
-import { loginUser } from '../api/auth';
-import { useAuthStore } from '../store/authStore';
-
 // Mock dependencies
 vi.mock('react-router-dom', () => ({
   useLocation: () => ({ state: {} }),

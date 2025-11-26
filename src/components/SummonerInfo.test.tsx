@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import SummonerInfo from './SummonerInfo';
 import { useDataDragonStore } from '../store/dataDragonStore';
 
@@ -19,18 +19,27 @@ vi.mock('../store/dataDragonStore', () => ({
 
 describe('SummonerInfo', () => {
   const mockSummonerData = {
+    id: 'summoner-id',
     puuid: '123',
     gameName: 'TestUser',
     tagLine: 'EUW',
     summonerLevel: 100,
     profileIconId: 1,
     lastUpdated: new Date().toISOString(),
+    region: 'EUW1',
+    recentMatches: [],
     soloQueueRank: {
+      leagueId: 'league-id',
+      queueType: 'RANKED_SOLO_5x5',
       tier: 'GOLD',
       rank: 'IV',
       leaguePoints: 50,
       wins: 10,
       losses: 10,
+      hotStreak: false,
+      veteran: false,
+      freshBlood: false,
+      inactive: false,
     },
   };
 

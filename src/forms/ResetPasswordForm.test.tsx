@@ -4,7 +4,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ResetPasswordForm from './ResetPasswordForm';
 import { validateResetToken, resetPassword } from '../api/auth';
 import { useSearchParams, useNavigate, MemoryRouter } from 'react-router-dom';
-import { usePasswordValidation } from '../components/usePasswordValidation';
+
 
 // Mock dependencies
 vi.mock('../api/auth', () => ({
