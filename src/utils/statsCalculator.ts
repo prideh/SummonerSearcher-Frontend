@@ -41,6 +41,13 @@ export const STAT_ROLE_MAPPING: Record<string, 'ALL' | 'JUNGLE' | 'SUPPORT'> = {
   epicMonsterKillsNearEnemyJungler: 'JUNGLE',
   buffsStolen: 'JUNGLE',
   firstTurretKilled: 'ALL',
+  voidMonsterKill: 'JUNGLE',
+  dragonTakedowns: 'JUNGLE',
+  riftHeraldTakedowns: 'JUNGLE',
+  baronTakedowns: 'JUNGLE',
+  epicMonsterSteals: 'JUNGLE',
+  epicMonsterStolenWithoutSmite: 'JUNGLE',
+  epicMonsterKillsWithin30SecondsOfSpawn: 'JUNGLE',
 };
 
 export interface OverallStats {
@@ -299,8 +306,6 @@ export const calculateStats = (matches: MatchDto[], puuid: string): CalculatedSt
       oppTotalAssists += opponent.assists ?? 0;
       oppTotalCs += (opponent.totalMinionsKilled ?? 0) + (opponent.neutralMinionsKilled ?? 0);
       oppTotalSoloKills += opponent.challenges?.soloKills ?? 0;
-      oppTotalTurretPlates += opponent.challenges?.turretPlatesTaken ?? 0;
-      oppTotalVisionScore += opponent.visionScore ?? 0;
       oppTotalTurretPlates += opponent.challenges?.turretPlatesTaken ?? 0;
       oppTotalVisionScore += opponent.visionScore ?? 0;
       
