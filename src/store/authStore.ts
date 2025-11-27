@@ -91,7 +91,7 @@ export const useAuthStore = create<AuthState>()(
       name: 'auth-storage', // name of the item in the storage (must be unique)
       storage: createJSONStorage(() => localStorage), // (optional) by default, 'localStorage' is used
       // `partialize` ensures only the specified fields are persisted to localStorage.
-      partialize: (state) => ({ token: state.token, username: state.username, is2faEnabled: state.is2faEnabled, darkMode: state.darkMode, region: state.region, isLoggedIn: !!state.token, lastSearchedSummoner: state.lastSearchedSummoner, searchInput: state.searchInput }),
+      partialize: (state) => ({ token: state.token, username: state.username, is2faEnabled: state.is2faEnabled, darkMode: state.darkMode, region: state.region, isLoggedIn: !!state.token, searchInput: state.searchInput }),
     }
   )
 );
