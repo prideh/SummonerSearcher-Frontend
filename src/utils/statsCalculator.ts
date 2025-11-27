@@ -231,7 +231,6 @@ export const calculateStats = (matches: MatchDto[], puuid: string): CalculatedSt
   let totalSoloKills = 0;
   let totalTurretPlates = 0;
   let totalVisionScore = 0;
-  let totalDamageDealtToObjectives = 0;
 
   // Opponent Stats
   let oppTotalKills = 0;
@@ -242,7 +241,6 @@ export const calculateStats = (matches: MatchDto[], puuid: string): CalculatedSt
   let oppTotalTurretPlates = 0;
   let oppTotalKillParticipation = 0;
   let oppTotalVisionScore = 0;
-  let oppTotalDamageDealtToObjectives = 0;
 
   let blueSideGames = 0;
   let blueSideWins = 0;
@@ -287,7 +285,6 @@ export const calculateStats = (matches: MatchDto[], puuid: string): CalculatedSt
     totalSoloKills += player.challenges?.soloKills ?? 0;
     totalTurretPlates += player.challenges?.turretPlatesTaken ?? 0;
     totalVisionScore += player.visionScore ?? 0;
-    totalDamageDealtToObjectives += player.damageDealtToObjectives ?? 0;
 
     totalCs += (player.totalMinionsKilled ?? 0) + (player.neutralMinionsKilled ?? 0);
     totalDurationInMinutes += match.info.gameDuration / 60;
@@ -304,7 +301,8 @@ export const calculateStats = (matches: MatchDto[], puuid: string): CalculatedSt
       oppTotalSoloKills += opponent.challenges?.soloKills ?? 0;
       oppTotalTurretPlates += opponent.challenges?.turretPlatesTaken ?? 0;
       oppTotalVisionScore += opponent.visionScore ?? 0;
-      oppTotalDamageDealtToObjectives += opponent.damageDealtToObjectives ?? 0;
+      oppTotalTurretPlates += opponent.challenges?.turretPlatesTaken ?? 0;
+      oppTotalVisionScore += opponent.visionScore ?? 0;
       
       if (oppTeamKills > 0) {
           oppTotalKillParticipation += ((opponent.kills ?? 0) + (opponent.assists ?? 0)) / oppTeamKills;

@@ -27,13 +27,13 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   
-  const INITIAL_SUGGESTIONS = [
-    "Analyze my profile",
-    "What are my biggest strengths?",
-    "How can I improve my CS?",
-    "Analyze my champion pool",
-    "Why is my winrate low?"
-  ];
+const INITIAL_SUGGESTIONS = [
+  "Analyze my profile",
+  "What are my biggest strengths?",
+  "How can I improve my CS?",
+  "Analyze my champion pool",
+  "Why is my winrate low?"
+];
 
   const STORAGE_KEY = `chat_history_${summonerName}`;
   const EXPIRATION_TIME = 30 * 60 * 1000; // 30 minutes
@@ -125,7 +125,7 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
       }]);
       setSuggestions(INITIAL_SUGGESTIONS);
     }
-  }, [isOpen, context.totalGamesAnalyzed, summonerName]);
+  }, [isOpen, context.totalGamesAnalyzed, summonerName, STORAGE_KEY, EXPIRATION_TIME]);
 
   // Save history on update
   useEffect(() => {
@@ -136,7 +136,7 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
         suggestions
       }));
     }
-  }, [messages, suggestions, summonerName]);
+  }, [messages, suggestions, summonerName, STORAGE_KEY]);
 
   const handleClearChat = () => {
     localStorage.removeItem(STORAGE_KEY);
