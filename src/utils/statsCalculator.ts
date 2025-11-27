@@ -11,6 +11,38 @@ export interface ChampionStat {
   soloKills: number;
 }
 
+export interface StatConsistency {
+  key: string;
+  wins: number;
+  losses: number;
+  totalGames: number;
+  consistency: number;
+  lossConsistency: number;
+}
+
+export const STAT_ROLE_MAPPING: Record<string, 'ALL' | 'JUNGLE' | 'SUPPORT'> = {
+  kda: 'ALL',
+  killParticipation: 'ALL',
+  damagePerMinute: 'ALL',
+  damageTakenOnTeamPercentage: 'ALL',
+  goldPerMinute: 'ALL',
+  visionScorePerMinute: 'ALL',
+  soloKills: 'ALL',
+  turretPlatesTaken: 'ALL',
+  controlWardsPlaced: 'SUPPORT',
+  wardTakedowns: 'SUPPORT',
+  effectiveHealAndShielding: 'SUPPORT',
+  controlWardTimeCoverageInRiverOrEnemyHalf: 'SUPPORT',
+  jungleCsBefore10Minutes: 'JUNGLE',
+  enemyJungleMonsterKills: 'JUNGLE',
+  scuttleCrabKills: 'JUNGLE',
+  earliestBaron: 'JUNGLE',
+  earliestDragonTakedown: 'JUNGLE',
+  epicMonsterKillsNearEnemyJungler: 'JUNGLE',
+  buffsStolen: 'JUNGLE',
+  firstTurretKilled: 'ALL',
+};
+
 export interface OverallStats {
   winRate: number;
   kda: number;
@@ -28,6 +60,8 @@ export interface OverallStats {
   oppAvgKillParticipation: number;
   oppAvgSoloKills: number;
   oppAvgTurretPlates: number;
+  avgVisionScore: number;
+  oppAvgVisionScore: number;
   blueSide: {
     games: number;
     wins: number;
@@ -45,6 +79,143 @@ export interface CalculatedStats {
   overallStats: OverallStats;
 }
 
+export const calculateConsistency = (matches: MatchDto[], puuid: string) => {
+    const statsMap: Record<string, { wins: number; losses: number; totalGames: number }> = {};
+
+    // Calculate Main Role
+    const roleCounts: Record<string, number> = {};
+    let roleTotalGames = 0;
+    matches.forEach(match => {
+        const p = match.info?.participants.find(part => part.puuid === puuid);
+        if (p && p.teamPosition && p.teamPosition !== 'NONE') {
+            roleCounts[p.teamPosition] = (roleCounts[p.teamPosition] || 0) + 1;
+            roleTotalGames++;
+        }
+    });
+
+    let mainRole = '';
+    let isMultirole = false;
+
+    if (roleTotalGames > 0) {
+        const sortedRoles = Object.entries(roleCounts).sort((a, b) => b[1] - a[1]);
+        if (sortedRoles.length > 0) {
+            mainRole = sortedRoles[0][0];
+            if (sortedRoles.length > 1 && sortedRoles[1][1] === sortedRoles[0][1]) {
+                isMultirole = true;
+            }
+        }
+    }
+
+    // Filter matches to ONLY include Main Role games
+    const recentMatches = isMultirole ? matches : matches.filter(match => {
+        const p = match.info?.participants.find(part => part.puuid === puuid);
+        return p?.teamPosition === mainRole;
+    });
+
+    recentMatches.forEach(match => {
+      const participants = match.info?.participants;
+      const player = participants?.find(p => p.puuid === puuid);
+      
+      if (!player) return;
+
+      const opponent = participants?.find(p =>
+        p.teamId !== player.teamId &&
+        p.teamPosition === player.teamPosition &&
+        player.teamPosition &&
+        player.teamPosition !== 'NONE'
+      );
+
+      if (!opponent) return;
+
+      const playerChallenges = (player.challenges || {}) as Record<string, number | undefined>;
+      const opponentChallenges = (opponent.challenges || {}) as Record<string, number | undefined>;
+      
+      const allKeys = new Set([...Object.keys(playerChallenges), ...Object.keys(opponentChallenges)]);
+      
+      allKeys.forEach(key => {
+        if (key === 'legendaryItemUsed' || 
+            key === 'legendaryCount' ||
+            key === 'playedChampSelectPosition' || 
+            key === 'soloKills' || 
+            key === 'abilityUses' ||
+            key === 'fullTeamTakedown' ||
+            key === 'flawlessAces' ||
+            key === 'acesBefore15Minutes' ||
+            key === 'firstTurretKilledTime' ||
+            key === 'bountyGold' ||
+            key === 'getTakedownsInAllLanesEarlyJungleAsLaner') return;
+
+        const requiredRole = STAT_ROLE_MAPPING[key];
+        
+        if (requiredRole === 'JUNGLE' && player.teamPosition !== 'JUNGLE') return;
+        if (requiredRole === 'SUPPORT' && player.teamPosition !== 'UTILITY') return;
+
+        const playerValue = playerChallenges[key];
+        const opponentValue = opponentChallenges[key];
+        
+        const isCarryRole = player.teamPosition === 'MIDDLE' || player.teamPosition === 'BOTTOM';
+        const isDamageTaken = key === 'damageTakenOnTeamPercentage';
+
+        const isLowerBetter = key.toLowerCase().startsWith('earliest') || 
+                              key.toLowerCase().startsWith('fastest') || 
+                              key.toLowerCase().startsWith('shortest') ||
+                              (isCarryRole && isDamageTaken);
+
+        let pVal = playerValue;
+        if (pVal === undefined || pVal === null || (isLowerBetter && pVal === 0)) {
+            pVal = isLowerBetter ? Infinity : 0;
+        }
+
+        let oppVal = opponentValue;
+        if (oppVal === undefined || oppVal === null || (isLowerBetter && oppVal === 0)) {
+            oppVal = isLowerBetter ? Infinity : 0;
+        }
+
+        if (!statsMap[key]) {
+            statsMap[key] = { wins: 0, losses: 0, totalGames: 0 };
+        }
+        
+        statsMap[key].totalGames++;
+        
+        let isWinner = false;
+        if (pVal === oppVal) {
+            isWinner = false;
+        } else {
+            isWinner = isLowerBetter ? pVal < oppVal : pVal > oppVal;
+        }
+
+        if (isWinner) {
+            statsMap[key].wins++;
+        } else if (pVal !== oppVal) {
+            statsMap[key].losses++;
+        }
+      });
+    });
+
+    const statsArray: StatConsistency[] = Object.entries(statsMap).map(([key, data]) => ({
+        key,
+        wins: data.wins,
+        losses: data.losses,
+        totalGames: data.totalGames,
+        consistency: data.totalGames > 0 ? (data.wins / data.totalGames) * 100 : 0,
+        lossConsistency: data.totalGames > 0 ? (data.losses / data.totalGames) * 100 : 0
+    }));
+
+    const validStats = statsArray.filter(s => s.totalGames >= 3);
+
+    const bestStats = [...validStats]
+        .filter(s => s.wins > s.losses)
+        .sort((a, b) => b.consistency - a.consistency)
+        .slice(0, 5);
+
+    const worstStats = [...validStats]
+        .filter(s => s.losses > s.wins)
+        .sort((a, b) => b.lossConsistency - a.lossConsistency)
+        .slice(0, 5);
+
+    return { bestStats, worstStats };
+};
+
 export const calculateStats = (matches: MatchDto[], puuid: string): CalculatedStats => {
   const stats: Record<string, ChampionStat> = {};
 
@@ -59,6 +230,8 @@ export const calculateStats = (matches: MatchDto[], puuid: string): CalculatedSt
   let totalKillParticipation = 0;
   let totalSoloKills = 0;
   let totalTurretPlates = 0;
+  let totalVisionScore = 0;
+  let totalDamageDealtToObjectives = 0;
 
   // Opponent Stats
   let oppTotalKills = 0;
@@ -68,6 +241,8 @@ export const calculateStats = (matches: MatchDto[], puuid: string): CalculatedSt
   let oppTotalSoloKills = 0;
   let oppTotalTurretPlates = 0;
   let oppTotalKillParticipation = 0;
+  let oppTotalVisionScore = 0;
+  let oppTotalDamageDealtToObjectives = 0;
 
   let blueSideGames = 0;
   let blueSideWins = 0;
@@ -79,6 +254,7 @@ export const calculateStats = (matches: MatchDto[], puuid: string): CalculatedSt
     if (!player || !player.championName || !match.info?.gameDuration) return;
 
     totalGames++;
+
     if (player.win) {
       totalWins++;
     }
@@ -110,6 +286,8 @@ export const calculateStats = (matches: MatchDto[], puuid: string): CalculatedSt
     totalAssists += player.assists ?? 0;
     totalSoloKills += player.challenges?.soloKills ?? 0;
     totalTurretPlates += player.challenges?.turretPlatesTaken ?? 0;
+    totalVisionScore += player.visionScore ?? 0;
+    totalDamageDealtToObjectives += player.damageDealtToObjectives ?? 0;
 
     totalCs += (player.totalMinionsKilled ?? 0) + (player.neutralMinionsKilled ?? 0);
     totalDurationInMinutes += match.info.gameDuration / 60;
@@ -125,6 +303,8 @@ export const calculateStats = (matches: MatchDto[], puuid: string): CalculatedSt
       oppTotalCs += (opponent.totalMinionsKilled ?? 0) + (opponent.neutralMinionsKilled ?? 0);
       oppTotalSoloKills += opponent.challenges?.soloKills ?? 0;
       oppTotalTurretPlates += opponent.challenges?.turretPlatesTaken ?? 0;
+      oppTotalVisionScore += opponent.visionScore ?? 0;
+      oppTotalDamageDealtToObjectives += opponent.damageDealtToObjectives ?? 0;
       
       if (oppTeamKills > 0) {
           oppTotalKillParticipation += ((opponent.kills ?? 0) + (opponent.assists ?? 0)) / oppTeamKills;
@@ -168,6 +348,7 @@ export const calculateStats = (matches: MatchDto[], puuid: string): CalculatedSt
   const avgKillParticipation = totalGames > 0 ? (totalKillParticipation / totalGames) * 100 : 0;
   const avgSoloKills = totalGames > 0 ? totalSoloKills / totalGames : 0;
   const avgTurretPlates = totalGames > 0 ? totalTurretPlates / totalGames : 0;
+  const avgVisionScore = totalGames > 0 ? totalVisionScore / totalGames : 0;
 
   // Opponent Averages
   const oppAvgKda = oppTotalDeaths > 0 ? (oppTotalKills + oppTotalAssists) / oppTotalDeaths : Infinity;
@@ -175,6 +356,7 @@ export const calculateStats = (matches: MatchDto[], puuid: string): CalculatedSt
   const oppAvgKillParticipation = totalGames > 0 ? (oppTotalKillParticipation / totalGames) * 100 : 0;
   const oppAvgSoloKills = totalGames > 0 ? oppTotalSoloKills / totalGames : 0;
   const oppAvgTurretPlates = totalGames > 0 ? oppTotalTurretPlates / totalGames : 0;
+  const oppAvgVisionScore = totalGames > 0 ? oppTotalVisionScore / totalGames : 0;
 
   const blueSideWinRate = blueSideGames > 0 ? (blueSideWins / blueSideGames) * 100 : 0;
   const redSideWinRate = redSideGames > 0 ? (redSideWins / redSideGames) * 100 : 0;
@@ -200,6 +382,8 @@ export const calculateStats = (matches: MatchDto[], puuid: string): CalculatedSt
       oppAvgKillParticipation,
       oppAvgSoloKills,
       oppAvgTurretPlates,
+      avgVisionScore,
+      oppAvgVisionScore,
 
       blueSide: {
         games: blueSideGames,

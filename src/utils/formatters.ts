@@ -44,9 +44,9 @@ const STAT_NAME_MAPPING: Record<string, string> = {
   laningPhaseGoldExpAdvantage: 'Laning gold/xp lead',
   legendaryCount: 'Legendary streaks',
   lostAnInhibitor: 'Inhibitor lost',
-  maxCsAdvantageOnLaneOpponent: 'Max cs lead vs opponent',
+  maxCsAdvantageOnLaneOpponent: 'CS lead vs opponent',
   maxKillDeficit: 'Max kill deficit',
-  maxLevelLeadLaneOpponent: 'Max level lead vs opponent',
+  maxLevelLeadLaneOpponent: 'Level lead vs opponent',
   moreEnemyJungleThanOpponent: 'Jungle counter-jungle gap',
   multiKillOneSpell: 'Multikill (one spell)',
   multiTurretRiftHeraldCount: 'Turrets taken w/ herald',
@@ -88,7 +88,7 @@ const STAT_NAME_MAPPING: Record<string, string> = {
   teleportTakedowns: 'Teleport takedowns',
   threeWardsOneSweeperCount: '3 wards cleared (1 sweep)',
   tookLargeDamageSurvived: 'Heavy damage survived',
-  turretPlatesTaken: 'Turret plates taken',
+  turretPlatesTaken: 'Plates lead vs opponent',
   turretTakedowns: 'Turret takedowns',
   turretsTakenWithRiftHerald: 'Turrets taken w/ herald',
   twentyMinionsIn3SecondsCount: '20 minions in 3 seconds',
@@ -99,6 +99,10 @@ const STAT_NAME_MAPPING: Record<string, string> = {
   wardTakedowns: 'Wards destroyed',
   wardTakedownsBefore20M: 'Wards destroyed @ 20 min',
   wardsGuarded: 'Wards guarded',
+  earliestBaron: "First Baron",
+  earliestDragonTakedown: "First Dragon",
+  damageTakenOnTeamPercentage: "Damage taken compared to opponent",
+  buffsStolen: "Buffs stolen"
 };
 
 export const camelCaseToTitleCase = (text: string) => {

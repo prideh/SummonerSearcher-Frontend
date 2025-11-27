@@ -1,5 +1,6 @@
 import type { MatchDto, ParticipantDto } from '../types/match';
-import { calculateStats } from './statsCalculator';
+import { calculateStats, calculateConsistency } from './statsCalculator';
+import { camelCaseToTitleCase } from './formatters';
 
 interface MatchDetail {
   champion: string;
@@ -11,8 +12,13 @@ interface MatchDetail {
     champion: string;
     kda: string;
     csPerMin: number;
+    killParticipation: number;
+    visionScore: number;
+    turretPlates: number;
   } | null;
   gameDuration: number;
+  visionScore: number;
+  turretPlates: number;
 }
 
 /**
@@ -40,9 +46,13 @@ export function buildAiContext(
   summonerName: string,
   tagLine: string,
   allMatches: MatchDto[],
-  puuid: string
+  puuid: string,
+  rankInfo: { tier: string; rank: string; leaguePoints: number; wins: number; losses: number } | null
 ): {
   summonerName: string;
+  rank: string;
+  totalWins: number;
+  totalLosses: number;
   primaryRole: string;
   totalGamesAnalyzed: number;
   winRate: string;
@@ -53,13 +63,26 @@ export function buildAiContext(
   avgCsPerMin: string;
   avgKillParticipation: string;
   avgSoloKills: string;
+  avgTurretPlates: string;
+  avgVisionScore: string;
   topChampions: Array<{ name: string; games: number; winRate: string; kda: string }>;
-  blueSideWinRate: string;
-  redSideWinRate: string;
-  recentMatches: MatchDetail[];
+    blueSideWinRate: string;
+    redSideWinRate: string;
+    recentMatches: MatchDetail[];
+    opponentStats: {
+      avgKda: string;
+      avgCsPerMin: string;
+      avgKillParticipation: string;
+      avgSoloKills: string;
+      avgTurretPlates: string;
+      avgVisionScore: string;
+    };
+  topStrengths: Array<{ name: string; consistency: string }>;
+  topWeaknesses: Array<{ name: string; consistency: string }>;
 } {
   // Calculate aggregate stats from ALL matches
   const { overallStats, championStats } = calculateStats(allMatches, puuid);
+  const { bestStats, worstStats } = calculateConsistency(allMatches, puuid);
   
   // Extract detailed match data
   const matchDetails: MatchDetail[] = [];
@@ -84,6 +107,7 @@ export function buildAiContext(
     const deaths = myParticipant.deaths || 0;
     const assists = myParticipant.assists || 0;
     const kda = deaths > 0 ? ((kills + assists) / deaths).toFixed(2) : 'Perfect';
+    const turretPlates = myParticipant.challenges?.turretPlatesTaken || 0;
     
     // Find lane opponent
     const opponent = findLaneOpponent(myParticipant, match.info.participants);
@@ -96,11 +120,21 @@ export function buildAiContext(
       const oppDeaths = opponent.deaths || 0;
       const oppAssists = opponent.assists || 0;
       const oppKda = oppDeaths > 0 ? ((oppKills + oppAssists) / oppDeaths).toFixed(2) : 'Perfect';
+      const oppTurretPlates = opponent.challenges?.turretPlatesTaken || 0;
+      
+      // Calculate opponent KP
+      const oppTeamKills = match.info.participants
+        .filter(p => p.teamId === opponent.teamId)
+        .reduce((sum, p) => sum + (p.kills || 0), 0);
+      const oppKp = oppTeamKills > 0 ? ((oppKills + oppAssists) / oppTeamKills) * 100 : 0;
       
       opponentData = {
         champion: opponent.championName || 'Unknown',
         kda: oppKda,
-        csPerMin: parseFloat(oppCsPerMin.toFixed(1))
+        csPerMin: parseFloat(oppCsPerMin.toFixed(1)),
+        killParticipation: parseFloat(oppKp.toFixed(1)),
+        visionScore: opponent.visionScore || 0,
+        turretPlates: oppTurretPlates
       };
     }
     
@@ -116,6 +150,8 @@ export function buildAiContext(
       kda,
       csPerMin: parseFloat(csPerMin.toFixed(1)),
       killParticipation: parseFloat(killParticipation.toFixed(1)),
+      visionScore: myParticipant.visionScore || 0,
+      turretPlates,
       opponent: opponentData,
       gameDuration: parseFloat(gameDuration.toFixed(1))
     });
@@ -126,9 +162,16 @@ export function buildAiContext(
   
   // Filter matches for primary role only
   const primaryRoleMatches = matchDetails.slice(0, 20); // Last 20 games for context size
+
+  // Calculate averages for new stats
+  // REMOVED manual calculation, using overallStats
+  const avgVisionScore = overallStats.avgVisionScore.toFixed(1);
   
   return {
     summonerName: `${summonerName}#${tagLine}`,
+    rank: rankInfo ? `${rankInfo.tier} ${rankInfo.rank} (${rankInfo.leaguePoints} LP)` : 'Unranked',
+    totalWins: rankInfo ? rankInfo.wins : 0,
+    totalLosses: rankInfo ? rankInfo.losses : 0,
     primaryRole,
     totalGamesAnalyzed: allMatches.length,
     // Aggregate stats
@@ -140,6 +183,8 @@ export function buildAiContext(
     avgCsPerMin: overallStats.avgCsPerMinute.toFixed(1),
     avgKillParticipation: overallStats.avgKillParticipation.toFixed(1),
     avgSoloKills: overallStats.avgSoloKills.toFixed(1),
+    avgTurretPlates: overallStats.avgTurretPlates.toFixed(1),
+    avgVisionScore,
     // Champion pool
     topChampions: championStats.slice(0, 5).map(c => ({
       name: c.championName,
@@ -151,6 +196,16 @@ export function buildAiContext(
     blueSideWinRate: overallStats.blueSide.winRate.toFixed(1),
     redSideWinRate: overallStats.redSide.winRate.toFixed(1),
     // Detailed match history for primary role
-    recentMatches: primaryRoleMatches
+    recentMatches: primaryRoleMatches,
+    opponentStats: {
+        avgKda: overallStats.oppAvgKda === Infinity ? 'Perfect' : overallStats.oppAvgKda.toFixed(2),
+        avgCsPerMin: overallStats.oppAvgCsPerMinute.toFixed(1),
+        avgKillParticipation: overallStats.oppAvgKillParticipation.toFixed(1),
+        avgSoloKills: overallStats.oppAvgSoloKills.toFixed(1),
+        avgTurretPlates: overallStats.oppAvgTurretPlates.toFixed(1),
+        avgVisionScore: overallStats.oppAvgVisionScore.toFixed(1)
+    },
+    topStrengths: bestStats.map(s => ({ name: camelCaseToTitleCase(s.key), consistency: s.consistency.toFixed(0) + '%' })),
+    topWeaknesses: worstStats.map(s => ({ name: camelCaseToTitleCase(s.key), consistency: s.lossConsistency.toFixed(0) + '%' }))
   };
 }
