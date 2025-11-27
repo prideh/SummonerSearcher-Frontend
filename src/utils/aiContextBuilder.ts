@@ -41,7 +41,23 @@ export function buildAiContext(
   tagLine: string,
   allMatches: MatchDto[],
   puuid: string
-): Record<string, any> {
+): {
+  summonerName: string;
+  primaryRole: string;
+  totalGamesAnalyzed: number;
+  winRate: string;
+  kda: string;
+  avgKills: string;
+  avgDeaths: string;
+  avgAssists: string;
+  avgCsPerMin: string;
+  avgKillParticipation: string;
+  avgSoloKills: string;
+  topChampions: Array<{ name: string; games: number; winRate: string; kda: string }>;
+  blueSideWinRate: string;
+  redSideWinRate: string;
+  recentMatches: MatchDetail[];
+} {
   // Calculate aggregate stats from ALL matches
   const { overallStats, championStats } = calculateStats(allMatches, puuid);
   

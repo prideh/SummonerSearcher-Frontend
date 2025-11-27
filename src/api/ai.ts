@@ -1,13 +1,20 @@
 import apiClient from './apiClient';
 
+interface AiContextData {
+  summonerName: string;
+  primaryRole: string;
+  totalGamesAnalyzed: number;
+  [key: string]: string | number | unknown;
+}
+
 export interface AiChatRequest {
-  context: Record<string, any>;
+  context: AiContextData;
   messages: Array<{ role: string; content: string }>;
   userMessage: string;
 }
 
 export const chatWithAi = async (
-  context: Record<string, any>,
+  context: AiContextData,
   messages: Array<{ role: string; content: string }>,
   userMessage: string
 ): Promise<string> => {

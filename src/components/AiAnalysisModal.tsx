@@ -1,12 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { chatWithAi } from '../api/ai';
+
+interface AiContextData {
+  summonerName: string;
+  primaryRole: string;
+  totalGamesAnalyzed: number;
+  [key: string]: string | number | unknown;
+}
 
 interface AiAnalysisModalProps {
   isOpen: boolean;
   onClose: () => void;
   summonerName: string;
-  context: Record<string, any>;
+  context: AiContextData;
 }
 
 interface Message {
@@ -19,7 +26,33 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<Message[]>([]);
   const hasInitialized = useRef(false);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  const handleSendMessage = useCallback(async (text: string) => {
+    if (!text.trim()) return;
+
+    const currentMessages = messagesRef.current;
+    setMessages(prev => [...prev, { role: 'user' as const, content: text }]);
+    setInput('');
+    setLoading(true);
+
+    try {
+      const response = await chatWithAi(context, currentMessages, text);
+      
+      setMessages(prev => [...prev, { role: 'model', content: response }]);
+    } catch (error) {
+      console.error('Failed to get AI response:', error);
+      setMessages(prev => [...prev, { role: 'model', content: 'Sorry, I encountered an error while analyzing the data.' }]);
+    } finally {
+      setLoading(false);
+    }
+  }, [context]);
 
   useEffect(() => {
     if (isOpen && !hasInitialized.current) {
@@ -30,36 +63,11 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
         hasInitialized.current = false;
         setMessages([]);
     }
-  }, [isOpen]);
+  }, [isOpen, handleSendMessage]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  const handleSendMessage = async (text: string) => {
-    if (!text.trim()) return;
-
-    const newMessages = [...messages, { role: 'user' as const, content: text }];
-    setMessages(newMessages);
-    setInput('');
-    setLoading(true);
-
-    try {
-      // Filter out the initial system-like trigger from the history sent to backend if desired,
-      // but here we just send everything.
-      // We need to map 'model' role to what the backend expects if it differs, but our backend just takes the list.
-      // Actually, backend expects "role" to be "user" or "model" (Gemini uses "user" and "model").
-      
-      const response = await chatWithAi(context, messages, text);
-      
-      setMessages(prev => [...prev, { role: 'model', content: response }]);
-    } catch (error) {
-      console.error('Failed to get AI response:', error);
-      setMessages(prev => [...prev, { role: 'model', content: 'Sorry, I encountered an error while analyzing the data.' }]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (!isOpen) return null;
 
