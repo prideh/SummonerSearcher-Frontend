@@ -65,22 +65,23 @@ const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData, match
                 if (sortedRoles.length === 0) return null;
 
                 const [bestRole, count] = sortedRoles[0];
-                const percentage = (count / totalGames) * 100;
-
-                if (percentage >= 60) {
-                  const roleName = bestRole === 'UTILITY' ? 'Support' : 
-                                   bestRole === 'BOTTOM' ? 'ADC' : 
-                                   bestRole === 'MIDDLE' ? 'Mid' : 
-                                   bestRole.charAt(0) + bestRole.slice(1).toLowerCase();
-                  return <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{roleName} Main</p>;
+                
+                // Check for tie
+                if (sortedRoles.length > 1 && sortedRoles[1][1] === count) {
+                    return <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Multirole</p>;
                 }
-                return null;
+
+                const roleName = bestRole === 'UTILITY' ? 'Support' : 
+                                 bestRole === 'BOTTOM' ? 'ADC' : 
+                                 bestRole === 'MIDDLE' ? 'Mid' : 
+                                 bestRole.charAt(0) + bestRole.slice(1).toLowerCase();
+                return <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{roleName} Main</p>;
               })()}
               <div className="flex items-center text-sm text-gray-600 dark:text-gray-300 space-x-2">
                 <span>{rankedData.leaguePoints} LP</span>
                 <span className="text-gray-300 dark:text-gray-600">|</span>
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {rankedData.wins}W / {rankedData.losses}L (<span className={`${parseFloat(winRate) >= 50 ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-500 dark:text-gray-400'}`}>{winRate}%</span>)
+                  {rankedData.wins}W / {rankedData.losses}L (<span className={`${parseFloat(winRate) > 50 ? 'text-green-600 dark:text-green-400 font-semibold' : parseFloat(winRate) < 50 ? 'text-red-500 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'}`}>{winRate}%</span>)
                 </span>
               </div>
             </div>

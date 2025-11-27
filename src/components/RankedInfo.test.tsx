@@ -92,6 +92,29 @@ describe('RankedInfo', () => {
     expect(screen.getByText('Mid Main')).toBeInTheDocument();
   });
 
+  it('renders "Multirole" when there is a tie in role frequency', () => {
+    const tiedMatches = [
+        { info: { participants: [{ puuid: '123', teamPosition: 'MIDDLE' }] } },
+        { info: { participants: [{ puuid: '123', teamPosition: 'TOP' }] } },
+    ] as any[];
+
+    render(<RankedInfo {...defaultProps} matches={tiedMatches} />);
+    expect(screen.getByText('Multirole')).toBeInTheDocument();
+  });
+
+  it('renders role even if percentage is below 60%', () => {
+    // 2 Mid, 1 Top, 1 Jungle = 50% Mid. Should still show Mid Main.
+    const mixedMatches = [
+        { info: { participants: [{ puuid: '123', teamPosition: 'MIDDLE' }] } },
+        { info: { participants: [{ puuid: '123', teamPosition: 'MIDDLE' }] } },
+        { info: { participants: [{ puuid: '123', teamPosition: 'TOP' }] } },
+        { info: { participants: [{ puuid: '123', teamPosition: 'JUNGLE' }] } },
+    ] as any[];
+
+    render(<RankedInfo {...defaultProps} matches={mixedMatches} />);
+    expect(screen.getByText('Mid Main')).toBeInTheDocument();
+  });
+
   it('renders child components', () => {
     render(<RankedInfo {...defaultProps} />);
     expect(screen.getByTestId('recent-champion-stats')).toBeInTheDocument();

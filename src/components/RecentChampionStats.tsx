@@ -45,6 +45,16 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
     let totalDurationInMinutes = 0;
     let totalKillParticipation = 0;
     let totalSoloKills = 0;
+    let totalTurretPlates = 0;
+
+    // Opponent Stats
+    let oppTotalKills = 0;
+    let oppTotalDeaths = 0;
+    let oppTotalAssists = 0;
+    let oppTotalCs = 0;
+    let oppTotalSoloKills = 0;
+    let oppTotalTurretPlates = 0;
+    let oppTotalKillParticipation = 0;
 
     let blueSideGames = 0;
     let blueSideWins = 0;
@@ -69,20 +79,44 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
         if (player.win) redSideWins++;
       }
 
+      // Find direct lane opponent
+      const opponent = match.info.participants.find(p => 
+        p.teamPosition === player.teamPosition && p.teamId !== player.teamId
+      );
+
       // Calculate team-wide stats for this match to determine KP.
       const teamKills = match.info.participants
         .filter(p => p.teamId === player.teamId)
         .reduce((acc, p) => acc + (p.kills ?? 0), 0);
+      
+      const oppTeamKills = opponent ? match.info.participants
+        .filter(p => p.teamId === opponent.teamId)
+        .reduce((acc, p) => acc + (p.kills ?? 0), 0) : 0;
 
       totalKills += player.kills ?? 0;
       totalDeaths += player.deaths ?? 0;
       totalAssists += player.assists ?? 0;
       totalSoloKills += player.challenges?.soloKills ?? 0;
+      totalTurretPlates += player.challenges?.turretPlatesTaken ?? 0;
 
       totalCs += (player.totalMinionsKilled ?? 0) + (player.neutralMinionsKilled ?? 0);
       totalDurationInMinutes += match.info.gameDuration / 60;
       if (teamKills > 0) {
         totalKillParticipation += ((player.kills ?? 0) + (player.assists ?? 0)) / teamKills;
+      }
+
+      // Accumulate Opponent Stats
+      if (opponent) {
+        oppTotalKills += opponent.kills ?? 0;
+        oppTotalDeaths += opponent.deaths ?? 0;
+        oppTotalAssists += opponent.assists ?? 0;
+        oppTotalCs += (opponent.totalMinionsKilled ?? 0) + (opponent.neutralMinionsKilled ?? 0);
+        oppTotalSoloKills += opponent.challenges?.soloKills ?? 0;
+        oppTotalTurretPlates += opponent.challenges?.turretPlatesTaken ?? 0;
+        
+        if (oppTeamKills > 0) {
+            oppTotalKillParticipation += ((opponent.kills ?? 0) + (opponent.assists ?? 0)) / oppTeamKills;
+        }
       }
 
       const championKey = player.championName;
@@ -121,6 +155,14 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
     const avgCsPerMinute = totalDurationInMinutes > 0 ? totalCs / totalDurationInMinutes : 0;
     const avgKillParticipation = totalGames > 0 ? (totalKillParticipation / totalGames) * 100 : 0;
     const avgSoloKills = totalGames > 0 ? totalSoloKills / totalGames : 0;
+    const avgTurretPlates = totalGames > 0 ? totalTurretPlates / totalGames : 0;
+
+    // Opponent Averages
+    const oppAvgKda = oppTotalDeaths > 0 ? (oppTotalKills + oppTotalAssists) / oppTotalDeaths : Infinity;
+    const oppAvgCsPerMinute = totalDurationInMinutes > 0 ? oppTotalCs / totalDurationInMinutes : 0;
+    const oppAvgKillParticipation = totalGames > 0 ? (oppTotalKillParticipation / totalGames) * 100 : 0;
+    const oppAvgSoloKills = totalGames > 0 ? oppTotalSoloKills / totalGames : 0;
+    const oppAvgTurretPlates = totalGames > 0 ? oppTotalTurretPlates / totalGames : 0;
 
     const blueSideWinRate = blueSideGames > 0 ? (blueSideWins / blueSideGames) * 100 : 0;
     const redSideWinRate = redSideGames > 0 ? (redSideWins / redSideGames) * 100 : 0;
@@ -135,9 +177,18 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
         avgCsPerMinute: avgCsPerMinute,
         avgKillParticipation: avgKillParticipation,
         avgSoloKills: avgSoloKills,
+        avgTurretPlates: avgTurretPlates,
         avgKills: totalGames > 0 ? totalKills / totalGames : 0,
         avgDeaths: totalGames > 0 ? totalDeaths / totalGames : 0,
         avgAssists: totalGames > 0 ? totalAssists / totalGames : 0,
+        
+        // Opponent Stats
+        oppAvgKda,
+        oppAvgCsPerMinute,
+        oppAvgKillParticipation,
+        oppAvgSoloKills,
+        oppAvgTurretPlates,
+
         blueSide: {
           games: blueSideGames,
           wins: blueSideWins,
@@ -162,7 +213,7 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
       <div className="flex justify-between items-center mb-2">
         <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last {overallStats.wins + overallStats.losses} Games</h3>
         <div className="text-xs text-right">
-          <span className={`font-semibold ${overallStats.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-gray-300'}`}>
+          <span className={`font-semibold ${overallStats.winRate > 50 ? 'text-green-600 dark:text-green-400' : overallStats.winRate < 50 ? 'text-red-500 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}`}>
             {overallStats.wins}W {overallStats.losses}L ({overallStats.winRate.toFixed(0)}%)
           </span>
         </div>
@@ -177,7 +228,7 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
           const tooltipContent = `
             <div class="text-center">
               <div class="font-bold text-gray-100">${stat.championName}</div>
-              <div class="text-sm font-semibold ${parseInt(winRate as string) >= 60 ? 'text-red-400' : parseInt(winRate as string) >= 50 ? 'text-green-400' : 'text-gray-400'}">${winRate}% WR <span class="text-gray-500">(${stat.games} G)</span></div>
+              <div class="text-sm font-semibold ${parseInt(winRate as string) > 50 ? 'text-green-400' : parseInt(winRate as string) < 50 ? 'text-red-400' : 'text-gray-400'}">${winRate}% WR <span class="text-gray-500">(${stat.games} G)</span></div>
               <div class="text-sm text-gray-100 mt-1">${kda === Infinity ? 'Infinite' : kda.toFixed(2)} KDA</div>
               <div class="text-xs text-gray-500">${avgKda}</div>
               ${stat.soloKills > 0 ? `<div class="text-xs text-yellow-400 mt-1">Solo Kills: ${stat.soloKills}</div>` : ''}
@@ -202,30 +253,50 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
               <div className="flex items-center space-x-1">
                   <span className="text-blue-500 font-bold">Blue:</span>
                   <span className="text-gray-600 dark:text-gray-400">{overallStats.blueSide.games}G</span>
-                  <span className={`font-semibold ${overallStats.blueSide.winRate >= 50 ? 'text-green-500' : 'text-gray-500'}`}>({overallStats.blueSide.winRate.toFixed(0)}%)</span>
+                  <span className={`font-semibold ${overallStats.blueSide.winRate > 50 ? 'text-green-500' : overallStats.blueSide.winRate < 50 ? 'text-red-500' : 'text-gray-500'}`}>({overallStats.blueSide.winRate.toFixed(0)}%)</span>
               </div>
               <div className="flex items-center space-x-1">
                   <span className="text-red-500 font-bold">Red:</span>
                   <span className="text-gray-600 dark:text-gray-400">{overallStats.redSide.games}G</span>
-                  <span className={`font-semibold ${overallStats.redSide.winRate >= 50 ? 'text-green-500' : 'text-gray-500'}`}>({overallStats.redSide.winRate.toFixed(0)}%)</span>
+                  <span className={`font-semibold ${overallStats.redSide.winRate > 50 ? 'text-green-500' : overallStats.redSide.winRate < 50 ? 'text-red-500' : 'text-gray-500'}`}>({overallStats.redSide.winRate.toFixed(0)}%)</span>
               </div>
           </div>
           <div className="flex flex-col space-y-1 text-gray-500 dark:text-gray-400 text-right">
+              <div className="text-[10px] text-gray-400 mb-1 font-medium">You <span className="text-gray-300">vs</span> Opp</div>
               <div className="flex items-center justify-end space-x-1">
                   <span>KDA:</span>
-                  <span className="text-gray-700 dark:text-gray-300 font-semibold">{overallStats.kda === Infinity ? 'Inf' : overallStats.kda.toFixed(2)}</span>
+                  <div className="flex items-center space-x-1">
+                    <span className="text-gray-700 dark:text-gray-300 font-semibold">{overallStats.kda === Infinity ? 'Inf' : overallStats.kda.toFixed(2)}</span>
+                    <span className="text-gray-500 text-[10px]">({overallStats.oppAvgKda === Infinity ? 'Inf' : overallStats.oppAvgKda.toFixed(2)})</span>
+                  </div>
               </div>
               <div className="flex items-center justify-end space-x-1">
                   <span>KP:</span>
-                  <span className="text-gray-700 dark:text-gray-300 font-semibold">{overallStats.avgKillParticipation.toFixed(0)}%</span>
+                  <div className="flex items-center space-x-1">
+                    <span className="text-gray-700 dark:text-gray-300 font-semibold">{overallStats.avgKillParticipation.toFixed(0)}%</span>
+                    <span className="text-gray-500 text-[10px]">({overallStats.oppAvgKillParticipation.toFixed(0)}%)</span>
+                  </div>
               </div>
               <div className="flex items-center justify-end space-x-1">
                   <span>CS/m:</span>
-                  <span className="text-gray-700 dark:text-gray-300 font-semibold">{overallStats.avgCsPerMinute.toFixed(1)}</span>
+                  <div className="flex items-center space-x-1">
+                    <span className="text-gray-700 dark:text-gray-300 font-semibold">{overallStats.avgCsPerMinute.toFixed(1)}</span>
+                    <span className="text-gray-500 text-[10px]">({overallStats.oppAvgCsPerMinute.toFixed(1)})</span>
+                  </div>
               </div>
               <div className="flex items-center justify-end space-x-1">
                   <span>Avg Solokills:</span>
-                  <span className="text-gray-700 dark:text-gray-300 font-semibold">{overallStats.avgSoloKills.toFixed(1)}</span>
+                  <div className="flex items-center space-x-1">
+                    <span className="text-gray-700 dark:text-gray-300 font-semibold">{overallStats.avgSoloKills.toFixed(1)}</span>
+                    <span className="text-gray-500 text-[10px]">({overallStats.oppAvgSoloKills.toFixed(1)})</span>
+                  </div>
+              </div>
+              <div className="flex items-center justify-end space-x-1">
+                  <span>Avg Tower Plates:</span>
+                  <div className="flex items-center space-x-1">
+                    <span className="text-gray-700 dark:text-gray-300 font-semibold">{overallStats.avgTurretPlates.toFixed(1)}</span>
+                    <span className="text-gray-500 text-[10px]">({overallStats.oppAvgTurretPlates.toFixed(1)})</span>
+                  </div>
               </div>
           </div>
       </div>
