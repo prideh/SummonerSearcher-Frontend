@@ -148,7 +148,8 @@ describe('ConsistencyStats', () => {
     expect(strengthSection).not.toHaveTextContent('Earliest Baron');
 
     // Test another override
-    const matchDamage = createMatch(puuid, { damageTakenOnTeamPercentage: 0.5 }, { damageTakenOnTeamPercentage: 0.2 }, 'TOP');
+    // Test another override
+    createMatch(puuid, { damageTakenOnTeamPercentage: 0.5 }, { damageTakenOnTeamPercentage: 0.2 }, 'TOP');
     // We need 3 matches for it to show up, so let's just reuse the match creation logic or add to the existing matches if possible, 
     // but the existing test uses [match1, match2, match3] which are all JUNGLE matches.
     // Let's create a new test case for this specific override to be clean or append to the list.
@@ -189,9 +190,9 @@ describe('ConsistencyStats', () => {
     expect(screen.queryByText('First Baron')).not.toBeInTheDocument();
 
     // 'Objectives taken near enemy jungler' should also be ignored
-    const match4 = createMatch(puuid, { epicMonsterKillsNearEnemyJungler: 5 }, { epicMonsterKillsNearEnemyJungler: 0 }, 'TOP');
-    const match5 = createMatch(puuid, { epicMonsterKillsNearEnemyJungler: 5 }, { epicMonsterKillsNearEnemyJungler: 0 }, 'TOP');
-    const match6 = createMatch(puuid, { epicMonsterKillsNearEnemyJungler: 5 }, { epicMonsterKillsNearEnemyJungler: 0 }, 'TOP');
+    createMatch(puuid, { epicMonsterKillsNearEnemyJungler: 5 }, { epicMonsterKillsNearEnemyJungler: 0 }, 'TOP');
+    createMatch(puuid, { epicMonsterKillsNearEnemyJungler: 5 }, { epicMonsterKillsNearEnemyJungler: 0 }, 'TOP');
+    createMatch(puuid, { epicMonsterKillsNearEnemyJungler: 5 }, { epicMonsterKillsNearEnemyJungler: 0 }, 'TOP');
     
     // Re-render with new matches (or just add to the list if we want to test all at once, but separate render is cleaner for this specific check)
     // Actually, let's just make a new test block for clarity or append to this one.
