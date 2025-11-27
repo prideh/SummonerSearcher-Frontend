@@ -1,22 +1,17 @@
-import React from 'react';
 import { render, screen } from '@testing-library/react';
 import ConsistencyStats from './ConsistencyStats';
-import { MatchDto } from '../types/match';
+import type { MatchDto } from '../types/match';
 
 // Mock match data helper
 const createMatch = (puuid: string, playerStats: any, opponentStats: any, role: string = 'JUNGLE'): MatchDto => {
   return {
-    metadata: { matchId: '1', participants: [] },
     info: {
       gameCreation: 123,
       gameDuration: 123,
       gameEndTimestamp: 123,
       gameId: 123,
       gameMode: 'CLASSIC',
-      gameName: 'test',
-      gameStartTimestamp: 123,
-      gameType: 'MATCHED_GAME',
-      mapId: 11,
+      queueId: 420,
       participants: [
         {
           puuid: puuid,
@@ -40,11 +35,7 @@ const createMatch = (puuid: string, playerStats: any, opponentStats: any, role: 
           summoner1Id: 4, summoner2Id: 11,
           perks: { styles: [] }
         } as any
-      ],
-      platformId: 'EUW1',
-      queueId: 420,
-      teams: [],
-      tournamentCode: ''
+      ]
     }
   };
 };
