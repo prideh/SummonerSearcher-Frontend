@@ -21,12 +21,6 @@ interface Message {
   content: string;
 }
 
-const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summonerName, context }) => {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  
 const INITIAL_SUGGESTIONS = [
   "Analyze my profile",
   "What are my biggest strengths?",
@@ -35,6 +29,12 @@ const INITIAL_SUGGESTIONS = [
   "Why is my winrate low?"
 ];
 
+const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summonerName, context }) => {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  
   const STORAGE_KEY = `chat_history_${summonerName}`;
   const EXPIRATION_TIME = 30 * 60 * 1000; // 30 minutes
   const messagesEndRef = useRef<HTMLDivElement>(null);

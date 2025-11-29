@@ -37,3 +37,14 @@ export const getLeaderboard = async (region: string) => {
   const response = await apiClient.get(`/riot/leaderboards/challenger/${region}`);
   return response.data;
 };
+
+/**
+ * Fetches the live game for a specific summoner.
+ * @param region - The region of the summoner.
+ * @param puuid - The PUUID of the summoner.
+ * @returns A promise that resolves with the live game data, or null if not in game.
+ */
+export const getLiveGame = async (region: string, puuid: string) => {
+  const response = await apiClient.get(`/riot/live-game/${region}/${puuid}`);
+  return response.data;
+};

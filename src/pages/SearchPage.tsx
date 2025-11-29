@@ -333,6 +333,7 @@ const SearchPage: React.FC = () => {
               loading={loading}
               refreshing={refreshing}
               visibleMatches={summonerData.recentMatches.slice(0, visibleCount)}
+              onPlayerClick={handlePlayerClick}
             />
           )}
           {summonerData && (

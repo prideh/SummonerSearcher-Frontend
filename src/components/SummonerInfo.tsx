@@ -5,6 +5,8 @@ import RankedInfo from './RankedInfo';
 import { useTimeAgo } from '../hooks/useTimeAgo';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import AiAnalysisModal from './AiAnalysisModal';
+import { getLiveGame } from '../api/riot';
+import LiveGameDisplay, { type CurrentGameInfo } from './LiveGameDisplay';
 import { buildAiContext } from '../utils/aiContextBuilder';
 
 /**
@@ -21,6 +23,8 @@ interface SummonerInfoProps {
   refreshing: boolean;
   /** The subset of matches currently visible in the match history. */
   visibleMatches: MatchDto[];
+  /** Callback function to handle clicks on player names. */
+  onPlayerClick: (name: string, tag: string) => void;
 }
 
 /**
@@ -28,7 +32,7 @@ interface SummonerInfoProps {
  * It includes their profile icon, Riot ID, level, and a "Refresh" button.
  * It also contains the `RankedInfo` component to show ranked statistics.
  */
-const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh, loading, refreshing, visibleMatches }) => {
+const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh, loading, refreshing, visibleMatches, onPlayerClick }) => {
   const [timeAgo, ref] = useTimeAgo(new Date(summonerData.lastUpdated).getTime());
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
   const [showAiModal, setShowAiModal] = useState(false);
@@ -41,6 +45,34 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
     summonerData.puuid,
     summonerData.soloQueueRank
   );
+
+  const [liveGameData, setLiveGameData] = useState<CurrentGameInfo | null>(null);
+  const [loadingLiveGame, setLoadingLiveGame] = useState(false);
+  const [showLiveGame, setShowLiveGame] = useState(false);
+  const [liveGameError, setLiveGameError] = useState<string | null>(null);
+
+  const handleLiveGameClick = async () => {
+    if (showLiveGame) {
+      setShowLiveGame(false);
+      return;
+    }
+
+    setLoadingLiveGame(true);
+    setLiveGameError(null);
+    try {
+      const data = await getLiveGame(summonerData.region, summonerData.puuid);
+      if (data) {
+        setLiveGameData(data);
+        setShowLiveGame(true);
+      } else {
+        setLiveGameError('Summoner is not currently in a SoloQ game or is hiding their activity.');
+      }
+    } catch (err) {
+      setLiveGameError('Failed to fetch live game data.');
+    } finally {
+      setLoadingLiveGame(false);
+    }
+  };
 
   return (
     <div ref={ref} className="bg-white dark:bg-transparent border border-gray-200 dark:border-gray-800 p-6 rounded-lg shadow-md dark:shadow-lg">
@@ -63,6 +95,23 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
         </div>
         {!loading && (
           <div className="shrink-0 flex space-x-2">
+            <button
+              onClick={handleLiveGameClick}
+              disabled={loadingLiveGame}
+              className={`flex items-center space-x-2 ${showLiveGame ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white font-bold py-2 px-4 rounded-md transition-colors disabled:opacity-70 disabled:cursor-not-allowed`}
+            >
+               {loadingLiveGame ? (
+                  <svg className="w-5 h-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+               ) : (
+                  <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+                  </svg>
+               )}
+              <span>{showLiveGame ? 'Close Live' : 'Live Game'}</span>
+            </button>
             <button
               onClick={() => setShowAiModal(true)}
               className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md transition-colors"
@@ -99,6 +148,17 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
           </div>
         )}
       </div>
+      
+      {liveGameError && (
+        <div className="mt-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md text-sm">
+          {liveGameError}
+        </div>
+      )}
+
+      {showLiveGame && liveGameData && (
+        <LiveGameDisplay gameData={liveGameData} onPlayerClick={onPlayerClick} />
+      )}
+
       {summonerData.soloQueueRank ? (
         <RankedInfo rankedData={summonerData.soloQueueRank} summonerData={summonerData} matches={visibleMatches} />
       ) : (

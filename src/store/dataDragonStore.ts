@@ -68,6 +68,19 @@ export interface RuneMap {
   [key: string]: RuneData;
 }
 
+/** Defines the structure of the data for a single champion from Data Dragon. */
+export interface ChampionData {
+  id: string;
+  key: string;
+  name: string;
+  tags: string[];
+}
+
+/** A map of champion numeric keys to their corresponding ChampionData. */
+export interface ChampionMap {
+  [key: string]: ChampionData;
+}
+
 // --- Internal types for parsing DDragon response ---
 interface DDragonRune extends RuneData {
   longDesc: string;
@@ -97,14 +110,17 @@ interface DataDragonState {
   itemMap: ItemMap | null;
   summonerSpellMap: SummonerSpellMap | null;
   runeMap: RuneMap | null;
+  championMap: ChampionMap | null;
   loading: {
     items: boolean;
     spells: boolean;
     runes: boolean;
+    champions: boolean;
   };
   fetchItemData: () => Promise<void>;
   fetchSummonerSpellData: () => Promise<void>;
   fetchRuneData: () => Promise<void>;
+  fetchChampionData: () => Promise<void>;
 }
 
 /**
@@ -119,10 +135,12 @@ export const useDataDragonStore = create<DataDragonState>((set, get) => ({
   itemMap: null,
   summonerSpellMap: null,
   runeMap: null,
+  championMap: null,
   loading: {
     items: false,
     spells: false,
     runes: false,
+    champions: false,
   },
   /**
    * Fetches item data from Data Dragon and stores it in the `itemMap`.
@@ -186,6 +204,24 @@ export const useDataDragonStore = create<DataDragonState>((set, get) => ({
       set({ runeMap });
     } finally {
       set(state => ({ loading: { ...state.loading, runes: false } }));
+    }
+  },
+  /**
+   * Fetches champion data from Data Dragon and stores it in the `championMap`, keyed by champion ID.
+   */
+  fetchChampionData: async () => {
+    if (get().championMap || get().loading.champions) return;
+    set(state => ({ loading: { ...state.loading, champions: true } }));
+    try {
+      const response = await axios.get(`${get().cdnUrl}/data/en_US/champion.json`);
+      const championData = response.data.data;
+      const championMap: ChampionMap = {};
+      for (const championName in championData) {
+        championMap[championData[championName].key] = championData[championName];
+      }
+      set({ championMap });
+    } finally {
+      set(state => ({ loading: { ...state.loading, champions: false } }));
     }
   },
 }));
