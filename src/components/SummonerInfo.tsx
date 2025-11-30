@@ -67,7 +67,7 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
       } else {
         setLiveGameError('Summoner is not currently in a SoloQ game or is hiding their activity.');
       }
-    } catch (err) {
+    } catch {
       setLiveGameError('Failed to fetch live game data.');
     } finally {
       setLoadingLiveGame(false);
