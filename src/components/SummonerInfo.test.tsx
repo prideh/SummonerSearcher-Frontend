@@ -49,6 +49,7 @@ describe('SummonerInfo', () => {
     loading: false,
     refreshing: false,
     visibleMatches: [],
+    onPlayerClick: vi.fn(),
   };
 
   beforeEach(() => {
