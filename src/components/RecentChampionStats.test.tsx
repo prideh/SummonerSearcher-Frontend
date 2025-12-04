@@ -8,6 +8,7 @@ vi.mock('../store/dataDragonStore', () => ({
   useDataDragonStore: vi.fn(() => 'https://ddragon.leagueoflegends.com/cdn/14.22.1'),
 }));
 
+describe('RecentChampionStats', () => {
   it('calculates and displays Avg Tower Plates', () => {
     const mockChampionStats = [{
         championName: 'Aatrox',
