@@ -72,7 +72,7 @@ const SearchPage: React.FC = () => {
       fetchRecentSearches();
     } catch (err) {
       // Ignore aborted requests
-      if (err instanceof Error && (err.name === 'CanceledError' || err.message === 'canceled' || (err as any).code === 'ERR_CANCELED')) {
+      if (axios.isCancel(err) || (axios.isAxiosError(err) && err.code === 'ERR_CANCELED') || (err instanceof Error && (err.name === 'CanceledError' || err.message === 'canceled'))) {
         return;
       }
 
