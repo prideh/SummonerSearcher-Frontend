@@ -174,8 +174,6 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
           rankedData={summonerData.soloQueueRank} 
           summonerData={summonerData} 
           matches={visibleMatches} 
-          championStats={summonerData.championStats}
-          overallStats={summonerData.overallStats}
         />
       ) : (
         <p className="text-center text-gray-500 dark:text-gray-400 mt-4">No ranked data available for this summoner.</p>

@@ -28,6 +28,8 @@ describe('RankedInfo', () => {
     profileIconId: 1,
     lastUpdated: new Date().toISOString(),
     recentMatches: [],
+    championStats: [],
+    overallStats: null,
     soloQueueRank: {
       leagueId: 'test-league-id',
       queueType: 'RANKED_SOLO_5x5',

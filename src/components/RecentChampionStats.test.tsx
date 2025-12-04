@@ -39,73 +39,89 @@ describe('RecentChampionStats', () => {
   const puuid = 'test-puuid';
 
   it('calculates and displays Avg Tower Plates', () => {
-    const match1 = createMatch(puuid, 2);
-    const match2 = createMatch(puuid, 4);
-    
-    // Avg should be (2 + 4) / 2 = 3
+    const mockChampionStats = [{
+        championName: 'Aatrox',
+        games: 2,
+        wins: 1,
+        losses: 1,
+        kills: 10,
+        deaths: 4,
+        assists: 20,
+        cs: 400,
+        averageCsPerMinute: 8.0,
+        averageSoloKills: 1.0,
+        averageTurretPlates: 3.0, // (2+4)/2
+        winRate: 50,
+        kda: 7.5,
+        soloKills: 2,
+        turretPlates: 6,
+        totalDamageDealt: 10000,
+        damagePerMinute: 500,
+        goldEarned: 20000,
+        goldPerMinute: 400,
+        visionScore: 20,
+        visionScorePerMinute: 1.0
+    }];
 
-    render(<RecentChampionStats matches={[match1, match2]} puuid={puuid} />);
+    const mockOverallStats = {
+        wins: 1,
+        losses: 1,
+        winRate: 50,
+        kda: 7.5,
+        avgKills: 5,
+        avgDeaths: 2,
+        avgAssists: 10,
+        avgCsPerMinute: 8.0,
+        avgVisionScore: 10,
+        avgSoloKills: 1.0,
+        avgTurretPlates: 3.0,
+        avgKillParticipation: 50,
+        blueSide: { games: 1, wins: 1, winRate: 100 },
+        redSide: { games: 1, wins: 0, winRate: 0 },
+        oppAvgKda: 0,
+        oppAvgKillParticipation: 0,
+        oppAvgCsPerMinute: 0,
+        oppAvgSoloKills: 0,
+        oppAvgTurretPlates: 0
+    };
+
+    render(<RecentChampionStats championStats={mockChampionStats} overallStats={mockOverallStats} />);
 
     // Check for the label
     expect(screen.getByText('Avg Tower Plates:')).toBeInTheDocument();
     
     // Check for the value
-    // Since it's formatted to 1 decimal place, it should be "3.0"
     expect(screen.getByText('3.0')).toBeInTheDocument();
   });
 
   it('calculates and displays Opponent Stats', () => {
-    // Match 1: Player (Mid) vs Opponent (Mid)
-    // Player: 5/2/10, 200 CS, 1 Solo Kill, 2 Plates
-    // Opponent: 2/5/2, 150 CS, 0 Solo Kill, 0 Plates
-    const match1: MatchDto = {
-      info: {
-        gameId: 123,
-        gameDuration: 1800, // 30 min
-        participants: [
-          {
-            puuid: 'test-puuid',
-            championName: 'Ahri',
-            teamId: 100,
-            teamPosition: 'MIDDLE',
-            win: true,
-            kills: 5,
-            deaths: 2,
-            assists: 10,
-            totalMinionsKilled: 200,
-            neutralMinionsKilled: 0,
-            challenges: { soloKills: 1, turretPlatesTaken: 2 },
-          },
-          {
-            puuid: 'opponent-puuid',
-            championName: 'Zed',
-            teamId: 200,
-            teamPosition: 'MIDDLE',
-            win: false,
-            kills: 2,
-            deaths: 5,
-            assists: 2,
-            totalMinionsKilled: 150,
-            neutralMinionsKilled: 0,
-            challenges: { soloKills: 0, turretPlatesTaken: 0 },
-          },
-        ],
-      } as any,
+    const mockChampionStats: any[] = [];
+    const mockOverallStats = {
+        wins: 1,
+        losses: 0,
+        winRate: 100,
+        kda: 7.5,
+        avgKills: 5,
+        avgDeaths: 2,
+        avgAssists: 10,
+        avgCsPerMinute: 6.6, // 200 / 30
+        avgVisionScore: 0,
+        avgSoloKills: 1.0,
+        avgTurretPlates: 2.0,
+        avgKillParticipation: 50,
+        blueSide: { games: 1, wins: 1, winRate: 100 },
+        redSide: { games: 0, wins: 0, winRate: 0 },
+        oppAvgKda: 0.8, // (2+2)/5
+        oppAvgKillParticipation: 0,
+        oppAvgCsPerMinute: 5.0, // 150 / 30
+        oppAvgSoloKills: 0,
+        oppAvgTurretPlates: 0
     };
 
-    render(<RecentChampionStats matches={[match1]} puuid="test-puuid" />);
+    render(<RecentChampionStats championStats={mockChampionStats} overallStats={mockOverallStats} />);
 
     // Check for Opponent Stats Labels/Values
-    // We expect "vs" format or similar. Let's assume we implement it as "Value (Opp Value)" or similar compact style.
-    // Based on user request "add the opponents stat's as well", let's look for the opponent values.
-    
-    // Opponent KDA: (2+2)/5 = 0.8
     expect(screen.getByText(/0.80/)).toBeInTheDocument(); 
-
-    // Opponent CS/m: 150 / 30 = 5.0
     expect(screen.getByText(/5.0/)).toBeInTheDocument();
-
-    // Opponent Avg Solokills: 0.0
-    // Opponent Avg Plates: 0.0
   });
 });

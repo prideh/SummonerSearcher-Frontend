@@ -28,6 +28,8 @@ describe('SummonerInfo', () => {
     lastUpdated: new Date().toISOString(),
     region: 'EUW1',
     recentMatches: [],
+    championStats: [],
+    overallStats: null,
     soloQueueRank: {
       leagueId: 'league-id',
       queueType: 'RANKED_SOLO_5x5',
@@ -50,6 +52,7 @@ describe('SummonerInfo', () => {
     refreshing: false,
     visibleMatches: [],
     onPlayerClick: vi.fn(),
+    onViewProfile: vi.fn(),
   };
 
   beforeEach(() => {
