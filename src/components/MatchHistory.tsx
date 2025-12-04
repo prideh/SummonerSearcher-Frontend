@@ -16,13 +16,15 @@ interface MatchHistoryProps {
   onLoadMore: () => void;
   /** Whether there are more matches to load. */
   hasMore: boolean;
+  /** Whether more matches are currently loading. */
+  loadingMore: boolean;
 }
 
 /**
  * Renders a list of a summoner's recent matches.
  * It implements a "Load More" functionality to progressively display the match history.
  */
-const MatchHistory: React.FC<MatchHistoryProps> = ({ puuid, matches, onPlayerClick, onLoadMore, hasMore }) => {
+const MatchHistory: React.FC<MatchHistoryProps> = ({ puuid, matches, onPlayerClick, onLoadMore, hasMore, loadingMore }) => {
   // The loading and error states are now handled by SearchPage.
   // We just need to handle the case where there are no matches.
 
@@ -38,8 +40,12 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ puuid, matches, onPlayerCli
       ))}
       {hasMore && (
         <div className="mt-4 text-center">
-          <button onClick={onLoadMore} className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold py-3 px-8 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors duration-200">
-            Load More
+          <button 
+            onClick={onLoadMore} 
+            disabled={loadingMore}
+            className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold py-3 px-8 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loadingMore ? 'Loading...' : 'Load More'}
           </button>
         </div>
       )}

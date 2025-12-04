@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
-import { getSummonerByName } from '../api/riot';
+import { getSummonerByName, getMatches } from '../api/riot';
 import { useSearchParams } from 'react-router-dom';
 import type { SummonerData } from '../types/summoner';
+import type { MatchDto } from '../types/match';
 import MatchHistory from '../components/MatchHistory';
 import axios from 'axios';
 import { getRecentSearches, clearRecentSearches, type RecentSearch } from '../api/user';
@@ -12,6 +13,7 @@ import 'react-tooltip/dist/react-tooltip.css';
 import SearchBar from '../components/SearchBar';
 
 import SummonerInfo from '../components/SummonerInfo';
+import PlayerProfile from '../components/PlayerProfile';
 import { toApiRegion, toUrlRegion } from '../utils/regionUtils';
 
 /**
@@ -25,7 +27,14 @@ const SearchPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [showRecent, setShowRecent] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(10);
+  const [showFullProfile, setShowFullProfile] = useState(false);
+  const [showLongSearchMessage, setShowLongSearchMessage] = useState(false);
+  
+  // Pagination State
+  const [matches, setMatches] = useState<MatchDto[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Zustand store for managing global state like search input, region, and last search results.
   const searchInput = useAuthStore((state) => state.searchInput);
@@ -62,11 +71,26 @@ const SearchPage: React.FC = () => {
    * @param isRefresh - Whether this is a refresh operation (doesn't clear input)
    */
   const performSearch = useCallback(async (name: string, tag: string, searchRegion: string, isRefresh = false, signal?: AbortSignal) => {
+    let longSearchTimeout: ReturnType<typeof setTimeout>;
+
     try {
+      setShowLongSearchMessage(false);
+      // Set a timeout to show the long search message if the request takes longer than 5 seconds
+      longSearchTimeout = setTimeout(() => {
+        setShowLongSearchMessage(true);
+      }, 5000);
+
       const apiData: Omit<SummonerData, 'region' | 'lastUpdated'> = await getSummonerByName(searchRegion, name, tag, signal);
       const updatedTimestamp = new Date().toISOString();
       const fullData: SummonerData = { ...apiData, region: searchRegion, lastUpdated: updatedTimestamp };
       setSummonerData(fullData);
+      setShowFullProfile(false); // Close profile on new search
+      
+      // Initialize matches and pagination
+      setMatches(fullData.recentMatches);
+      setPage(1);
+      setHasMore(fullData.recentMatches.length >= 20); // Assuming page size is 20
+      
       setLastSearchedSummoner(fullData);
       // Re-fetch recent searches to include the new one.
       fetchRecentSearches();
@@ -79,17 +103,23 @@ const SearchPage: React.FC = () => {
       if (err instanceof Error && err.message === 'NOT_FOUND') {
         setLastSearchedSummoner('NOT_FOUND');
         setError('NOT_FOUND');
+      } else if (axios.isAxiosError(err)) {
+        if (err.response?.status === 504) {
+          setError('The Riot API is taking too long to respond. Please try again later.');
+        } else if (err.response?.data && typeof err.response.data === 'string') {
+             setError(err.response.data);
+        } else {
+            setError(err.message);
+        }
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
         setError('An unexpected error occurred.');
       }
     } finally {
-      // Only reset loading if not aborted (optional, but safer)
-      // Actually, if aborted, we probably don't want to change state at all.
-      // But we can't easily know here if it was aborted in finally block without checking error again.
-      // However, if we return early in catch, finally still runs.
-      // Let's check signal.aborted
+      clearTimeout(longSearchTimeout!); // Clear the timeout when the request completes or fails
+      setShowLongSearchMessage(false); // Hide the message
+
       if (!signal?.aborted) {
         setLoading(false);
         setRefreshing(false);
@@ -100,6 +130,29 @@ const SearchPage: React.FC = () => {
       }
     }
   }, [fetchRecentSearches, setLastSearchedSummoner, setSearchInput]);
+
+  /**
+   * Loads the next page of matches.
+   */
+  const loadMoreMatches = async () => {
+    if (!summonerData || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const newMatches = await getMatches(summonerData.region, summonerData.puuid, nextPage);
+      if (newMatches.length > 0) {
+        setMatches(prev => [...prev, ...newMatches]);
+        setPage(nextPage);
+        if (newMatches.length < 20) setHasMore(false);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("Failed to load more matches", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   /**
    * Initiates a search, setting loading states and resetting previous results.
@@ -196,6 +249,7 @@ const SearchPage: React.FC = () => {
       // Only clear data if we are actually searching for a different person/region
       if (!summonerData || summonerData.gameName !== gameNameFromUrl || summonerData.tagLine !== tagLineFromUrl || summonerData.region !== apiRegion) {
           setSummonerData(null);
+          setMatches([]);
       }
 
       const controller = new AbortController();
@@ -211,6 +265,11 @@ const SearchPage: React.FC = () => {
         setError('NOT_FOUND');
       } else {
         setSummonerData(lastSearchedSummoner);
+        if (typeof lastSearchedSummoner !== 'string') {
+            setMatches(lastSearchedSummoner.recentMatches);
+            setPage(1);
+            setHasMore(lastSearchedSummoner.recentMatches.length >= 20);
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -358,23 +417,39 @@ const SearchPage: React.FC = () => {
             </div>
           )}
           {loading && renderSkeleton()}
+          {loading && showLongSearchMessage && (
+            <div className="text-center mt-4 text-cyan-600 dark:text-cyan-400 animate-pulse font-medium">
+              Fetching full seasonal history... this might take a moment.
+            </div>
+          )}
           {summonerData && (
-            <SummonerInfo
-              summonerData={summonerData}
-              handleRefresh={handleRefresh}
-              loading={loading}
-              refreshing={refreshing}
-              visibleMatches={summonerData.recentMatches.slice(0, visibleCount)}
-              onPlayerClick={handlePlayerClick}
-            />
+            <>
+              {showFullProfile && (
+                  <PlayerProfile 
+                      summonerData={summonerData} 
+                      onClose={() => setShowFullProfile(false)} 
+                  />
+              )}
+
+              <SummonerInfo
+                summonerData={summonerData}
+                handleRefresh={handleRefresh}
+                loading={loading}
+                refreshing={refreshing}
+                visibleMatches={matches}
+                onPlayerClick={handlePlayerClick}
+                onViewProfile={() => setShowFullProfile(true)}
+              />
+            </>
           )}
           {summonerData && (
             <MatchHistory 
               puuid={summonerData.puuid} 
-              matches={summonerData.recentMatches.slice(0, visibleCount)} 
+              matches={matches} 
               onPlayerClick={handlePlayerClick}
-              onLoadMore={() => setVisibleCount(prev => prev + 10)}
-              hasMore={visibleCount < summonerData.recentMatches.length}
+              onLoadMore={loadMoreMatches}
+              hasMore={hasMore}
+              loadingMore={loadingMore}
             />
           )}
         </div>

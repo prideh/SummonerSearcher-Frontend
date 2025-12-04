@@ -48,3 +48,15 @@ export const getLiveGame = async (region: string, puuid: string) => {
   const response = await apiClient.get(`/riot/live-game/${region}/${puuid}`);
   return response.data;
 };
+
+/**
+ * Fetches a specific page of matches for a summoner.
+ * @param region - The region of the summoner.
+ * @param puuid - The PUUID of the summoner.
+ * @param page - The page number (1-indexed).
+ * @returns A promise that resolves with the list of matches.
+ */
+export const getMatches = async (region: string, puuid: string, page: number) => {
+  const response = await apiClient.get(`/riot/matches/${region}/${puuid}?page=${page}`);
+  return response.data;
+};

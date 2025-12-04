@@ -25,6 +25,8 @@ interface SummonerInfoProps {
   visibleMatches: MatchDto[];
   /** Callback function to handle clicks on player names. */
   onPlayerClick: (name: string, tag: string) => void;
+  /** Callback to open the full seasonal profile. */
+  onViewProfile: () => void;
 }
 
 /**
@@ -32,7 +34,7 @@ interface SummonerInfoProps {
  * It includes their profile icon, Riot ID, level, and a "Refresh" button.
  * It also contains the `RankedInfo` component to show ranked statistics.
  */
-const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh, loading, refreshing, visibleMatches, onPlayerClick }) => {
+const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh, loading, refreshing, visibleMatches, onPlayerClick, onViewProfile }) => {
   const [timeAgo, ref] = useTimeAgo(new Date(summonerData.lastUpdated).getTime());
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
   const [showAiModal, setShowAiModal] = useState(false);
@@ -41,9 +43,11 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
   const aiContext = buildAiContext(
     summonerData.gameName,
     summonerData.tagLine,
-    summonerData.recentMatches, // Use ALL matches, not just visible ones
+    visibleMatches, // Use visibleMatches to include loaded pages
     summonerData.puuid,
-    summonerData.soloQueueRank
+    summonerData.soloQueueRank,
+    summonerData.championStats,
+    summonerData.overallStats
   );
 
   const [liveGameData, setLiveGameData] = useState<CurrentGameInfo | null>(null);
@@ -94,19 +98,25 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
           )}
         </div>
         {!loading && (
-          <div className="shrink-0 flex space-x-2">
+          <div className="shrink-0 flex flex-wrap justify-center sm:justify-end gap-2 mt-2 sm:mt-0">
+            <button
+                onClick={onViewProfile}
+                className="text-xs sm:text-sm font-bold text-white bg-cyan-600 hover:bg-cyan-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-md shadow-sm transition-colors"
+            >
+                View Full Seasonal Profile
+            </button>
             <button
               onClick={handleLiveGameClick}
               disabled={loadingLiveGame}
-              className={`flex items-center space-x-2 ${showLiveGame ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white font-bold py-2 px-4 rounded-md transition-colors disabled:opacity-70 disabled:cursor-not-allowed`}
+              className={`flex items-center space-x-1 sm:space-x-2 ${showLiveGame ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white font-bold py-1.5 px-3 text-xs sm:py-2 sm:px-4 sm:text-sm rounded-md transition-colors disabled:opacity-70 disabled:cursor-not-allowed`}
             >
                {loadingLiveGame ? (
-                  <svg className="w-5 h-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                ) : (
-                  <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
                   </svg>
                )}
@@ -114,10 +124,10 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
             </button>
             <button
               onClick={() => setShowAiModal(true)}
-              className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md transition-colors"
+              className="flex items-center space-x-1 sm:space-x-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-3 text-xs sm:py-2 sm:px-4 sm:text-sm rounded-md transition-colors"
             >
               <svg 
-                className="w-5 h-5" 
+                className="w-4 h-4 sm:w-5 sm:h-5" 
                 xmlns="http://www.w3.org/2000/svg" 
                 fill="none" 
                 viewBox="0 0 24 24" 
@@ -131,10 +141,10 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="flex items-center space-x-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-md transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+              className="flex items-center space-x-1 sm:space-x-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-1.5 px-3 text-xs sm:py-2 sm:px-4 sm:text-sm rounded-md transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
             >
               <svg 
-                className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} 
+                className={`w-4 h-4 sm:w-5 sm:h-5 ${refreshing ? 'animate-spin' : ''}`} 
                 xmlns="http://www.w3.org/2000/svg" 
                 fill="none" 
                 viewBox="0 0 24 24" 
@@ -160,7 +170,13 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
       )}
 
       {summonerData.soloQueueRank ? (
-        <RankedInfo rankedData={summonerData.soloQueueRank} summonerData={summonerData} matches={visibleMatches} />
+        <RankedInfo 
+          rankedData={summonerData.soloQueueRank} 
+          summonerData={summonerData} 
+          matches={visibleMatches} 
+          championStats={summonerData.championStats}
+          overallStats={summonerData.overallStats}
+        />
       ) : (
         <p className="text-center text-gray-500 dark:text-gray-400 mt-4">No ranked data available for this summoner.</p>
       )}

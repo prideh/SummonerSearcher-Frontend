@@ -1,31 +1,38 @@
-import React, { useMemo } from 'react';
-import type { MatchDto } from '../types/match';
+import React from 'react';
 import { getCorrectChampionName } from '../utils/championNameHelper';
 import { useDataDragonStore } from '../store/dataDragonStore';
-import { calculateStats } from '../utils/statsCalculator';
+import type { ChampionStats, OverallStats } from '../types/summoner';
 
 /**
  * Props for the RecentChampionStats component.
  */
 interface RecentChampionStatsProps {
-  /** An array of the summoner's recent matches. */
-  matches: MatchDto[];
-  /** The PUUID of the summoner to identify their stats in each match. */
-  puuid: string;
+  championStats: ChampionStats[];
+  overallStats: OverallStats | null;
 }
 
 /**
- * Calculates and displays aggregated statistics for a summoner's most played champions
- * over their last X games. It also shows overall performance metrics like win rate, KDA, and CS/min.
- */
-const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puuid }) => {
-  // useMemo ensures that the complex calculation of stats is only re-run when matches or puuid change.
-  const { championStats, overallStats } = useMemo(() => {
-    return calculateStats(matches, puuid);
-  }, [matches, puuid]);
+import React from 'react';
+import { getCorrectChampionName } from '../utils/championNameHelper';
+import { useDataDragonStore } from '../store/dataDragonStore';
+import type { ChampionStats, OverallStats } from '../types/summoner';
 
+/**
+ * Props for the RecentChampionStats component.
+ */
+interface RecentChampionStatsProps {
+  championStats: ChampionStats[];
+  overallStats: OverallStats | null;
+}
+
+/**
+ * Displays aggregated statistics for a summoner's most played champions
+ * and overall performance metrics like win rate, KDA, and CS/min.
+ */
+const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ championStats, overallStats }) => {
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
-  if (championStats.length === 0 && overallStats.wins + overallStats.losses === 0) {
+
+  if (!overallStats || (championStats.length === 0 && overallStats.wins + overallStats.losses === 0)) {
     return <p className="text-sm text-gray-500 dark:text-gray-500 mt-4">Not enough recent games to show champion stats.</p>;
   }
 
@@ -35,7 +42,7 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
         <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last {overallStats.wins + overallStats.losses} Games</h3>
         <div className="text-xs text-right">
           <span className={`font-semibold ${overallStats.winRate > 50 ? 'text-green-600 dark:text-green-400' : overallStats.winRate < 50 ? 'text-red-500 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}`}>
-            {overallStats.wins}W {overallStats.losses}L ({overallStats.winRate.toFixed(0)}%)
+            {overallStats.wins}W {overallStats.losses}L ({Number(overallStats.winRate).toFixed(0)}%)
           </span>
         </div>
       </div>
@@ -43,13 +50,13 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
         {championStats.slice(0, 5).map(stat => {
           const winRate = stat.games > 0 ? ((stat.wins / stat.games) * 100).toFixed(0) : 0;
           const kda = stat.deaths > 0 ? ((stat.kills + stat.assists) / stat.deaths) : Infinity;
-          const avgKda = `${((stat.kills) / stat.games).toFixed(1)} / ${((stat.deaths) / stat.games).toFixed(1)} / ${((stat.assists) / stat.games).toFixed(1)}`;
+          const avgKda = `${(stat.kills / stat.games).toFixed(1)} / ${(stat.deaths / stat.games).toFixed(1)} / ${(stat.assists / stat.games).toFixed(1)}`;
 
           // Tooltip content with detailed stats for each champion.
           const tooltipContent = `
             <div class="text-center">
               <div class="font-bold text-gray-100">${stat.championName}</div>
-              <div class="text-sm font-semibold ${parseInt(winRate as string) > 50 ? 'text-green-400' : parseInt(winRate as string) < 50 ? 'text-red-400' : 'text-gray-400'}">${winRate}% WR <span class="text-gray-500">(${stat.games} G)</span></div>
+              <div class="text-sm font-semibold ${Number(winRate) > 50 ? 'text-green-400' : Number(winRate) < 50 ? 'text-red-400' : 'text-gray-400'}">${winRate}% WR <span class="text-gray-500">(${stat.games} G)</span></div>
               <div class="text-sm text-gray-100 mt-1">${kda === Infinity ? 'Infinite' : kda.toFixed(2)} KDA</div>
               <div class="text-xs text-gray-500">${avgKda}</div>
               ${stat.soloKills > 0 ? `<div class="text-xs text-yellow-400 mt-1">Solo Kills: ${stat.soloKills}</div>` : ''}
@@ -74,12 +81,12 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
               <div className="flex items-center space-x-1">
                   <span className="text-blue-500 font-bold">Blue:</span>
                   <span className="text-gray-600 dark:text-gray-400">{overallStats.blueSide.games}G</span>
-                  <span className={`font-semibold ${overallStats.blueSide.winRate > 50 ? 'text-green-500' : overallStats.blueSide.winRate < 50 ? 'text-red-500' : 'text-gray-500'}`}>({overallStats.blueSide.winRate.toFixed(0)}%)</span>
+                  <span className={`font-semibold ${overallStats.blueSide.winRate > 50 ? 'text-green-500' : overallStats.blueSide.winRate < 50 ? 'text-red-500' : 'text-gray-500'}`}>({Number(overallStats.blueSide.winRate).toFixed(0)}%)</span>
               </div>
               <div className="flex items-center space-x-1">
                   <span className="text-red-500 font-bold">Red:</span>
                   <span className="text-gray-600 dark:text-gray-400">{overallStats.redSide.games}G</span>
-                  <span className={`font-semibold ${overallStats.redSide.winRate > 50 ? 'text-green-500' : overallStats.redSide.winRate < 50 ? 'text-red-500' : 'text-gray-500'}`}>({overallStats.redSide.winRate.toFixed(0)}%)</span>
+                  <span className={`font-semibold ${overallStats.redSide.winRate > 50 ? 'text-green-500' : overallStats.redSide.winRate < 50 ? 'text-red-500' : 'text-gray-500'}`}>({Number(overallStats.redSide.winRate).toFixed(0)}%)</span>
               </div>
           </div>
           <div className="flex flex-col space-y-1 text-gray-500 dark:text-gray-400 text-right">
@@ -87,36 +94,36 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ matches, puui
               <div className="flex items-center justify-end space-x-1">
                   <span>KDA:</span>
                   <div className="flex items-center space-x-1">
-                    <span className="text-gray-700 dark:text-gray-300 font-semibold">{overallStats.kda === Infinity ? 'Inf' : overallStats.kda.toFixed(2)}</span>
-                    <span className="text-gray-500 text-[10px]">({overallStats.oppAvgKda === Infinity ? 'Inf' : overallStats.oppAvgKda.toFixed(2)})</span>
+                    <span className="text-gray-700 dark:text-gray-300 font-semibold">{Number(overallStats.kda) === Infinity ? 'Inf' : Number(overallStats.kda).toFixed(2)}</span>
+                    <span className="text-gray-500 text-[10px]">({Number(overallStats.oppAvgKda) === Infinity ? 'Inf' : Number(overallStats.oppAvgKda).toFixed(2)})</span>
                   </div>
               </div>
               <div className="flex items-center justify-end space-x-1">
                   <span>KP:</span>
                   <div className="flex items-center space-x-1">
-                    <span className="text-gray-700 dark:text-gray-300 font-semibold">{overallStats.avgKillParticipation.toFixed(0)}%</span>
-                    <span className="text-gray-500 text-[10px]">({overallStats.oppAvgKillParticipation.toFixed(0)}%)</span>
+                    <span className="text-gray-700 dark:text-gray-300 font-semibold">{Number(overallStats.avgKillParticipation).toFixed(0)}%</span>
+                    <span className="text-gray-500 text-[10px]">({Number(overallStats.oppAvgKillParticipation).toFixed(0)}%)</span>
                   </div>
               </div>
               <div className="flex items-center justify-end space-x-1">
                   <span>CS/m:</span>
                   <div className="flex items-center space-x-1">
-                    <span className="text-gray-700 dark:text-gray-300 font-semibold">{overallStats.avgCsPerMinute.toFixed(1)}</span>
-                    <span className="text-gray-500 text-[10px]">({overallStats.oppAvgCsPerMinute.toFixed(1)})</span>
+                    <span className="text-gray-700 dark:text-gray-300 font-semibold">{Number(overallStats.avgCsPerMinute).toFixed(1)}</span>
+                    <span className="text-gray-500 text-[10px]">({Number(overallStats.oppAvgCsPerMinute).toFixed(1)})</span>
                   </div>
               </div>
               <div className="flex items-center justify-end space-x-1">
                   <span>Avg Solokills:</span>
                   <div className="flex items-center space-x-1">
-                    <span className="text-gray-700 dark:text-gray-300 font-semibold">{overallStats.avgSoloKills.toFixed(1)}</span>
-                    <span className="text-gray-500 text-[10px]">({overallStats.oppAvgSoloKills.toFixed(1)})</span>
+                    <span className="text-gray-700 dark:text-gray-300 font-semibold">{Number(overallStats.avgSoloKills).toFixed(1)}</span>
+                    <span className="text-gray-500 text-[10px]">({Number(overallStats.oppAvgSoloKills).toFixed(1)})</span>
                   </div>
               </div>
               <div className="flex items-center justify-end space-x-1">
                   <span>Avg Tower Plates:</span>
                   <div className="flex items-center space-x-1">
-                    <span className="text-gray-700 dark:text-gray-300 font-semibold">{overallStats.avgTurretPlates.toFixed(1)}</span>
-                    <span className="text-gray-500 text-[10px]">({overallStats.oppAvgTurretPlates.toFixed(1)})</span>
+                    <span className="text-gray-700 dark:text-gray-300 font-semibold">{Number(overallStats.avgTurretPlates).toFixed(1)}</span>
+                    <span className="text-gray-500 text-[10px]">({Number(overallStats.oppAvgTurretPlates).toFixed(1)})</span>
                   </div>
               </div>
           </div>

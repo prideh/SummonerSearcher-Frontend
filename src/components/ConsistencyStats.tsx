@@ -28,7 +28,7 @@ const ConsistencyStats: React.FC<ConsistencyStatsProps> = ({ matches, puuid }) =
                         return (
                             <li key={stat.key} className="text-xs text-gray-700 dark:text-gray-300 flex justify-between items-center">
                                 <span className="flex-1 min-w-0 truncate mr-2" title={displayName}>{displayName}</span>
-                                <span className="font-semibold text-green-600 dark:text-green-400 whitespace-nowrap">{stat.consistency.toFixed(0)}%</span>
+                                <span className="font-semibold text-green-600 dark:text-green-400 whitespace-nowrap">{Number(stat.consistency).toFixed(0)}%</span>
                             </li>
                         );
                     })}
@@ -45,7 +45,7 @@ const ConsistencyStats: React.FC<ConsistencyStatsProps> = ({ matches, puuid }) =
                         return (
                             <li key={stat.key} className="text-xs text-gray-700 dark:text-gray-300 flex justify-between items-center">
                                 <span className="flex-1 min-w-0 truncate mr-2" title={displayName}>{displayName}</span>
-                                <span className="font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">{stat.lossConsistency.toFixed(0)}%</span>
+                                <span className="font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">{Number(stat.lossConsistency).toFixed(0)}%</span>
                             </li>
                         );
                     })}

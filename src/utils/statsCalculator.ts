@@ -1,16 +1,5 @@
 import type { MatchDto } from '../types/match';
 
-export interface ChampionStat {
-  championName: string;
-  games: number;
-  wins: number;
-  losses: number;
-  kills: number;
-  deaths: number;
-  assists: number;
-  soloKills: number;
-}
-
 export interface StatConsistency {
   key: string;
   wins: number;
@@ -49,42 +38,6 @@ export const STAT_ROLE_MAPPING: Record<string, 'ALL' | 'JUNGLE' | 'SUPPORT'> = {
   epicMonsterStolenWithoutSmite: 'JUNGLE',
   epicMonsterKillsWithin30SecondsOfSpawn: 'JUNGLE',
 };
-
-export interface OverallStats {
-  winRate: number;
-  kda: number;
-  wins: number;
-  losses: number;
-  avgCsPerMinute: number;
-  avgKillParticipation: number;
-  avgSoloKills: number;
-  avgTurretPlates: number;
-  avgKills: number;
-  avgDeaths: number;
-  avgAssists: number;
-  oppAvgKda: number;
-  oppAvgCsPerMinute: number;
-  oppAvgKillParticipation: number;
-  oppAvgSoloKills: number;
-  oppAvgTurretPlates: number;
-  avgVisionScore: number;
-  oppAvgVisionScore: number;
-  blueSide: {
-    games: number;
-    wins: number;
-    winRate: number;
-  };
-  redSide: {
-    games: number;
-    wins: number;
-    winRate: number;
-  };
-}
-
-export interface CalculatedStats {
-  championStats: ChampionStat[];
-  overallStats: OverallStats;
-}
 
 export const calculateConsistency = (matches: MatchDto[], puuid: string) => {
     const statsMap: Record<string, { wins: number; losses: number; totalGames: number }> = {};
@@ -223,181 +176,195 @@ export const calculateConsistency = (matches: MatchDto[], puuid: string) => {
     return { bestStats, worstStats };
 };
 
-export const calculateStats = (matches: MatchDto[], puuid: string): CalculatedStats => {
-  const stats: Record<string, ChampionStat> = {};
+import type { ChampionStats, OverallStats } from '../types/summoner';
 
-  let totalGames = 0;
-  let totalWins = 0;
-  let totalKills = 0;
-  let totalDeaths = 0;
-  let totalAssists = 0;
-
-  let totalCs = 0;
-  let totalDurationInMinutes = 0;
-  let totalKillParticipation = 0;
-  let totalSoloKills = 0;
-  let totalTurretPlates = 0;
-  let totalVisionScore = 0;
-
-  // Opponent Stats
-  let oppTotalKills = 0;
-  let oppTotalDeaths = 0;
-  let oppTotalAssists = 0;
-  let oppTotalCs = 0;
-  let oppTotalSoloKills = 0;
-  let oppTotalTurretPlates = 0;
-  let oppTotalKillParticipation = 0;
-  let oppTotalVisionScore = 0;
-
-  let blueSideGames = 0;
-  let blueSideWins = 0;
-  let redSideGames = 0;
-  let redSideWins = 0;
-
-  matches.forEach(match => {
-    const player = match.info?.participants.find(p => p.puuid === puuid);
-    if (!player || !player.championName || !match.info?.gameDuration) return;
-
-    totalGames++;
-
-    if (player.win) {
-      totalWins++;
+export const calculateStatsFromMatches = (matches: MatchDto[], puuid: string): { championStats: ChampionStats[], overallStats: OverallStats | null } => {
+    if (!matches || matches.length === 0) {
+        return { championStats: [], overallStats: null };
     }
 
-    if (player.teamId === 100) {
-      blueSideGames++;
-      if (player.win) blueSideWins++;
-    } else if (player.teamId === 200) {
-      redSideGames++;
-      if (player.win) redSideWins++;
-    }
+    const championStatsMap: Record<string, {
+        games: number;
+        wins: number;
+        kills: number;
+        deaths: number;
+        assists: number;
+        soloKills: number;
+        turretPlates: number;
+        cs: number;
+        durationMinutes: number;
+    }> = {};
 
-    // Find direct lane opponent
-    const opponent = match.info.participants.find(p => 
-      p.teamPosition === player.teamPosition && p.teamId !== player.teamId
-    );
+    let totalGames = 0;
+    let totalWins = 0;
+    let totalKills = 0;
+    let totalDeaths = 0;
+    let totalAssists = 0;
+    let totalCs = 0;
+    let totalDurationInMinutes = 0;
+    let totalKillParticipation = 0;
+    let totalSoloKills = 0;
+    let totalTurretPlates = 0;
+    let totalVisionScore = 0;
 
-    // Calculate team-wide stats for this match to determine KP.
-    const teamKills = match.info.participants
-      .filter(p => p.teamId === player.teamId)
-      .reduce((acc, p) => acc + (p.kills ?? 0), 0);
-    
-    const oppTeamKills = opponent ? match.info.participants
-      .filter(p => p.teamId === opponent.teamId)
-      .reduce((acc, p) => acc + (p.kills ?? 0), 0) : 0;
+    let oppTotalKills = 0;
+    let oppTotalDeaths = 0;
+    let oppTotalAssists = 0;
+    let oppTotalCs = 0;
+    let oppTotalSoloKills = 0;
+    let oppTotalTurretPlates = 0;
+    let oppTotalVisionScore = 0;
+    let oppTotalKillParticipation = 0;
 
-    totalKills += player.kills ?? 0;
-    totalDeaths += player.deaths ?? 0;
-    totalAssists += player.assists ?? 0;
-    totalSoloKills += player.challenges?.soloKills ?? 0;
-    totalTurretPlates += player.challenges?.turretPlatesTaken ?? 0;
-    totalVisionScore += player.visionScore ?? 0;
+    let blueSideGames = 0;
+    let blueSideWins = 0;
+    let redSideGames = 0;
+    let redSideWins = 0;
 
-    totalCs += (player.totalMinionsKilled ?? 0) + (player.neutralMinionsKilled ?? 0);
-    totalDurationInMinutes += match.info.gameDuration / 60;
-    if (teamKills > 0) {
-      totalKillParticipation += ((player.kills ?? 0) + (player.assists ?? 0)) / teamKills;
-    }
+    matches.forEach(match => {
+        const info = match.info;
+        if (!info || info.gameDuration === 0) return;
 
-    // Accumulate Opponent Stats
-    if (opponent) {
-      oppTotalKills += opponent.kills ?? 0;
-      oppTotalDeaths += opponent.deaths ?? 0;
-      oppTotalAssists += opponent.assists ?? 0;
-      oppTotalCs += (opponent.totalMinionsKilled ?? 0) + (opponent.neutralMinionsKilled ?? 0);
-      oppTotalSoloKills += opponent.challenges?.soloKills ?? 0;
-      oppTotalTurretPlates += opponent.challenges?.turretPlatesTaken ?? 0;
-      oppTotalVisionScore += opponent.visionScore ?? 0;
-      
-      if (oppTeamKills > 0) {
-          oppTotalKillParticipation += ((opponent.kills ?? 0) + (opponent.assists ?? 0)) / oppTeamKills;
-      }
-    }
+        const participant = info.participants.find(p => p.puuid === puuid);
+        if (!participant) return;
 
-    const championKey = player.championName;
+        totalGames++;
+        if (participant.win) totalWins++;
 
-    // Initialize the stats object for a champion if it's the first time we've seen them.
-    if (!stats[championKey]) {
-      stats[championKey] = {
-        championName: player.championName,
-        games: 0,
-        wins: 0,
-        losses: 0,
-        kills: 0,
-        deaths: 0,
-        assists: 0,
-        soloKills: 0,
-      };
-    }
+        // Side Stats
+        if (participant.teamId === 100) {
+            blueSideGames++;
+            if (participant.win) blueSideWins++;
+        } else {
+            redSideGames++;
+            if (participant.win) redSideWins++;
+        }
 
-    // Aggregate the stats for the current champion.
-    const champ = stats[championKey];
-    champ.games++;
-    if (player.win) {
-      champ.wins++;
-    } else {
-      champ.losses++;
-    }
-    champ.kills += player.kills ?? 0;
-    champ.deaths += player.deaths ?? 0;
-    champ.assists += player.assists ?? 0;
-    champ.soloKills += player.challenges?.soloKills ?? 0;
-  });
-  
-  // Calculate overall average stats across all processed games.
-  const overallWinRate = totalGames > 0 ? (totalWins / totalGames) * 100 : 0;
-  const overallKda = totalDeaths > 0 ? (totalKills + totalAssists) / totalDeaths : Infinity;
-  const avgCsPerMinute = totalDurationInMinutes > 0 ? totalCs / totalDurationInMinutes : 0;
-  const avgKillParticipation = totalGames > 0 ? (totalKillParticipation / totalGames) * 100 : 0;
-  const avgSoloKills = totalGames > 0 ? totalSoloKills / totalGames : 0;
-  const avgTurretPlates = totalGames > 0 ? totalTurretPlates / totalGames : 0;
-  const avgVisionScore = totalGames > 0 ? totalVisionScore / totalGames : 0;
+        // Player Stats
+        const kills = participant.kills || 0;
+        const deaths = participant.deaths || 0;
+        const assists = participant.assists || 0;
+        const cs = (participant.totalMinionsKilled || 0) + (participant.neutralMinionsKilled || 0);
+        const soloKills = participant.challenges?.soloKills || 0;
+        const turretPlates = participant.challenges?.turretPlatesTaken || 0;
+        const visionScore = participant.visionScore || 0;
+        const durationMin = (info.gameDuration || 0) / 60;
 
-  // Opponent Averages
-  const oppAvgKda = oppTotalDeaths > 0 ? (oppTotalKills + oppTotalAssists) / oppTotalDeaths : Infinity;
-  const oppAvgCsPerMinute = totalDurationInMinutes > 0 ? oppTotalCs / totalDurationInMinutes : 0;
-  const oppAvgKillParticipation = totalGames > 0 ? (oppTotalKillParticipation / totalGames) * 100 : 0;
-  const oppAvgSoloKills = totalGames > 0 ? oppTotalSoloKills / totalGames : 0;
-  const oppAvgTurretPlates = totalGames > 0 ? oppTotalTurretPlates / totalGames : 0;
-  const oppAvgVisionScore = totalGames > 0 ? oppTotalVisionScore / totalGames : 0;
+        totalKills += kills;
+        totalDeaths += deaths;
+        totalAssists += assists;
+        totalCs += cs;
+        totalSoloKills += soloKills;
+        totalTurretPlates += turretPlates;
+        totalVisionScore += visionScore;
+        totalDurationInMinutes += durationMin;
 
-  const blueSideWinRate = blueSideGames > 0 ? (blueSideWins / blueSideGames) * 100 : 0;
-  const redSideWinRate = redSideGames > 0 ? (redSideWins / redSideGames) * 100 : 0;
+        // KP
+        const teamKills = info.participants
+            .filter(p => p.teamId === participant.teamId)
+            .reduce((sum, p) => sum + (p.kills || 0), 0);
+        if (teamKills > 0) {
+            totalKillParticipation += (kills + assists) / teamKills;
+        }
 
-  return {
-    championStats: Object.values(stats).sort((a, b) => b.games - a.games),
-    overallStats: {
-      winRate: overallWinRate,
-      kda: overallKda,
-      wins: totalWins,
-      losses: totalGames - totalWins,
-      avgCsPerMinute: avgCsPerMinute,
-      avgKillParticipation: avgKillParticipation,
-      avgSoloKills: avgSoloKills,
-      avgTurretPlates: avgTurretPlates,
-      avgKills: totalGames > 0 ? totalKills / totalGames : 0,
-      avgDeaths: totalGames > 0 ? totalDeaths / totalGames : 0,
-      avgAssists: totalGames > 0 ? totalAssists / totalGames : 0,
-      
-      // Opponent Stats
-      oppAvgKda,
-      oppAvgCsPerMinute,
-      oppAvgKillParticipation,
-      oppAvgSoloKills,
-      oppAvgTurretPlates,
-      avgVisionScore,
-      oppAvgVisionScore,
+        // Opponent Stats
+        const opponent = info.participants.find(p => 
+            p.teamPosition === participant.teamPosition && 
+            p.teamId !== participant.teamId && 
+            participant.teamPosition !== 'NONE'
+        );
 
-      blueSide: {
-        games: blueSideGames,
-        wins: blueSideWins,
-        winRate: blueSideWinRate
-      },
-      redSide: {
-        games: redSideGames,
-        wins: redSideWins,
-        winRate: redSideWinRate
-      }
-    }
-  };
+        if (opponent) {
+            const oppKills = opponent.kills || 0;
+            const oppDeaths = opponent.deaths || 0;
+            const oppAssists = opponent.assists || 0;
+            const oppCs = (opponent.totalMinionsKilled || 0) + (opponent.neutralMinionsKilled || 0);
+            
+            oppTotalKills += oppKills;
+            oppTotalDeaths += oppDeaths;
+            oppTotalAssists += oppAssists;
+            oppTotalCs += oppCs;
+            oppTotalSoloKills += (opponent.challenges?.soloKills || 0);
+            oppTotalTurretPlates += (opponent.challenges?.turretPlatesTaken || 0);
+            oppTotalVisionScore += (opponent.visionScore || 0);
+
+            const oppTeamKills = info.participants
+                .filter(p => p.teamId === opponent.teamId)
+                .reduce((sum, p) => sum + (p.kills || 0), 0);
+            if (oppTeamKills > 0) {
+                oppTotalKillParticipation += (oppKills + oppAssists) / oppTeamKills;
+            }
+        }
+
+        const champName = participant.championName || 'Unknown';
+        if (!championStatsMap[champName]) {
+            championStatsMap[champName] = { games: 0, wins: 0, kills: 0, deaths: 0, assists: 0, soloKills: 0, turretPlates: 0, cs: 0, durationMinutes: 0 };
+        }
+        const stats = championStatsMap[champName];
+        stats.games++;
+        if (participant.win) stats.wins++;
+        stats.kills += kills;
+        stats.deaths += deaths;
+        stats.assists += assists;
+        stats.soloKills += soloKills;
+        stats.turretPlates += turretPlates;
+        stats.cs += cs;
+        stats.durationMinutes += durationMin;
+    });
+
+    if (totalGames === 0) return { championStats: [], overallStats: null };
+
+    const overallStats: OverallStats = {
+        wins: totalWins,
+        losses: totalGames - totalWins,
+        winRate: (totalWins / totalGames) * 100,
+        kda: totalDeaths > 0 ? (totalKills + totalAssists) / totalDeaths : Infinity,
+        avgKills: totalKills / totalGames,
+        avgDeaths: totalDeaths / totalGames,
+        avgAssists: totalAssists / totalGames,
+        avgCsPerMinute: totalDurationInMinutes > 0 ? totalCs / totalDurationInMinutes : 0,
+        avgKillParticipation: (totalKillParticipation / totalGames) * 100,
+        avgSoloKills: totalSoloKills / totalGames,
+        avgTurretPlates: totalTurretPlates / totalGames,
+        avgVisionScore: totalVisionScore / totalGames,
+        
+        oppAvgKda: oppTotalDeaths > 0 ? (oppTotalKills + oppTotalAssists) / oppTotalDeaths : Infinity,
+        oppAvgCsPerMinute: totalDurationInMinutes > 0 ? oppTotalCs / totalDurationInMinutes : 0,
+        oppAvgKillParticipation: (oppTotalKillParticipation / totalGames) * 100,
+        oppAvgSoloKills: oppTotalSoloKills / totalGames,
+        oppAvgTurretPlates: oppTotalTurretPlates / totalGames,
+        oppAvgVisionScore: oppTotalVisionScore / totalGames,
+
+        blueSide: {
+            games: blueSideGames,
+            wins: blueSideWins,
+            winRate: blueSideGames > 0 ? (blueSideWins / blueSideGames) * 100 : 0
+        },
+        redSide: {
+            games: redSideGames,
+            wins: redSideWins,
+            winRate: redSideGames > 0 ? (redSideWins / redSideGames) * 100 : 0
+        }
+    };
+
+    const championStats: ChampionStats[] = Object.entries(championStatsMap).map(([name, stats]) => ({
+        championName: name,
+        games: stats.games,
+        wins: stats.wins,
+        losses: stats.games - stats.wins,
+        kills: stats.kills,
+        deaths: stats.deaths,
+        assists: stats.assists,
+        soloKills: stats.soloKills,
+        winRate: (stats.wins / stats.games) * 100,
+        kda: stats.deaths > 0 ? (stats.kills + stats.assists) / stats.deaths : Infinity,
+        averageKills: stats.kills / stats.games,
+        averageDeaths: stats.deaths / stats.games,
+        averageAssists: stats.assists / stats.games,
+        averageCsPerMinute: stats.durationMinutes > 0 ? stats.cs / stats.durationMinutes : 0,
+        averageSoloKills: stats.games > 0 ? stats.soloKills / stats.games : 0,
+        averageTurretPlates: stats.games > 0 ? stats.turretPlates / stats.games : 0
+    })).sort((a, b) => b.games - a.games);
+
+    return { championStats, overallStats };
 };

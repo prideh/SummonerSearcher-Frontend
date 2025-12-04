@@ -1,5 +1,6 @@
 import type { MatchDto, ParticipantDto } from '../types/match';
-import { calculateStats, calculateConsistency } from './statsCalculator';
+import type { ChampionStats, OverallStats } from '../types/summoner';
+import { calculateConsistency } from './statsCalculator';
 import { camelCaseToTitleCase } from './formatters';
 
 interface MatchDetail {
@@ -47,7 +48,9 @@ export function buildAiContext(
   tagLine: string,
   allMatches: MatchDto[],
   puuid: string,
-  rankInfo: { tier: string; rank: string; leaguePoints: number; wins: number; losses: number } | null
+  rankInfo: { tier: string; rank: string; leaguePoints: number; wins: number; losses: number } | null,
+  championStats: ChampionStats[],
+  overallStats: OverallStats | null
 ): {
   summonerName: string;
   rank: string;
@@ -80,9 +83,44 @@ export function buildAiContext(
   topStrengths: Array<{ name: string; consistency: string }>;
   topWeaknesses: Array<{ name: string; consistency: string }>;
 } {
-  // Calculate aggregate stats from ALL matches
-  const { overallStats, championStats } = calculateStats(allMatches, puuid);
+  // Calculate consistency stats (still done on frontend for now)
   const { bestStats, worstStats } = calculateConsistency(allMatches, puuid);
+  
+  if (!overallStats) {
+      // Return empty/default context if no stats available
+      return {
+          summonerName: `${summonerName}#${tagLine}`,
+          rank: 'Unranked',
+          totalWins: 0,
+          totalLosses: 0,
+          primaryRole: 'UNKNOWN',
+          totalGamesAnalyzed: 0,
+          winRate: '0.0',
+          kda: '0.00',
+          avgKills: '0.0',
+          avgDeaths: '0.0',
+          avgAssists: '0.0',
+          avgCsPerMin: '0.0',
+          avgKillParticipation: '0.0',
+          avgSoloKills: '0.0',
+          avgTurretPlates: '0.0',
+          avgVisionScore: '0.0',
+          topChampions: [],
+          blueSideWinRate: '0.0',
+          redSideWinRate: '0.0',
+          recentMatches: [],
+          opponentStats: {
+              avgKda: '0.00',
+              avgCsPerMin: '0.0',
+              avgKillParticipation: '0.0',
+              avgSoloKills: '0.0',
+              avgTurretPlates: '0.0',
+              avgVisionScore: '0.0'
+          },
+          topStrengths: [],
+          topWeaknesses: []
+      };
+  }
   
   // Extract detailed match data
   const matchDetails: MatchDetail[] = [];

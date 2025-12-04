@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { LeagueEntryDto, SummonerData } from '../types/summoner';
 import type { MatchDto } from '../types/match';
 import ConsistencyStats from './ConsistencyStats';
 import RecentChampionStats from './RecentChampionStats';
 import { useDataDragonStore } from '../store/dataDragonStore';
+import { calculateStatsFromMatches } from '../utils/statsCalculator';
 
 /**
  * Props for the RankedInfo component.
@@ -23,9 +24,18 @@ interface RankedInfoProps {
  */
 const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData, matches }) => {
   const communityDragonUrl = useDataDragonStore(state => state.communityDragonUrl);
+  
+  // Calculate recent stats based on visible matches
+  const { championStats: recentChampionStats, overallStats: recentOverallStats } = useMemo(() => {
+      return calculateStatsFromMatches(matches, summonerData.puuid);
+  }, [matches, summonerData.puuid]);
+
   // Calculate the win rate, handling the case of zero total games.
-  const winRate = rankedData.wins + rankedData.losses > 0
-    ? ((rankedData.wins / (rankedData.wins + rankedData.losses)) * 100).toFixed(1)
+  const wins = Number(rankedData.wins || 0);
+  const losses = Number(rankedData.losses || 0);
+  const totalGames = wins + losses;
+  const winRate = totalGames > 0
+    ? ((wins / totalGames) * 100).toFixed(1)
     : 'N/A';
 
   return (
@@ -89,8 +99,8 @@ const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData, match
         </div>
         
         <div className="p-4">
-          {/* Display stats for recently played champions. */}
-          {summonerData && <RecentChampionStats matches={matches} puuid={summonerData.puuid} />}
+          {/* Display stats for recently played champions (calculated from visible matches). */}
+          {summonerData && <RecentChampionStats championStats={recentChampionStats} overallStats={recentOverallStats} />}
         </div>
         
         <div className="p-4">
