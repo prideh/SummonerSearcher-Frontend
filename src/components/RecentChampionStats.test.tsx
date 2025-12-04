@@ -8,36 +8,6 @@ vi.mock('../store/dataDragonStore', () => ({
   useDataDragonStore: vi.fn(() => 'https://ddragon.leagueoflegends.com/cdn/14.22.1'),
 }));
 
-// Helper to create a partial match object
-const createMatch = (puuid: string, turretPlates: number): MatchDto => {
-  return {
-    info: {
-      gameId: 123,
-      gameDuration: 1800, // 30 min
-      participants: [
-        {
-          puuid,
-          championName: 'Aatrox',
-          win: true,
-          teamId: 100,
-          kills: 5,
-          deaths: 2,
-          assists: 10,
-          challenges: {
-            turretPlatesTaken: turretPlates,
-            soloKills: 1,
-          },
-          totalMinionsKilled: 200,
-          neutralMinionsKilled: 0,
-        },
-      ],
-    } as any,
-  };
-};
-
-describe('RecentChampionStats', () => {
-  const puuid = 'test-puuid';
-
   it('calculates and displays Avg Tower Plates', () => {
     const mockChampionStats = [{
         championName: 'Aatrox',
@@ -51,6 +21,9 @@ describe('RecentChampionStats', () => {
         averageCsPerMinute: 8.0,
         averageSoloKills: 1.0,
         averageTurretPlates: 3.0, // (2+4)/2
+        averageKills: 5.0,
+        averageDeaths: 2.0,
+        averageAssists: 10.0,
         winRate: 50,
         kda: 7.5,
         soloKills: 2,
@@ -82,7 +55,8 @@ describe('RecentChampionStats', () => {
         oppAvgKillParticipation: 0,
         oppAvgCsPerMinute: 0,
         oppAvgSoloKills: 0,
-        oppAvgTurretPlates: 0
+        oppAvgTurretPlates: 0,
+        oppAvgVisionScore: 0
     };
 
     render(<RecentChampionStats championStats={mockChampionStats} overallStats={mockOverallStats} />);
@@ -115,7 +89,8 @@ describe('RecentChampionStats', () => {
         oppAvgKillParticipation: 0,
         oppAvgCsPerMinute: 5.0, // 150 / 30
         oppAvgSoloKills: 0,
-        oppAvgTurretPlates: 0
+        oppAvgTurretPlates: 0,
+        oppAvgVisionScore: 0
     };
 
     render(<RecentChampionStats championStats={mockChampionStats} overallStats={mockOverallStats} />);
