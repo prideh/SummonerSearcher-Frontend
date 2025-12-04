@@ -18,8 +18,8 @@ export const getRiotServerStatus = async (region: string) => {
  * @returns A promise that resolves with the summoner's data.
  * @throws An error with the message 'NOT_FOUND' if the summoner does not exist.
  */
-export const getSummonerByName = async (region: string, summonerName: string, summonerTag: string) => {
-  const response = await apiClient.get(`/riot/summoner/${region}/${summonerName}/${summonerTag}`);
+export const getSummonerByName = async (region: string, summonerName: string, summonerTag: string, signal?: AbortSignal) => {
+  const response = await apiClient.get(`/riot/summoner/${region}/${summonerName}/${summonerTag}`, { signal });
   
   // If the backend returns an empty body for a "not found" case, treat it as an error.
   if (!response.data) {
@@ -33,8 +33,8 @@ export const getSummonerByName = async (region: string, summonerName: string, su
  * @param region - The region for which to fetch the leaderboard.
  * @returns A promise that resolves with the leaderboard data.
  */
-export const getLeaderboard = async (region: string) => {
-  const response = await apiClient.get(`/riot/leaderboards/challenger/${region}`);
+export const getLeaderboard = async (region: string, signal?: AbortSignal) => {
+  const response = await apiClient.get(`/riot/leaderboards/challenger/${region}`, { signal });
   return response.data;
 };
 

@@ -37,12 +37,14 @@ const DashboardPage = () => {
    * Effect to fetch the leaderboard data whenever the selected region changes.
    */
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchLeaderboard = async () => {
       setLoading(true);
       setError(null);
       setVisibleCount(50); // Reset visible count on new fetch
       try {
-        const response = await getLeaderboard(region);
+        const response = await getLeaderboard(region, controller.signal);
         const leaderboardData = response.entries;
         if (!Array.isArray(leaderboardData)) {
           throw new TypeError('Invalid leaderboard data format.');
@@ -50,6 +52,9 @@ const DashboardPage = () => {
         leaderboardData.sort((a, b) => b.leaguePoints - a.leaguePoints);
         setLeaderboard(leaderboardData);
       } catch (err) {
+        if (axios.isCancel(err) || (err instanceof Error && err.name === 'CanceledError')) {
+           return;
+        }
         if (axios.isAxiosError(err)) {
           setError('Failed to fetch leaderboard data.');
         } else if (err instanceof TypeError) {
@@ -60,11 +65,17 @@ const DashboardPage = () => {
           setError('An unexpected error occurred.');
         }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+            setLoading(false);
+        }
       }
     };
 
     fetchLeaderboard();
+
+    return () => {
+      controller.abort();
+    };
   }, [region]);
 
   /**

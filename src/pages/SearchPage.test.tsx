@@ -95,7 +95,7 @@ describe('SearchPage', () => {
     );
 
     await waitFor(() => {
-      expect(riotApi.getSummonerByName).toHaveBeenCalledWith('EUW1', 'Test', '123');
+      expect(riotApi.getSummonerByName).toHaveBeenCalledWith('EUW1', 'Test', '123', expect.anything());
     });
     expect(screen.getByTestId('summoner-info')).toHaveTextContent('Test');
   });
@@ -141,7 +141,7 @@ describe('SearchPage', () => {
       );
   
       await waitFor(() => {
-        expect(riotApi.getSummonerByName).toHaveBeenCalledWith('NA1', 'Test', '123');
+        expect(riotApi.getSummonerByName).toHaveBeenCalledWith('NA1', 'Test', '123', expect.anything());
       });
       
       // Check if setRegion was called with 'NA1'

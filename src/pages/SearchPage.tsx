@@ -4,6 +4,7 @@ import { getSummonerByName } from '../api/riot';
 import { useSearchParams } from 'react-router-dom';
 import type { SummonerData } from '../types/summoner';
 import MatchHistory from '../components/MatchHistory';
+import axios from 'axios';
 import { getRecentSearches, clearRecentSearches, type RecentSearch } from '../api/user';
 import { Tooltip } from 'react-tooltip';
 import 'react-tooltip/dist/react-tooltip.css';
@@ -37,13 +38,16 @@ const SearchPage: React.FC = () => {
   /**
    * Fetches the list of recent searches for the logged-in user.
    */
-  const fetchRecentSearches = useCallback(async () => {
+  const fetchRecentSearches = useCallback(async (signal?: AbortSignal) => {
     try {
-      const searches: RecentSearch[] = await getRecentSearches();
+      const searches: RecentSearch[] = await getRecentSearches(signal);
       if (Array.isArray(searches)) {
         setRecentSearches(searches);
       }
     } catch (err) {
+      if (axios.isCancel(err) || (err instanceof Error && err.name === 'CanceledError')) {
+        return;
+      }
       if (import.meta.env.DEV) {
         console.error('Failed to fetch recent searches:', err);
       }
@@ -57,9 +61,9 @@ const SearchPage: React.FC = () => {
    * @param searchRegion - The region to search in.
    * @param isRefresh - Whether this is a refresh operation (doesn't clear input)
    */
-  const performSearch = useCallback(async (name: string, tag: string, searchRegion: string, isRefresh = false) => {
+  const performSearch = useCallback(async (name: string, tag: string, searchRegion: string, isRefresh = false, signal?: AbortSignal) => {
     try {
-      const apiData: Omit<SummonerData, 'region' | 'lastUpdated'> = await getSummonerByName(searchRegion, name, tag);
+      const apiData: Omit<SummonerData, 'region' | 'lastUpdated'> = await getSummonerByName(searchRegion, name, tag, signal);
       const updatedTimestamp = new Date().toISOString();
       const fullData: SummonerData = { ...apiData, region: searchRegion, lastUpdated: updatedTimestamp };
       setSummonerData(fullData);
@@ -67,6 +71,11 @@ const SearchPage: React.FC = () => {
       // Re-fetch recent searches to include the new one.
       fetchRecentSearches();
     } catch (err) {
+      // Ignore aborted requests
+      if (err instanceof Error && (err.name === 'CanceledError' || err.message === 'canceled' || (err as any).code === 'ERR_CANCELED')) {
+        return;
+      }
+
       if (err instanceof Error && err.message === 'NOT_FOUND') {
         setLastSearchedSummoner('NOT_FOUND');
         setError('NOT_FOUND');
@@ -76,11 +85,18 @@ const SearchPage: React.FC = () => {
         setError('An unexpected error occurred.');
       }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
-      // Clear the search input after search completes (but not on refresh)
-      if (!isRefresh) {
-        setSearchInput('');
+      // Only reset loading if not aborted (optional, but safer)
+      // Actually, if aborted, we probably don't want to change state at all.
+      // But we can't easily know here if it was aborted in finally block without checking error again.
+      // However, if we return early in catch, finally still runs.
+      // Let's check signal.aborted
+      if (!signal?.aborted) {
+        setLoading(false);
+        setRefreshing(false);
+        // Clear the search input after search completes (but not on refresh)
+        if (!isRefresh) {
+          setSearchInput('');
+        }
       }
     }
   }, [fetchRecentSearches, setLastSearchedSummoner, setSearchInput]);
@@ -182,7 +198,12 @@ const SearchPage: React.FC = () => {
           setSummonerData(null);
       }
 
-      performSearch(gameNameFromUrl, tagLineFromUrl, apiRegion);
+      const controller = new AbortController();
+      performSearch(gameNameFromUrl, tagLineFromUrl, apiRegion, false, controller.signal);
+
+      return () => {
+        controller.abort();
+      };
     }
     // If no search from URL, load the last searched summoner from the store
     else if (lastSearchedSummoner && !gameNameFromUrl && !tagLineFromUrl) {
@@ -199,8 +220,19 @@ const SearchPage: React.FC = () => {
    * Effect to fetch the user's recent searches on component mount.
    */
   useEffect(() => {
-    fetchRecentSearches();
-  }, [fetchRecentSearches]);
+    // If we are performing a search (URL params present), skip the initial fetch.
+    // The search operation itself will update the recent searches list.
+    const gameName = searchParams.get('gameName');
+    const tagLine = searchParams.get('tagLine');
+    
+    if (gameName && tagLine) {
+      return;
+    }
+
+    const controller = new AbortController();
+    fetchRecentSearches(controller.signal);
+    return () => controller.abort();
+  }, [fetchRecentSearches, searchParams]);
 
   /**
    * Handles the action to clear the user's recent search history.

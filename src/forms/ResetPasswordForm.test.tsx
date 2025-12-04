@@ -68,6 +68,7 @@ describe('ResetPasswordForm', () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/login', { state: { error: 'Invalid token' } });
     });
+    expect(validateResetToken).toHaveBeenCalledWith('invalid-token', expect.anything());
   });
 
   it('renders form if token is valid', async () => {
@@ -83,6 +84,8 @@ describe('ResetPasswordForm', () => {
     await waitFor(() => {
       expect(screen.queryByText(/verifying token/i)).not.toBeInTheDocument();
     });
+    
+    expect(validateResetToken).toHaveBeenCalledWith('valid-token', expect.anything());
     
     expect(screen.getByRole('heading', { name: /reset password/i })).toBeInTheDocument();
   });

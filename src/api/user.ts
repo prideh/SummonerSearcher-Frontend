@@ -64,9 +64,9 @@ export interface RecentSearch {
  * Fetches the recent search history for the logged-in user.
  * @returns A promise that resolves with an array of recent search objects.
  */
-export const getRecentSearches = async (): Promise<RecentSearch[]> => {
+export const getRecentSearches = async (signal?: AbortSignal): Promise<RecentSearch[]> => {
   // The apiClient from apiClient.ts automatically adds the Authorization header via an interceptor
-  const response = await apiClient.get<RecentSearch[]>('/user/recent-searches');
+  const response = await apiClient.get<RecentSearch[]>('/user/recent-searches', { signal });
   return response.data;
 };
 

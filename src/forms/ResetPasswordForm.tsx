@@ -34,11 +34,16 @@ const ResetPasswordForm: React.FC = () => {
       return;
     }
 
+    const controller = new AbortController();
+
     const validateToken = async () => {
       try {
-        await validateResetToken(resetToken);
+        await validateResetToken(resetToken, controller.signal);
         setToken(resetToken);
       } catch (error) {
+        if (axios.isCancel(error)) {
+            return;
+        }
         let message = 'Your password reset link is invalid or has expired.';
         if (import.meta.env.DEV) {
           console.error('Token validation failed:', error);
@@ -50,11 +55,17 @@ const ResetPasswordForm: React.FC = () => {
         }
         navigate('/login', { state: { error: message } });
       } finally {
-        setIsTokenValidating(false);
+        if (!controller.signal.aborted) {
+            setIsTokenValidating(false);
+        }
       }
     };
 
     validateToken();
+
+    return () => {
+        controller.abort();
+    };
   }, [searchParams, navigate]);
 
   const { passwordRequirements, isPasswordValid } = usePasswordValidation(password);

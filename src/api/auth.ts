@@ -60,9 +60,10 @@ export const forgotPassword = async (email: string): Promise<string> => {
  * @param token - The password reset token from the user's email link.
  * @returns A promise that resolves to a success message if the token is valid.
  */
-export const validateResetToken = async (token: string): Promise<string> => {
+export const validateResetToken = async (token: string, signal?: AbortSignal): Promise<string> => {
   const response = await apiClient.get(`/auth/validate-reset-token`, {
-    params: { token }
+    params: { token },
+    signal
   });
   return response.data;
 };
