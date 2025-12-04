@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import RecentChampionStats from './RecentChampionStats';
-import type { MatchDto } from '../types/match';
 
 // Mock store
 vi.mock('../store/dataDragonStore', () => ({

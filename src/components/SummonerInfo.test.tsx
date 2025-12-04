@@ -30,6 +30,7 @@ describe('SummonerInfo', () => {
     recentMatches: [],
     championStats: [],
     overallStats: null,
+    totalMatches: 0,
     soloQueueRank: {
       leagueId: 'league-id',
       queueType: 'RANKED_SOLO_5x5',
