@@ -203,7 +203,6 @@ export function buildAiContext(
 
   // Calculate averages for new stats
   // REMOVED manual calculation, using overallStats
-  const avgVisionScore = overallStats.avgVisionScore.toFixed(1);
   
   return {
     summonerName: `${summonerName}#${tagLine}`,
@@ -213,16 +212,16 @@ export function buildAiContext(
     primaryRole,
     totalGamesAnalyzed: allMatches.length,
     // Aggregate stats
-    winRate: overallStats.winRate.toFixed(1),
-    kda: overallStats.kda === Infinity ? 'Perfect' : overallStats.kda.toFixed(2),
-    avgKills: overallStats.avgKills.toFixed(1),
-    avgDeaths: overallStats.avgDeaths.toFixed(1),
-    avgAssists: overallStats.avgAssists.toFixed(1),
-    avgCsPerMin: overallStats.avgCsPerMinute.toFixed(1),
-    avgKillParticipation: overallStats.avgKillParticipation.toFixed(1),
-    avgSoloKills: overallStats.avgSoloKills.toFixed(1),
-    avgTurretPlates: overallStats.avgTurretPlates.toFixed(1),
-    avgVisionScore,
+    winRate: Number(overallStats.winRate).toFixed(1),
+    kda: Number(overallStats.kda) === Infinity ? 'Perfect' : Number(overallStats.kda).toFixed(2),
+    avgKills: Number(overallStats.avgKills).toFixed(1),
+    avgDeaths: Number(overallStats.avgDeaths).toFixed(1),
+    avgAssists: Number(overallStats.avgAssists).toFixed(1),
+    avgCsPerMin: Number(overallStats.avgCsPerMinute).toFixed(1),
+    avgKillParticipation: Number(overallStats.avgKillParticipation).toFixed(1),
+    avgSoloKills: Number(overallStats.avgSoloKills).toFixed(1),
+    avgTurretPlates: Number(overallStats.avgTurretPlates).toFixed(1),
+    avgVisionScore: Number(overallStats.avgVisionScore).toFixed(1),
     // Champion pool
     topChampions: championStats.slice(0, 5).map(c => ({
       name: c.championName,
@@ -231,17 +230,17 @@ export function buildAiContext(
       kda: c.deaths > 0 ? ((c.kills + c.assists) / c.deaths).toFixed(2) : 'Perfect'
     })),
     // Side preference
-    blueSideWinRate: overallStats.blueSide.winRate.toFixed(1),
-    redSideWinRate: overallStats.redSide.winRate.toFixed(1),
+    blueSideWinRate: Number(overallStats.blueSide.winRate).toFixed(1),
+    redSideWinRate: Number(overallStats.redSide.winRate).toFixed(1),
     // Detailed match history for primary role
     recentMatches: primaryRoleMatches,
     opponentStats: {
-        avgKda: overallStats.oppAvgKda === Infinity ? 'Perfect' : overallStats.oppAvgKda.toFixed(2),
-        avgCsPerMin: overallStats.oppAvgCsPerMinute.toFixed(1),
-        avgKillParticipation: overallStats.oppAvgKillParticipation.toFixed(1),
-        avgSoloKills: overallStats.oppAvgSoloKills.toFixed(1),
-        avgTurretPlates: overallStats.oppAvgTurretPlates.toFixed(1),
-        avgVisionScore: overallStats.oppAvgVisionScore.toFixed(1)
+        avgKda: Number(overallStats.oppAvgKda) === Infinity ? 'Perfect' : Number(overallStats.oppAvgKda).toFixed(2),
+        avgCsPerMin: Number(overallStats.oppAvgCsPerMinute).toFixed(1),
+        avgKillParticipation: Number(overallStats.oppAvgKillParticipation).toFixed(1),
+        avgSoloKills: Number(overallStats.oppAvgSoloKills).toFixed(1),
+        avgTurretPlates: Number(overallStats.oppAvgTurretPlates).toFixed(1),
+        avgVisionScore: Number(overallStats.oppAvgVisionScore).toFixed(1)
     },
     topStrengths: bestStats.map(s => ({ name: camelCaseToTitleCase(s.key), consistency: s.consistency.toFixed(0) + '%' })),
     topWeaknesses: worstStats.map(s => ({ name: camelCaseToTitleCase(s.key), consistency: s.lossConsistency.toFixed(0) + '%' }))
