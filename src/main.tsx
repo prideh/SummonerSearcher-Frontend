@@ -5,6 +5,8 @@ import App from './App.tsx'
 import { BrowserRouter } from 'react-router-dom'
 import { useAuthStore } from './store/authStore.ts';
 
+import ErrorBoundary from './components/ErrorBoundary.tsx'
+
 // Initialize theme from localStorage on app load
 const initialTheme = localStorage.getItem('theme');
 if (initialTheme === 'dark' || !initialTheme) {
@@ -14,7 +16,9 @@ if (initialTheme === 'dark' || !initialTheme) {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </BrowserRouter>
   </StrictMode>,
 )
