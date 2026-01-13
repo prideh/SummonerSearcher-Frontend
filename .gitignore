@@ -27,7 +27,6 @@ yarn-error.log*
 # Testing
 coverage
 playwright-report/
-test-results/
 blob-report/
 
 # Local Env Files
