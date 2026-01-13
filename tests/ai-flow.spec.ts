@@ -10,8 +10,6 @@ test('AI Coach flow: Login -> Change Region -> Rank 4 -> Ask question', async ({
   await expect(page).toHaveURL(/\/(dashboard)?/);
 
   // 2. Change Server to NA
-  const regionSelect = page.getByLabel('Region:'); // The label text is "Region:" in DashboardPage.tsx
-
 
   await page.locator('#region-select').selectOption('NA1');
 
