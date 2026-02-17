@@ -29,12 +29,18 @@ vi.mock('../components/SummonerInfo', () => ({
 }));
 
 vi.mock('../components/MatchHistory', () => ({
-  default: () => <div data-testid="match-history">Match History</div>
+  default: ({ onLoadMore, hasMore }: any) => (
+    <div data-testid="match-history">
+      Match History
+      {hasMore && <button onClick={onLoadMore}>Load More</button>}
+    </div>
+  )
 }));
 
 // Mock API calls
 vi.mock('../api/riot', () => ({
   getSummonerByName: vi.fn(),
+  getMatches: vi.fn(),
 }));
 
 vi.mock('../api/user', () => ({
@@ -160,5 +166,38 @@ describe('SearchPage', () => {
       
       // Check if setRegion was called with 'NA1'
       expect(mockSetRegion).toHaveBeenCalledWith('NA1');
+  });
+
+  it('loads more matches when "Load More" is clicked', async () => {
+    const mockSummonerData = {
+      puuid: '123',
+      gameName: 'Test',
+      tagLine: '123',
+      region: 'EUW1',
+      recentMatches: Array(20).fill({ info: { gameId: 1 } }), // 20 matches to enable load more
+      lastUpdated: new Date().toISOString(),
+    };
+    (riotApi.getSummonerByName as any).mockResolvedValue(mockSummonerData);
+    (riotApi.getMatches as any).mockResolvedValue([{ info: { gameId: 2 } }]); // Next page matches
+
+    render(
+      <MemoryRouter initialEntries={['/search?gameName=Test&tagLine=123&region=eu']}>
+        <Routes>
+          <Route path="/search" element={<SearchPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    // Wait for initial load
+    await waitFor(() => {
+      expect(screen.getByText('Load More')).toBeInTheDocument();
+    });
+
+    const loadMoreBtn = screen.getByText('Load More');
+    loadMoreBtn.click();
+
+    await waitFor(() => {
+      expect(riotApi.getMatches).toHaveBeenCalledWith('EUW1', '123', 2);
+    });
   });
 });

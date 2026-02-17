@@ -36,6 +36,7 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substring(7)}`);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   
   const STORAGE_KEY = `chat_history_${summonerName}`;
@@ -105,7 +106,7 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
     const engagementTime = Date.now() - messageTimestamp;
     
     try {
-      await submitFeedback(interactionId, feedbackType, engagementTime);
+      await submitFeedback(interactionId, feedbackType, engagementTime, sessionId);
       
       // Update UI to show feedback was recorded
       setMessages(prev => prev.map(m => 

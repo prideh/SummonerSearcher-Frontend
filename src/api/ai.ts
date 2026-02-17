@@ -44,12 +44,14 @@ export interface FeedbackResponse {
 export const submitFeedback = async (
   interactionId: string,
   feedbackType: 'positive' | 'negative',
-  engagementTimeMs: number
+  engagementTimeMs: number,
+  sessionId?: string
 ): Promise<FeedbackResponse> => {
   const response = await apiClient.post<FeedbackResponse>('/ai/feedback', {
     interactionId,
     feedbackType,
-    engagementTimeMs
+    engagementTimeMs,
+    sessionId
   });
   return response.data;
 };

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
-import { getSummonerByName, getMatchesBatch } from '../api/riot';
+import { getSummonerByName, getMatches } from '../api/riot';
 import { useSearchParams } from 'react-router-dom';
 import type { SummonerData } from '../types/summoner';
 import type { MatchDto } from '../types/match';
@@ -94,7 +94,7 @@ const SearchPage: React.FC = () => {
       // Initialize matches and pagination
       setMatches(fullData.recentMatches);
       setPage(1);
-      setHasMore(fullData.recentMatches.length >= 20); // Assuming page size is 20
+      setHasMore(fullData.recentMatches.length === 20); // If we got a full page, assume there's more
       
       setLastSearchedSummoner(fullData);
       
@@ -152,42 +152,23 @@ const SearchPage: React.FC = () => {
   const loadMoreMatches = async () => {
     if (!summonerData || loadingMore) return;
     
-    // Safety check: ensure we have match IDs
-    if (!summonerData.matchIds || summonerData.matchIds.length === 0) {
-        setHasMore(false);
-        return;
-    }
-
     setLoadingMore(true);
     try {
       const nextPage = page + 1;
-      const pageSize = 20; 
-      // Calculate index range for next batch
-      // Page 1: 0-20 (already loaded). Page 2: 20-40.
-      const startIndex = (nextPage - 1) * pageSize;
-      const endIndex = startIndex + pageSize;
       
-      // Get IDs for this batch
-      const batchIds = summonerData.matchIds.slice(startIndex, endIndex);
-      
-      if (batchIds.length === 0) {
-          setHasMore(false);
-          setLoadingMore(false);
-          return;
-      }
-
-      const newMatches = await getMatchesBatch(summonerData.region, batchIds);
+      const newMatches = await getMatches(summonerData.region, summonerData.puuid, nextPage);
       
       if (newMatches.length > 0) {
         setMatches(prev => [...prev, ...newMatches]);
         setPage(nextPage);
-        // Check if there are still more IDs left
-        setHasMore((summonerData.matchIds.length || 0) > matches.length + newMatches.length);
+        // If we received fewer matches than the page size (20), we've reached the end.
+        setHasMore(newMatches.length === 20);
       } else {
         setHasMore(false);
       }
     } catch (err) {
       console.error("Failed to load more matches", err);
+      // Optionally handle error state here
     } finally {
       setLoadingMore(false);
     }
