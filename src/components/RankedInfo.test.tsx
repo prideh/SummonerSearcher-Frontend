@@ -31,6 +31,7 @@ describe('RankedInfo', () => {
     championStats: [],
     overallStats: null,
     totalMatches: 0,
+    matchIds: [],
     soloQueueRank: {
       leagueId: 'test-league-id',
       queueType: 'RANKED_SOLO_5x5',
