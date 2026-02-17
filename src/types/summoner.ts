@@ -69,6 +69,7 @@ export interface SummonerData {
   recentMatches: MatchDto[];
   championStats: ChampionStats[];
   overallStats: OverallStats | null;
+  matchIds: string[];
   totalMatches: number;
   region: string;
   lastUpdated: string; // ISO string format

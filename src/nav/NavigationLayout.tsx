@@ -14,6 +14,7 @@ import ResetPasswordForm from '../forms/ResetPasswordForm';
 import ProfilePage from '../pages/ProfilePage';
 import VerifyEmailPage from '../pages/VerifyEmailPage'; 
 import TwoFAVerifyPage from '../pages/TwoFAVerifyPage'; 
+import AdminDashboard from '../pages/AdminDashboard';
 
 import PublicLayout from './PublicLayout';
 
@@ -44,6 +45,7 @@ const NavigationLayout: React.FC = () => {
       <Route element={<ProtectedRoute />}>
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/2fa" element={<TwoFAPage />} />
+        <Route path="/admin" element={<AdminDashboard />} />
       </Route>
       <Route path="/" element={<Navigate to="/dashboard" />} />
       <Route path="*" element={<NotFoundPage />} />

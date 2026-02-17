@@ -60,3 +60,14 @@ export const getMatches = async (region: string, puuid: string, page: number) =>
   const response = await apiClient.get(`/riot/matches/${region}/${puuid}?page=${page}`);
   return response.data;
 };
+
+/**
+ * Fetches a batch of matches by their IDs.
+ * @param region - The region of the summoner.
+ * @param matchIds - The list of match IDs to fetch.
+ * @returns A promise that resolves with the list of matches.
+ */
+export const getMatchesBatch = async (region: string, matchIds: string[]) => {
+  const response = await apiClient.post(`/riot/matches/batch/${region}`, matchIds);
+  return response.data;
+};

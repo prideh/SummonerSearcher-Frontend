@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
-import { getSummonerByName, getMatches } from '../api/riot';
+import { getSummonerByName, getMatchesBatch } from '../api/riot';
 import { useSearchParams } from 'react-router-dom';
 import type { SummonerData } from '../types/summoner';
 import type { MatchDto } from '../types/match';
@@ -151,14 +151,38 @@ const SearchPage: React.FC = () => {
    */
   const loadMoreMatches = async () => {
     if (!summonerData || loadingMore) return;
+    
+    // Safety check: ensure we have match IDs
+    if (!summonerData.matchIds || summonerData.matchIds.length === 0) {
+        setHasMore(false);
+        return;
+    }
+
     setLoadingMore(true);
     try {
       const nextPage = page + 1;
-      const newMatches = await getMatches(summonerData.region, summonerData.puuid, nextPage);
+      const pageSize = 20; 
+      // Calculate index range for next batch
+      // Page 1: 0-20 (already loaded). Page 2: 20-40.
+      const startIndex = (nextPage - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      
+      // Get IDs for this batch
+      const batchIds = summonerData.matchIds.slice(startIndex, endIndex);
+      
+      if (batchIds.length === 0) {
+          setHasMore(false);
+          setLoadingMore(false);
+          return;
+      }
+
+      const newMatches = await getMatchesBatch(summonerData.region, batchIds);
+      
       if (newMatches.length > 0) {
         setMatches(prev => [...prev, ...newMatches]);
         setPage(nextPage);
-        if (newMatches.length < 20) setHasMore(false);
+        // Check if there are still more IDs left
+        setHasMore((summonerData.matchIds.length || 0) > matches.length + newMatches.length);
       } else {
         setHasMore(false);
       }

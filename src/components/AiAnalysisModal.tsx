@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { chatWithAi } from '../api/ai';
+import { chatWithAi, submitFeedback } from '../api/ai';
 
 interface AiContextData {
   summonerName: string;
@@ -19,6 +19,9 @@ interface AiAnalysisModalProps {
 interface Message {
   role: 'user' | 'model';
   content: string;
+  interactionId?: string; // Track backend interaction ID
+  feedback?: 'positive' | 'negative'; // User's feedback
+  timestamp?: number; // When message was shown
 }
 
 const INITIAL_SUGGESTIONS = [
@@ -55,38 +58,39 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
     setLoading(true);
 
     try {
-      const fullResponse = await chatWithAi(context, currentMessages, text);
+      const apiResponse = await chatWithAi(context, currentMessages, text);
       
       // Parse suggestions from response
-      let cleanResponse = fullResponse;
-      // More robust regex to capture the array content, handling potential newlines and whitespace
-      const suggestionsMatch = fullResponse.match(/---SUGGESTIONS---\s*(\[[\s\S]*?\])/);
+      let cleanResponse = apiResponse.response;
+      const suggestionsMatch = apiResponse.response.match(/---SUGGESTIONS---\s*(\[[\s\S]*?\])/);
       
       if (suggestionsMatch) {
         try {
           let jsonStr = suggestionsMatch[1];
-          // Remove trailing commas before closing bracket which are invalid in standard JSON
           jsonStr = jsonStr.replace(/,\s*\]/g, ']');
           
           const newSuggestions = JSON.parse(jsonStr);
           if (Array.isArray(newSuggestions)) {
             setSuggestions(newSuggestions);
           }
-          // Remove the suggestions block from the displayed message
-          cleanResponse = fullResponse.replace(suggestionsMatch[0], '').trim();
+          cleanResponse = apiResponse.response.replace(suggestionsMatch[0], '').trim();
         } catch (e) {
           console.error('Failed to parse suggestions:', e);
-          // Fallback: try to extract strings manually if JSON parse fails
           const manualMatches = suggestionsMatch[1].match(/"([^"]+)"/g);
           if (manualMatches) {
              const manualSuggestions = manualMatches.map(s => s.replace(/"/g, ''));
              setSuggestions(manualSuggestions);
-             cleanResponse = fullResponse.replace(suggestionsMatch[0], '').trim();
+             cleanResponse = apiResponse.response.replace(suggestionsMatch[0], '').trim();
           }
         }
       }
 
-      setMessages(prev => [...prev, { role: 'model', content: cleanResponse }]);
+      setMessages(prev => [...prev, { 
+        role: 'model', 
+        content: cleanResponse,
+        interactionId: apiResponse.interactionId,
+        timestamp: Date.now()
+      }]);
     } catch (error) {
       console.error('Failed to get AI response:', error);
       setMessages(prev => [...prev, { role: 'model', content: 'Sorry, I encountered an error while analyzing the data.' }]);
@@ -94,6 +98,25 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
       setLoading(false);
     }
   }, [context]);
+
+  const handleFeedback = async (interactionId: string | undefined, feedbackType: 'positive' | 'negative', messageTimestamp: number | undefined) => {
+    if (!interactionId || !messageTimestamp) return;
+    
+    const engagementTime = Date.now() - messageTimestamp;
+    
+    try {
+      await submitFeedback(interactionId, feedbackType, engagementTime);
+      
+      // Update UI to show feedback was recorded
+      setMessages(prev => prev.map(m => 
+        m.interactionId === interactionId 
+          ? { ...m, feedback: feedbackType } 
+          : m
+      ));
+    } catch (error) {
+      console.error('Failed to submit feedback:', error);
+    }
+  };
 
   // Load history on mount
   useEffect(() => {
@@ -206,9 +229,49 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
                   }`}
                 >
                   {msg.role === 'model' ? (
-                    <div className="prose dark:prose-invert prose-sm max-w-none">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
-                    </div>
+                    <>
+                      <div className="prose dark:prose-invert prose-sm max-w-none">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                      {/* Feedback buttons */}
+                      {msg.interactionId && (
+                        <div className="flex items-center gap-2 mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+                          {msg.feedback === 'positive' ? (
+                            <span className="text-green-600 dark:text-green-400 text-sm flex items-center gap-1">
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              Helpful
+                            </span>
+                          ) : msg.feedback === 'negative' ? (
+                            <span className="text-red-600 dark:text-red-400 text-sm flex items-center gap-1">
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                              </svg>
+                              Not helpful
+                            </span>
+                          ) : (
+                            <>
+                              <span className="text-xs text-gray-500 dark:text-gray-400 mr-2">Was this helpful?</span>
+                              <button
+                                onClick={() => handleFeedback(msg.interactionId, 'positive', msg.timestamp)}
+                                className="text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors p-1 rounded hover:bg-green-50 dark:hover:bg-green-900/20"
+                                title="This was helpful"
+                              >
+                                👍
+                              </button>
+                              <button
+                                onClick={() => handleFeedback(msg.interactionId, 'negative', msg.timestamp)}
+                                className="text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                                title="This was not helpful"
+                              >
+                                👎
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <p>{msg.content}</p>
                   )}

@@ -13,15 +13,43 @@ export interface AiChatRequest {
   userMessage: string;
 }
 
+export interface AiChatResponse {
+  response: string;
+  interactionId: string;
+}
+
 export const chatWithAi = async (
   context: AiContextData,
   messages: Array<{ role: string; content: string }>,
   userMessage: string
-): Promise<string> => {
-  const response = await apiClient.post<string>('/ai/chat', {
+): Promise<AiChatResponse> => {
+  const response = await apiClient.post<AiChatResponse>('/ai/chat', {
     context,
     messages,
     userMessage,
+  });
+  return response.data;
+};
+
+export interface FeedbackRequest {
+  interactionId: string;
+  feedbackType: 'positive' | 'negative';
+  engagementTimeMs: number;
+}
+
+export interface FeedbackResponse {
+  accepted: boolean;
+}
+
+export const submitFeedback = async (
+  interactionId: string,
+  feedbackType: 'positive' | 'negative',
+  engagementTimeMs: number
+): Promise<FeedbackResponse> => {
+  const response = await apiClient.post<FeedbackResponse>('/ai/feedback', {
+    interactionId,
+    feedbackType,
+    engagementTimeMs
   });
   return response.data;
 };
