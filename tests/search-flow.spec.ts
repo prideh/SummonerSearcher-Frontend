@@ -1,14 +1,10 @@
 import { test, expect } from '@playwright/test';
 
-test('Search for player and view seasonal profile', async ({ page }) => {
-  // 1. Login first (as required)
-  await page.goto('/login');
-  await page.getByRole('button', { name: 'Fill with Dummy Account' }).click();
-  await page.getByRole('button', { name: 'Sign In' }).click();
-  
-  // Verify we are logged in and on the dashboard/home
-  await expect(page).toHaveURL(/\/(dashboard)?/);
+test.use({ viewport: { width: 1920, height: 1080 } });
 
+test('Search for player and view seasonal profile', async ({ page }) => {
+  // 1. Navigate to Landing Page
+  await page.goto('/');
   // 1.5 Navigate to Search Page
   // We need to go to the search page to access the search bar
   await page.getByRole('link', { name: 'Search' }).click();

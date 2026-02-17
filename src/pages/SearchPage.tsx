@@ -44,6 +44,8 @@ const SearchPage: React.FC = () => {
   const lastSearchedSummoner = useAuthStore((state) => state.lastSearchedSummoner);
   const setLastSearchedSummoner = useAuthStore((state) => state.setLastSearchedSummoner);
 
+  const addRecentSearch = useAuthStore((state) => state.addRecentSearch);
+
   /**
    * Fetches the list of recent searches for the logged-in user.
    */
@@ -72,6 +74,9 @@ const SearchPage: React.FC = () => {
    */
   const performSearch = useCallback(async (name: string, tag: string, searchRegion: string, isRefresh = false, signal?: AbortSignal) => {
     let longSearchTimeout: ReturnType<typeof setTimeout>;
+    
+    // Check if logged in to decide how to save recent search
+    const loggedIn = useAuthStore.getState().isLoggedIn;
 
     try {
       setShowLongSearchMessage(false);
@@ -92,8 +97,18 @@ const SearchPage: React.FC = () => {
       setHasMore(fullData.recentMatches.length >= 20); // Assuming page size is 20
       
       setLastSearchedSummoner(fullData);
-      // Re-fetch recent searches to include the new one.
-      fetchRecentSearches();
+      
+      // Handle recent searches update
+      if (loggedIn) {
+          // Re-fetch recent searches from backend to include the new one.
+          fetchRecentSearches();
+      } else {
+          // Update local store
+          addRecentSearch({ query: `${name}#${tag}`, server: searchRegion });
+          // Force a re-render of recent searches by updating the state directly
+          setRecentSearches(useAuthStore.getState().recentSearches);
+      }
+
     } catch (err) {
       // Ignore aborted requests
       if (axios.isCancel(err) || (axios.isAxiosError(err) && err.code === 'ERR_CANCELED') || (err instanceof Error && (err.name === 'CanceledError' || err.message === 'canceled'))) {
@@ -275,11 +290,14 @@ const SearchPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, performSearch, lastSearchedSummoner, setSearchInput, summonerData, setRegion]);
   
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const localRecentSearches = useAuthStore((state) => state.recentSearches);
+
   /**
    * Effect to fetch the user's recent searches on component mount.
    */
   useEffect(() => {
-    // If we are performing a search (URL params present), skip the initial fetch.
+    // If we are performing a search (URL params present), skip the initial fetch/sync.
     // The search operation itself will update the recent searches list.
     const gameName = searchParams.get('gameName');
     const tagLine = searchParams.get('tagLine');
@@ -288,10 +306,26 @@ const SearchPage: React.FC = () => {
       return;
     }
 
+    if (!isLoggedIn) {
+        setRecentSearches(localRecentSearches);
+        return;
+    }
+
     const controller = new AbortController();
     fetchRecentSearches(controller.signal);
     return () => controller.abort();
-  }, [fetchRecentSearches, searchParams]);
+    // We only want this to run on mount or login change, not on localRecentSearches change if we are searching
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchRecentSearches, searchParams, isLoggedIn]);
+
+  // Keep local recent searches in sync even if params change, but ONLY if not logged in
+  useEffect(() => {
+      if (!isLoggedIn) {
+          setRecentSearches(localRecentSearches);
+      }
+  }, [localRecentSearches, isLoggedIn]);
+
+  const clearLocalRecentSearches = useAuthStore((state) => state.clearRecentSearches);
 
   /**
    * Handles the action to clear the user's recent search history.
@@ -299,7 +333,13 @@ const SearchPage: React.FC = () => {
   const handleClearRecentSearches = async () => {
     try {
       setError(null); // Clear previous errors
-      await clearRecentSearches();
+      
+      if (isLoggedIn) {
+          await clearRecentSearches();
+      } else {
+          clearLocalRecentSearches();
+      }
+      
       setRecentSearches([]); // Clear from state
       setShowRecent(false); // Hide dropdown
     } catch (err) {

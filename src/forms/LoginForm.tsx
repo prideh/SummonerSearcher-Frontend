@@ -39,10 +39,7 @@ const LoginForm: React.FC = () => {
   /**
    * A helper function to quickly fill the form with credentials for a demo account.
    */
-  const fillDummyCredentials = () => {
-    setEmail('dummy@summonersearcher.com');
-    setPassword('Dummy123!');
-  };
+
 
   /**
    * Handles the form submission for user login.
@@ -87,21 +84,7 @@ const LoginForm: React.FC = () => {
     <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-950">
       <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-sm">
         <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Login</h2>
-        <div className="mb-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-          <p className="text-sm text-gray-700 dark:text-gray-300 text-center font-semibold mb-2">
-            Want to try it out? Use the dummy account:
-          </p>
-          <button
-            type="button"
-            onClick={fillDummyCredentials}
-            className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200"
-          >
-            Fill with Dummy Account
-          </button>
-        </div>
-        <div className="text-center mb-4">
-          <p className="text-gray-500 dark:text-gray-400 text-sm">Or sign in with your email</p>
-        </div>
+
         {successMessage && <p className="text-green-500 text-sm italic mb-4">{successMessage}</p>}
         {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
         <div className="mb-4">

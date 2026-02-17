@@ -15,6 +15,8 @@ import ProfilePage from '../pages/ProfilePage';
 import VerifyEmailPage from '../pages/VerifyEmailPage'; 
 import TwoFAVerifyPage from '../pages/TwoFAVerifyPage'; 
 
+import PublicLayout from './PublicLayout';
+
 /**
  * The central routing component for the application.
  * It defines all the application's routes and maps them to their respective page components.
@@ -31,10 +33,15 @@ const NavigationLayout: React.FC = () => {
         <Route path="/verify-email" element={<VerifyEmailPage />} /> 
         <Route path="/login/2fa-verify" element={<TwoFAVerifyPage />} />
       </Route>
-      <Route element={<ProtectedRoute />}>
+      
+      {/* Public Routes with Navbar */}
+      <Route element={<PublicLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/status" element={<StatusPage />} />
+      </Route>
+
+      <Route element={<ProtectedRoute />}>
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/2fa" element={<TwoFAPage />} />
       </Route>

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import axios from 'axios';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { SummonerData } from '../types/summoner';
+import type { RecentSearch } from '../api/user';
 
 /**
  * Defines the structure of the authentication and user state managed by Zustand.
@@ -15,6 +16,7 @@ interface AuthState {
   lastSearchedSummoner: SummonerData | 'NOT_FOUND' | null;
   searchInput: string;
   region: string;
+  recentSearches: RecentSearch[];
   // Actions to update the state
   login: (token: string, email: string, is2faEnabled: boolean, darkMode: boolean) => void;
   logout: () => Promise<void>;
@@ -23,6 +25,8 @@ interface AuthState {
   setRegion: (region: string) => void;
   setSearchInput: (input: string) => void;
   setLastSearchedSummoner: (summoner: SummonerData | 'NOT_FOUND' | null) => void;
+  addRecentSearch: (search: RecentSearch) => void;
+  clearRecentSearches: () => void;
 }
 
 /**
@@ -32,7 +36,7 @@ interface AuthState {
  */
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       token: null,
       isLoggedIn: false,
       is2faEnabled: false,
@@ -41,6 +45,7 @@ export const useAuthStore = create<AuthState>()(
       lastSearchedSummoner: null,
       searchInput: '',
       region: 'EUW1', // Default region
+      recentSearches: [],
       /**
        * Sets the user's state to logged-in upon successful authentication.
        */
@@ -64,16 +69,16 @@ export const useAuthStore = create<AuthState>()(
         }
 
         // Also clear other user-specific data from localStorage if needed
-        localStorage.removeItem('darkmodePreference');
-        localStorage.removeItem('recentSearches');
+        // Zustand persist middleware will handle clearing the state from storage when we set it to empty
+        
         set({
           token: null,
           isLoggedIn: false,
           username: null,
           is2faEnabled: false,
           lastSearchedSummoner: null,
-          darkMode: true,
           searchInput: '',
+          recentSearches: [],
         });
       },
       // Action to update only the 2FA status.
@@ -86,12 +91,34 @@ export const useAuthStore = create<AuthState>()(
       setSearchInput: (input: string) => set({ searchInput: input }),
       // Action to cache the last successfully searched summoner data or a 'NOT_FOUND' status.
       setLastSearchedSummoner: (summoner) => set({ lastSearchedSummoner: summoner }),
+      // Action to add a recent search locally (for guest users)
+      addRecentSearch: (search) => {
+          const currentSearches = get().recentSearches;
+          // Filter out duplicates (same query and server)
+          const filtered = currentSearches.filter(
+              s => !(s.query.toLowerCase() === search.query.toLowerCase() && s.server === search.server)
+          );
+          // Add new search to the front and limit to 5
+          const updated = [search, ...filtered].slice(0, 5);
+          set({ recentSearches: updated });
+      },
+      // Action to clear local recent searches
+      clearRecentSearches: () => set({ recentSearches: [] }),
     }),
     {
       name: 'auth-storage', // name of the item in the storage (must be unique)
       storage: createJSONStorage(() => localStorage), // (optional) by default, 'localStorage' is used
       // `partialize` ensures only the specified fields are persisted to localStorage.
-      partialize: (state) => ({ token: state.token, username: state.username, is2faEnabled: state.is2faEnabled, darkMode: state.darkMode, region: state.region, isLoggedIn: !!state.token, searchInput: state.searchInput }),
+      partialize: (state) => ({ 
+          token: state.token, 
+          username: state.username, 
+          is2faEnabled: state.is2faEnabled, 
+          darkMode: state.darkMode, 
+          region: state.region, 
+          isLoggedIn: !!state.token, 
+          searchInput: state.searchInput,
+          recentSearches: state.recentSearches 
+      }),
     }
   )
 );

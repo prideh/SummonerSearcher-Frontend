@@ -47,17 +47,27 @@ const mockSetSearchInput = vi.fn();
 const mockSetRegion = vi.fn();
 const mockSetLastSearchedSummoner = vi.fn();
 
+const mockAddRecentSearch = vi.fn();
+const mockClearRecentSearches = vi.fn();
+
 let mockStoreState = {
   searchInput: '',
   region: 'EUW1',
   lastSearchedSummoner: null,
+  isLoggedIn: true,
+  recentSearches: [],
   setSearchInput: mockSetSearchInput,
   setRegion: mockSetRegion,
   setLastSearchedSummoner: mockSetLastSearchedSummoner,
+  addRecentSearch: mockAddRecentSearch,
+  clearRecentSearches: mockClearRecentSearches,
 };
 
 vi.mock('../store/authStore', () => ({
-  useAuthStore: (selector: any) => selector(mockStoreState),
+  useAuthStore: Object.assign(
+    (selector: any) => selector(mockStoreState),
+    { getState: () => mockStoreState }
+  ),
 }));
 
 describe('SearchPage', () => {
@@ -69,9 +79,13 @@ describe('SearchPage', () => {
       searchInput: '',
       region: 'EUW1',
       lastSearchedSummoner: null,
+      isLoggedIn: true,
+      recentSearches: [],
       setSearchInput: mockSetSearchInput,
       setRegion: mockSetRegion,
       setLastSearchedSummoner: mockSetLastSearchedSummoner,
+      addRecentSearch: mockAddRecentSearch,
+      clearRecentSearches: mockClearRecentSearches,
     };
   });
 

@@ -83,12 +83,5 @@ describe('LoginForm', () => {
     });
   });
 
-  it('fills dummy credentials', async () => {
-    render(<LoginForm />);
-    
-    await userEvent.click(screen.getByText(/fill with dummy account/i));
-    
-    expect(screen.getByLabelText(/email/i)).toHaveValue('dummy@summonersearcher.com');
-    expect(screen.getByLabelText(/password/i)).toHaveValue('Dummy123!');
-  });
+
 });

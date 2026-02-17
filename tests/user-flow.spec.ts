@@ -1,20 +1,13 @@
 import { test, expect } from '@playwright/test';
 
-test('User can login with dummy account and view #1 ranked player', async ({ page }) => {
-  // 1. Navigate to Login Page
-  await page.goto('/login');
 
-  // 2. Fill Dummy Credentials
-  await page.getByRole('button', { name: 'Fill with Dummy Account' }).click();
+test.use({ viewport: { width: 1920, height: 1080 } });
 
-  // 3. Click Sign In
-  await page.getByRole('button', { name: 'Sign In' }).click();
+test('User can login and view #1 ranked player', async ({ page }) => {
+  // 1. Navigate to Landing Page
+  await page.goto('/');
 
-  // 4. Verify Redirect to Dashboard
-  await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
-  await expect(page.getByRole('heading', { name: 'Challenger Leaderboard' })).toBeVisible();
-
-  // 5. Click the #1 Ranked Player
+  // 2. Click the #1 Ranked Player
   // We target the first row in the table body
   const firstRow = page.locator('tbody tr').first();
   await expect(firstRow).toBeVisible();
@@ -26,10 +19,10 @@ test('User can login with dummy account and view #1 ranked player', async ({ pag
 
   await firstRow.click();
 
-  // 6. Verify Redirect to Search Page
+  // 3. Verify Redirect to Search Page
   await expect(page).toHaveURL(/\/search/);
   
-  // 7. Verify we see the Summoner Search page and potential profile info
+  // 4. Verify we see the Summoner Search page and potential profile info
   await expect(page.getByRole('heading', { name: 'Summoner Search' })).toBeVisible();
   
   // Optional: Verify the input or profile matches the clicked player

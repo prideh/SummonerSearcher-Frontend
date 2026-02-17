@@ -1,16 +1,12 @@
 import { test, expect } from '@playwright/test';
 
-test('AI Coach flow: Login -> Change Region -> Rank 4 -> Ask question', async ({ page }) => {
-  // 1. Login with dummy account
-  await page.goto('/login');
-  await page.getByRole('button', { name: 'Fill with Dummy Account' }).click();
-  await page.getByRole('button', { name: 'Sign In' }).click();
-  
-  // landing page after login
-  await expect(page).toHaveURL(/\/(dashboard)?/);
+test.use({ viewport: { width: 1920, height: 1080 } });
+
+test('AI Coach flow: Change Region -> Rank 4 -> Ask question', async ({ page }) => {
+  // 1. Navigate to Landing Page
+  await page.goto('/');
 
   // 2. Change Server to NA
-
   await page.locator('#region-select').selectOption('NA1');
 
   // wait for leaderboard to reload/update.
