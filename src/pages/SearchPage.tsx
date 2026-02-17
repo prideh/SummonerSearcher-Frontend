@@ -144,7 +144,7 @@ const SearchPage: React.FC = () => {
         }
       }
     }
-  }, [fetchRecentSearches, setLastSearchedSummoner, setSearchInput]);
+  }, [fetchRecentSearches, setLastSearchedSummoner, setSearchInput, addRecentSearch]);
 
   /**
    * Loads the next page of matches.

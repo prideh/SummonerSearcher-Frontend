@@ -34,10 +34,11 @@ const AdminDashboard: React.FC = () => {
         }
         
         setError(null);
-      } catch (err: any) {
-        if (err.response?.status === 403) {
+      } catch (err: unknown) {
+        const error = err as { response?: { status?: number } };
+        if (error.response?.status === 403) {
           setError('Access Denied: Admin privileges required');
-        } else if (err.response?.status === 401) {
+        } else if (error.response?.status === 401) {
           setError('Authentication required');
           navigate('/');
         } else {
@@ -225,7 +226,6 @@ const AdminDashboard: React.FC = () => {
                 <tbody>
                   {history.map((run, index) => {
                     const date = new Date(run.runDate);
-                    const totalChanges = run.examplesAdded + run.examplesReplaced;
                     
                     return (
                       <tr key={index} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750">
