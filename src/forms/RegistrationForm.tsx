@@ -10,7 +10,12 @@ import axios from 'axios';
  * It validates password strength in real-time and ensures passwords match before submission.
  * On success, it navigates the user to the login page with a success message.
  */
-const RegistrationForm: React.FC = () => {
+interface RegistrationFormProps {
+  onSuccess?: () => void;
+  switchToLogin?: () => void;
+}
+
+const RegistrationForm: React.FC<RegistrationFormProps> = ({ onSuccess, switchToLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -41,8 +46,14 @@ const RegistrationForm: React.FC = () => {
 
     try {
       await registerUser(email, password);
-      // Registration successful, navigate to login page with a message prompting email verification.
-      navigate('/login', { state: { message: 'Registration successful! Please verify your email to log in.' } });
+      // Registration successful
+      if (onSuccess) {
+        onSuccess();
+        // Maybe also show a toast or message in login form?
+        // onSuccess usually switches to login view in modal context with a message.
+      } else {
+        navigate('/login', { state: { message: 'Registration successful! Please verify your email to log in.' } });
+      }
     } catch (error) {
       if (axios.isAxiosError(error)) {
         if (import.meta.env.DEV) {
@@ -60,8 +71,8 @@ const RegistrationForm: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col md:flex-row items-center justify-center min-h-screen p-4 bg-gray-100 dark:bg-gray-950">
-      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-sm">
+    <div className="flex flex-col md:flex-row items-center justify-center p-4">
+      <form onSubmit={handleSubmit} className="w-full">
         <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Register</h2>
         {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
         <div className="mb-4">
@@ -125,9 +136,19 @@ const RegistrationForm: React.FC = () => {
             )}
             {isSubmitting ? 'Registering...' : 'Register'}
           </button>
-          <Link to="/login" className="inline-block align-baseline font-bold text-sm text-cyan-400 hover:text-cyan-300">
-            Already have an account?
-          </Link>
+          {switchToLogin ? (
+            <button 
+              type="button" 
+              onClick={switchToLogin}
+              className="inline-block align-baseline font-bold text-sm text-cyan-400 hover:text-cyan-300 focus:outline-none"
+            >
+              Already have an account?
+            </button>
+          ) : (
+            <Link to="/login" className="inline-block align-baseline font-bold text-sm text-cyan-400 hover:text-cyan-300">
+              Already have an account?
+            </Link>
+          )}
         </div>
       </form>
       

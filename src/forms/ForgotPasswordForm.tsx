@@ -7,7 +7,11 @@ import axios from 'axios';
  * A form for users who have forgotten their password.
  * It takes an email address and sends a request to the backend to initiate the password reset process.
  */
-const ForgotPasswordForm: React.FC = () => {
+interface ForgotPasswordFormProps {
+  switchToLogin?: () => void;
+}
+
+const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ switchToLogin }) => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -40,8 +44,8 @@ const ForgotPasswordForm: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-950">
-      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-sm">
+    <div className="flex items-center justify-center p-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm">
         <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Forgot Password</h2>
         {successMessage && <p className="text-green-500 text-sm italic mb-4">{successMessage}</p>}
         {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
@@ -62,9 +66,19 @@ const ForgotPasswordForm: React.FC = () => {
           </button>
         </div>
         <div className="text-center">
-          <Link to="/login" className="inline-block align-baseline font-bold text-sm text-cyan-400 hover:text-cyan-300">
-            Back to Login
-          </Link>
+            {switchToLogin ? (
+                <button 
+                  type="button" 
+                  onClick={switchToLogin}
+                  className="inline-block align-baseline font-bold text-sm text-cyan-400 hover:text-cyan-300 focus:outline-none"
+                >
+                  Back to Login
+                </button>
+            ) : (
+                <Link to="/login" className="inline-block align-baseline font-bold text-sm text-cyan-400 hover:text-cyan-300">
+                    Back to Login
+                </Link>
+            )}
         </div>
       </form>
     </div>

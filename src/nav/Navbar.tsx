@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { updateDarkModePreference } from '../api/user';
 import { toast } from 'react-toastify';
@@ -13,13 +13,29 @@ const Navbar: React.FC = () => {
   const logout = useAuthStore((state) => state.logout);
   const isDarkMode = useAuthStore((state) => state.darkMode);
   const setDarkMode = useAuthStore((state) => state.setDarkMode);
-  const [isOpen, setIsOpen] = useState(false);
+  const openAuthModal = useAuthStore((state) => state.openAuthModal);
+  const [isOpen, setIsOpen] = useState(false); // Mobile menu state
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false); // User dropdown state
   const location = useLocation();
+  const navigate = useNavigate();
 
-  /**
-   * Effect to apply the dark mode class to the root HTML element
-   */
-  useEffect(() => {
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Effect to apply the dark mode class to the root HTML element
+  React.useEffect(() => {
     const root = window.document.documentElement;
     if (isDarkMode) {
       root.classList.add('dark');
@@ -29,12 +45,6 @@ const Navbar: React.FC = () => {
     localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
-  /**
-   * Handles the theme toggle action.
-   */
-  /**
-   * Handles the theme toggle action.
-   */
   const handleThemeToggle = async () => {
     const newDarkModeState = !isDarkMode;
     setDarkMode(newDarkModeState);
@@ -55,23 +65,30 @@ const Navbar: React.FC = () => {
 
   const isActive = (path: string) => location.pathname === path;
 
+
+
+  // Main navigation links visible to everyone
+  const navLinks = [
+    { name: 'Dashboard', path: '/dashboard' },
+    { name: 'Search', path: '/search' },
+    { name: 'Status', path: '/status' },
+  ];
+
+  // User-specific links (Dropdown / Mobile)
+  const userLinks = [
+    { name: 'Profile', path: '/profile' },
+    { name: '2FA', path: '/2fa' },
+  ];
+
   return (
     <nav className="sticky top-0 z-50 w-full bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-xl border-b border-gray-200 dark:border-blue-900/30 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
-
-
           {/* Desktop Navigation */}
           <div className="hidden md:block">
             <div className="ml-10 flex items-baseline space-x-8">
-              {[
-                { name: 'Dashboard', path: '/dashboard' },
-                { name: 'Search', path: '/search' },
-                { name: 'Status', path: '/status' },
-                { name: 'Profile', path: '/profile' },
-                { name: '2FA', path: '/2fa' },
-              ].map((item) => (
+              {navLinks.map((item) => (
                 <Link
                   key={item.name}
                   to={item.path}
@@ -116,31 +133,58 @@ const Navbar: React.FC = () => {
             {/* User Profile / Logout / Login */}
             <div className="flex items-center space-x-4 pl-6 border-l border-gray-200 dark:border-gray-700">
               {username ? (
-                <>
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {username}
-                  </span>
+                <div className="relative" ref={dropdownRef}>
                   <button
-                    onClick={logout}
-                    className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="flex items-center space-x-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-cyan-400 focus:outline-none"
                   >
-                    Logout
+                    <span>{username}</span>
+                    <svg className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
                   </button>
-                </>
+                  
+                  {/* Dropdown Menu */}
+                  {isDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-900 rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                      {userLinks.map((item) => (
+                         <Link
+                            key={item.name}
+                            to={item.path}
+                            onClick={() => setIsDropdownOpen(false)}
+                            className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                          >
+                            {item.name}
+                          </Link>
+                      ))}
+                      <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                       <button
+                        onClick={async () => {
+                            await logout();
+                            setIsDropdownOpen(false);
+                            navigate('/dashboard');
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        >
+                        Logout
+                        </button>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="flex items-center space-x-2">
-                  <Link
-                    to="/login"
+                  <button
+                    onClick={() => openAuthModal('login')}
                     className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                   >
                     Login
-                  </Link>
-                  <Link
-                    to="/register"
+                  </button>
+                  <button
+                    onClick={() => openAuthModal('register')}
                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
                   >
                     Register
-                  </Link>
+                  </button>
                 </div>
               )}
             </div>
@@ -170,13 +214,7 @@ const Navbar: React.FC = () => {
       {/* Mobile Menu */}
       <div className={`${isOpen ? 'block' : 'hidden'} md:hidden bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-xl border-b border-gray-200 dark:border-blue-900/30`}>
         <div className="px-2 pt-2 pb-3 space-y-1">
-          {[
-            { name: 'Dashboard', path: '/dashboard' },
-            { name: 'Search', path: '/search' },
-            { name: 'Status', path: '/status' },
-            { name: 'Profile', path: '/profile' },
-            { name: '2FA', path: '/2fa' },
-          ].map((item) => (
+          {navLinks.map((item) => (
             <Link
               key={item.name}
               to={item.path}
@@ -190,6 +228,22 @@ const Navbar: React.FC = () => {
               {item.name}
             </Link>
           ))}
+          {/* Mobile User Links */}
+          {username && userLinks.map((item) => (
+             <Link
+              key={item.name}
+              to={item.path}
+              onClick={() => setIsOpen(false)}
+              className={`block px-3 py-2 rounded-md text-base font-medium ${
+                isActive(item.path)
+                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-cyan-400'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              {item.name}
+            </Link>
+          ))}
+
           <div className="pt-4 pb-2 border-t border-gray-200 dark:border-gray-700 mt-2">
             {username ? (
               <>
@@ -213,9 +267,10 @@ const Navbar: React.FC = () => {
                   </button>
                 </div>
                 <button
-                  onClick={() => {
-                    logout();
+                  onClick={async () => {
+                    await logout();
                     setIsOpen(false);
+                    navigate('/dashboard');
                   }}
                   className="mt-3 w-full text-left px-3 py-2 text-base font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
                 >
@@ -241,20 +296,24 @@ const Navbar: React.FC = () => {
                     )}
                   </button>
                  </div>
-                <Link
-                  to="/login"
-                  onClick={() => setIsOpen(false)}
+                <button
+                  onClick={() => {
+                    openAuthModal('login');
+                    setIsOpen(false);
+                  }}
                   className="block w-full text-center px-4 py-2 text-base font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
                 >
                   Login
-                </Link>
-                <Link
-                  to="/register"
-                  onClick={() => setIsOpen(false)}
+                </button>
+                <button
+                  onClick={() => {
+                    openAuthModal('register');
+                    setIsOpen(false);
+                  }}
                   className="block w-full text-center px-4 py-2 text-base font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
                 >
                   Register
-                </Link>
+                </button>
               </div>
             )}
           </div>

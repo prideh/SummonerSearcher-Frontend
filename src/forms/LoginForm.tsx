@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import {  Link, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import {  Link, useNavigate } from 'react-router-dom';
 import { loginUser } from '../api/auth';
 import { useAuthStore } from '../store/authStore';
 import axios from 'axios';
@@ -9,41 +9,21 @@ import axios from 'axios';
  * It handles user authentication, including the initial step of a 2FA login flow.
  * It also provides a button to pre-fill credentials for a dummy/demo account.
  */
-const LoginForm: React.FC = () => {
+interface LoginFormProps {
+  onSuccess?: () => void;
+  switchToRegister?: () => void;
+  switchToForgotPassword?: () => void;
+}
+
+const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, switchToRegister, switchToForgotPassword }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const location = useLocation();
   const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
-
-  /**
-   * Effect to display success or error messages passed via navigation state,
-   * for example, after a successful registration or a failed password reset.
-   */
-  useEffect(() => {
-    if (location.state?.message) {
-      setSuccessMessage(location.state.message);
-      window.history.replaceState({}, document.title);
-    }
-    // Display error message from password reset or other navigations
-    if (location.state?.error) {
-      setError(location.state.error);
-      window.history.replaceState({}, document.title);
-    }
-  }, [location, navigate]);
-  
-  /**
-   * A helper function to quickly fill the form with credentials for a demo account.
-   */
-
-
-  /**
-   * Handles the form submission for user login.
-   */
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setSuccessMessage(null)
@@ -60,9 +40,18 @@ const LoginForm: React.FC = () => {
       if (data && data.jwt) {
         // Standard login success: store token and user data.
         login(data.jwt, email, data.twoFactorEnabled, data.darkmodePreference ?? true);
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          navigate('/dashboard');
+        }
       } else if (data && data.twoFactorRequired && data.tempToken) {
         // 2FA is required: navigate to the verification page with a temporary token.
+        // For modal, we might need to handle this differently (e.g. switch modal view to 2FA), 
+        // but for now let's keep the redirect as 2FA page is complex.
         navigate('/login/2fa-verify', { state: { tempToken: data.tempToken, email: email } });
+        if (onSuccess) onSuccess(); // Close modal if we navigate away? Or keep it? 
+        // Better to close modal if we navigate.
       }
     } catch (err) {
       if (axios.isAxiosError(err)) {
@@ -81,8 +70,8 @@ const LoginForm: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-950">
-      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-sm">
+    <div className="flex items-center justify-center p-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm">
         <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Login</h2>
 
         {successMessage && <p className="text-green-500 text-sm italic mb-4">{successMessage}</p>}
@@ -136,10 +125,35 @@ const LoginForm: React.FC = () => {
             {isSubmitting ? 'Signing In...' : 'Sign In'}
           </button>
           <div className="text-sm text-right">
-            <Link to="/forgot-password" className="font-bold text-cyan-400 hover:text-cyan-300">
-              Forgot Password?
-            </Link>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">Don't have an account? <Link to="/register" className="font-bold text-cyan-400 hover:text-cyan-300">Sign Up</Link></p>
+            {switchToForgotPassword ? (
+                <button
+                    type="button"
+                    onClick={switchToForgotPassword}
+                    className="font-bold text-cyan-400 hover:text-cyan-300 focus:outline-none block ml-auto mb-1"
+                >
+                    Forgot Password?
+                </button>
+            ) : (
+                <Link to="/forgot-password" className="font-bold text-cyan-400 hover:text-cyan-300 block mb-1">
+                Forgot Password?
+                </Link>
+            )}
+            <p className="text-gray-500 dark:text-gray-400 mt-1">
+              Don't have an account?{' '}
+              {switchToRegister ? (
+                <button 
+                  type="button" 
+                  onClick={switchToRegister} 
+                  className="font-bold text-cyan-400 hover:text-cyan-300 focus:outline-none"
+                >
+                  Sign Up
+                </button>
+              ) : (
+                <Link to="/register" className="font-bold text-cyan-400 hover:text-cyan-300">
+                  Sign Up
+                </Link>
+              )}
+            </p>
           </div>
         </div>
       </form>

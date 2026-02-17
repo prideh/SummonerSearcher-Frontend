@@ -17,6 +17,11 @@ interface AuthState {
   searchInput: string;
   region: string;
   recentSearches: RecentSearch[];
+  
+  // Modal State
+  authModalOpen: boolean;
+  authView: 'login' | 'register' | 'forgot-password';
+
   // Actions to update the state
   login: (token: string, email: string, is2faEnabled: boolean, darkMode: boolean) => void;
   logout: () => Promise<void>;
@@ -27,6 +32,10 @@ interface AuthState {
   setLastSearchedSummoner: (summoner: SummonerData | 'NOT_FOUND' | null) => void;
   addRecentSearch: (search: RecentSearch) => void;
   clearRecentSearches: () => void;
+  
+  // Modal Actions
+  openAuthModal: (view: 'login' | 'register' | 'forgot-password') => void;
+  closeAuthModal: () => void;
 }
 
 /**
@@ -46,6 +55,10 @@ export const useAuthStore = create<AuthState>()(
       searchInput: '',
       region: 'EUW1', // Default region
       recentSearches: [],
+      
+      authModalOpen: false,
+      authView: 'login',
+
       /**
        * Sets the user's state to logged-in upon successful authentication.
        */
@@ -104,6 +117,9 @@ export const useAuthStore = create<AuthState>()(
       },
       // Action to clear local recent searches
       clearRecentSearches: () => set({ recentSearches: [] }),
+      
+      openAuthModal: (view) => set({ authModalOpen: true, authView: view }),
+      closeAuthModal: () => set({ authModalOpen: false }),
     }),
     {
       name: 'auth-storage', // name of the item in the storage (must be unique)
