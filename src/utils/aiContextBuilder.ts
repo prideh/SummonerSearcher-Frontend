@@ -82,6 +82,7 @@ export function buildAiContext(
     };
   topStrengths: Array<{ name: string; consistency: string }>;
   topWeaknesses: Array<{ name: string; consistency: string }>;
+  championMatchups: Record<string, { wins: number; losses: number; total: number; winRate: string }>;
 } {
   // Calculate consistency stats (still done on frontend for now)
   const { bestStats, worstStats } = calculateConsistency(allMatches, puuid);
@@ -118,7 +119,8 @@ export function buildAiContext(
               avgVisionScore: '0.0'
           },
           topStrengths: [],
-          topWeaknesses: []
+          topWeaknesses: [],
+          championMatchups: {}
       };
   }
   
@@ -243,6 +245,41 @@ export function buildAiContext(
         avgVisionScore: Number(overallStats.oppAvgVisionScore).toFixed(1)
     },
     topStrengths: bestStats.map(s => ({ name: camelCaseToTitleCase(s.key), consistency: s.consistency.toFixed(0) + '%' })),
-    topWeaknesses: worstStats.map(s => ({ name: camelCaseToTitleCase(s.key), consistency: s.lossConsistency.toFixed(0) + '%' }))
+    topWeaknesses: worstStats.map(s => ({ name: camelCaseToTitleCase(s.key), consistency: s.lossConsistency.toFixed(0) + '%' })),
+    championMatchups: computeChampionMatchups(primaryRoleMatches)
   };
+}
+
+/**
+ * Computes win/loss stats against specific opponent champions
+ */
+function computeChampionMatchups(matches: MatchDetail[]): Record<string, { wins: number; losses: number; total: number; winRate: string }> {
+  const matchups: Record<string, { wins: number; losses: number; total: number }> = {};
+
+  matches.forEach(match => {
+    if (!match.opponent?.champion) return;
+    const oppChamp = match.opponent.champion;
+    
+    if (!matchups[oppChamp]) {
+      matchups[oppChamp] = { wins: 0, losses: 0, total: 0 };
+    }
+    
+    matchups[oppChamp].total++;
+    if (match.win) {
+      matchups[oppChamp].wins++;
+    } else {
+      matchups[oppChamp].losses++;
+    }
+  });
+
+  // Convert to final format with winrate string
+  const result: Record<string, { wins: number; losses: number; total: number; winRate: string }> = {};
+  Object.entries(matchups).forEach(([champ, stats]) => {
+    result[champ] = {
+      ...stats,
+      winRate: ((stats.wins / stats.total) * 100).toFixed(0) + '%'
+    };
+  });
+  
+  return result;
 }
