@@ -59,7 +59,7 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
     setLoading(true);
 
     try {
-      const apiResponse = await chatWithAi(context, currentMessages, text);
+      const apiResponse = await chatWithAi(context, currentMessages, text, sessionId);
       
       // Parse suggestions from response
       let cleanResponse = apiResponse.response;

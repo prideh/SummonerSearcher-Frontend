@@ -40,12 +40,12 @@ const NavigationLayout: React.FC = () => {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/status" element={<StatusPage />} />
+        <Route path="/admin" element={<AdminDashboard />} />
       </Route>
 
       <Route element={<ProtectedRoute />}>
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/2fa" element={<TwoFAPage />} />
-        <Route path="/admin" element={<AdminDashboard />} />
       </Route>
       <Route path="/" element={<Navigate to="/dashboard" />} />
       <Route path="*" element={<NotFoundPage />} />

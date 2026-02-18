@@ -21,12 +21,14 @@ export interface AiChatResponse {
 export const chatWithAi = async (
   context: AiContextData,
   messages: Array<{ role: string; content: string }>,
-  userMessage: string
+  userMessage: string,
+  sessionId?: string
 ): Promise<AiChatResponse> => {
   const response = await apiClient.post<AiChatResponse>('/ai/chat', {
     context,
     messages,
     userMessage,
+    sessionId,
   });
   return response.data;
 };

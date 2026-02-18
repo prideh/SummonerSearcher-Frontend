@@ -21,7 +21,7 @@ function App() {
   }, [fetchItemData, fetchSummonerSpellData, fetchRuneData]);
 
   return (
-    <div className="bg-gray-100 dark:bg-gray-950 text-gray-800 dark:text-gray-200 h-screen flex flex-col overflow-hidden">
+    <div className="bg-gray-100 dark:bg-gray-950 text-gray-800 dark:text-gray-200 h-screen flex flex-col overflow-y-auto">
         <RateLimitBanner />
         <NavigationLayout />
         <AuthModal />
