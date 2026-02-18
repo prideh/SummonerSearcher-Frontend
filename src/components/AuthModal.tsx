@@ -16,6 +16,8 @@ const AuthModal: React.FC = () => {
   const closeAuthModal = useAuthStore((state) => state.closeAuthModal);
   const location = useLocation();
 
+  const [loginMessage, setLoginMessage] = React.useState<string | null>(null);
+
   // Close modal when location changes (e.g. successful login redirect if any, or navigation)
   useEffect(() => {
     // If we want the modal to persist across some navigations, we might not want this.
@@ -23,7 +25,8 @@ const AuthModal: React.FC = () => {
     // actually, if login redirects to dashboard, we definitely want it closed.
     // But if we just switch tabs using client-side routing, maybe not?
     // Let's rely on explicit close for now, or successful login.
-  }, [location]);
+    setLoginMessage(null); // Clear message on navigation
+  }, [location, isOpen]); // Also clear when modal opens/closes
 
   if (!isOpen) return null;
 
@@ -51,18 +54,17 @@ const AuthModal: React.FC = () => {
           {view === 'login' ? (
             <LoginForm 
               onSuccess={closeAuthModal}
-              switchToRegister={() => openAuthModal('register')}
-              switchToForgotPassword={() => openAuthModal('forgot-password')}
+              switchToRegister={() => { setLoginMessage(null); openAuthModal('register'); }}
+              switchToForgotPassword={() => { setLoginMessage(null); openAuthModal('forgot-password'); }}
+              initialMessage={loginMessage}
             />
           ) : view === 'register' ? (
             <RegistrationForm 
               onSuccess={() => {
-                 // On registration success, typically we want to show login with a message.
-                 // We can potentially pass a message to login form via prop or store, 
-                 // but for now let's just switch to login.
+                 setLoginMessage("Registration successful! Please verify your email to log in.");
                  openAuthModal('login');
               }}
-              switchToLogin={() => openAuthModal('login')}
+              switchToLogin={() => { setLoginMessage(null); openAuthModal('login'); }}
             />
           ) : (
             <ForgotPasswordForm

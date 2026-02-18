@@ -13,15 +13,16 @@ interface LoginFormProps {
   onSuccess?: () => void;
   switchToRegister?: () => void;
   switchToForgotPassword?: () => void;
+  initialMessage?: string | null;
 }
 
-const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, switchToRegister, switchToForgotPassword }) => {
+const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, switchToRegister, switchToForgotPassword, initialMessage }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(initialMessage || null);
   const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
   const handleSubmit = async (event: React.FormEvent) => {
