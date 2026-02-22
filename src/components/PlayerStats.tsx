@@ -49,7 +49,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
   // Calculate derived stats like KDA, total CS, and Kill Participation.
   const kda = ((kills ?? 0) + (assists ?? 0)) / (deaths === 0 ? 1 : (deaths ?? 1));
   const cs = (totalMinionsKilled ?? 0) + (neutralMinionsKilled ?? 0);
-  
+
   const playerStyles = perks?.styles || [];
   const primaryRune = playerStyles[0]?.selections?.[0]?.perk;
   const secondaryPath = playerStyles[1]?.style;
@@ -101,7 +101,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
           ) : (
             <p className="text-xs text-gray-700 dark:text-gray-400 mt-1">{kda.toFixed(2)} KDA</p>
           )}
-          <p 
+          <p
             className="text-xs text-gray-600 dark:text-gray-300 mt-1"
             data-tooltip-id="player-name-tooltip"
             data-tooltip-content={`Minions: ${totalMinionsKilled} | Jungle: ${neutralMinionsKilled}`}
@@ -122,17 +122,18 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
   // Render the opponent-specific layout, which is more compact and includes their name.
   if (isOpponent) {
     return (
-      <div 
+      <div
         className="grid grid-cols-[auto_auto_1fr_auto] gap-x-3 items-center w-full cursor-pointer group"
-        onClick={() => {
+        onClick={(e) => {
+          e.stopPropagation();
           if (onPlayerClick && riotIdGameName && riotIdTagline) {
             onPlayerClick(riotIdGameName, riotIdTagline);
           }
         }}
       >
-        <img 
-          src={`${CDN_URL}/img/champion/${getCorrectChampionName(championName)}.png`} 
-          alt={championName} 
+        <img
+          src={`${CDN_URL}/img/champion/${getCorrectChampionName(championName)}.png`}
+          alt={championName}
           loading="lazy"
           className="w-16 h-16 rounded-md group-hover:opacity-80 transition-opacity"
           data-tooltip-id="player-name-tooltip"
@@ -141,7 +142,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
         {!condensed && (
           <>
             <div className="flex flex-col space-y-1 shrink-0">
-              <SummonerSpellIcon spellId={summoner1Id} className="w-7 h-7" /> 
+              <SummonerSpellIcon spellId={summoner1Id} className="w-7 h-7" />
               <SummonerSpellIcon spellId={summoner2Id} className="w-7 h-7" />
             </div>
             <div className="flex flex-col justify-center min-w-0">
