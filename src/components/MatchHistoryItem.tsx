@@ -35,12 +35,12 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
         if (cardRef.current) {
           const rect = cardRef.current.getBoundingClientRect();
           const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
-          
+
           // Only scroll if the bottom of the card is not fully visible
           if (!isVisible) {
-            cardRef.current.scrollIntoView({ 
-              behavior: 'smooth', 
-              block: 'nearest' 
+            cardRef.current.scrollIntoView({
+              behavior: 'smooth',
+              block: 'nearest'
             });
           }
         }
@@ -64,8 +64,8 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
   }
 
   // Find the direct lane opponent for a quick "vs" comparison in the summary.
-  const opponent = participants.find(p => 
-    p.teamId !== player.teamId && 
+  const opponent = participants.find(p =>
+    p.teamId !== player.teamId &&
     p.teamPosition === player.teamPosition &&
     p.teamPosition &&
     p.teamPosition !== 'NONE'
@@ -91,7 +91,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
   const outcome = getMatchOutcomeStyles(win, gameEndedInEarlySurrender);
   const teamColorClass = teamId === 100 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400';
   return (
-    <div 
+    <div
       ref={(el) => {
         // Assign to both refs
         if (ref && 'current' in ref) {
@@ -101,87 +101,93 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
       }}
       className={`relative border-l-4 ${outcome.container} ${showDetails ? 'rounded-t-lg' : 'rounded-lg'}`}
     >
-      <div className="flex items-center bg-white/50 dark:bg-gray-900/50">
+      <div
+        className="flex items-center bg-white/50 dark:bg-gray-900/50 cursor-pointer transition-colors hover:bg-white/60 dark:hover:bg-gray-800/60"
+        onClick={() => setShowDetails(!showDetails)}
+      >
         {/* Main content area that changes on expand/collapse */}
         <div className={`flex-grow ${showDetails ? "flex items-center justify-between p-2 text-sm" : "grid grid-cols-1 md:grid-cols-[130px_1fr_auto_1fr_280px] gap-4 items-center p-4 text-sm"}`}>
-          
+
           {/* Title when expanded */}
-        {showDetails && (
-          <div className="flex-1">
-            <p className="font-semibold text-gray-800 dark:text-gray-100">
-              <span className={outcome.label === 'Victory' ? 'text-green-600 dark:text-green-400' : outcome.label === 'Defeat' ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'}>
-                {outcome.label}
-              </span>
-              {' · '}
-              {getQueueType(queueId)}
-            </p>
-          </div>
-        )}
+          {showDetails && (
+            <div className="flex-1">
+              <p className="font-semibold text-gray-800 dark:text-gray-100">
+                <span className={outcome.label === 'Victory' ? 'text-green-600 dark:text-green-400' : outcome.label === 'Defeat' ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'}>
+                  {outcome.label}
+                </span>
+                {' · '}
+                {getQueueType(queueId)}
+              </p>
+            </div>
+          )}
 
           {/* Game Info - Hidden when details are shown */}
-        {!showDetails && (
-          <div className="flex justify-between items-center md:flex-col md:items-start md:justify-start pr-10 md:pr-0">
-            <p className="font-bold text-gray-800 dark:text-gray-100 truncate text-lg md:text-base">{getQueueType(queueId)}</p>
-            <p 
-              className="text-xs text-gray-500 dark:text-gray-400"
-              data-tooltip-id="player-name-tooltip"
-              data-tooltip-content={gameCreation ? new Date(gameCreation).toLocaleString() : 'Unknown time'}
-            >
-              {timeAgo}
-            </p>
-            <div className="hidden md:block w-12 border-t border-gray-300 dark:border-gray-700 my-1"></div>
-            <div className="text-right md:text-left">
-              {outcome.label === 'Remake' ? (
-                <p className="font-semibold text-gray-500 dark:text-gray-400">Remake</p>
-              ) : (
-                <p className={`font-semibold ${teamColorClass}`}>{teamId === 100 ? 'Blue Side' : 'Red Side'}</p>
-              )}
-              <p className="text-gray-500 dark:text-gray-400">{formatDuration(gameDuration)}</p>
+          {!showDetails && (
+            <div className="flex justify-between items-center md:flex-col md:items-start md:justify-start pr-10 md:pr-0">
+              <p className="font-bold text-gray-800 dark:text-gray-100 truncate text-lg md:text-base">{getQueueType(queueId)}</p>
+              <p
+                className="text-xs text-gray-500 dark:text-gray-400"
+                data-tooltip-id="player-name-tooltip"
+                data-tooltip-content={gameCreation ? new Date(gameCreation).toLocaleString() : 'Unknown time'}
+              >
+                {timeAgo}
+              </p>
+              <div className="hidden md:block w-12 border-t border-gray-300 dark:border-gray-700 my-1"></div>
+              <div className="text-right md:text-left">
+                {outcome.label === 'Remake' ? (
+                  <p className="font-semibold text-gray-500 dark:text-gray-400">Remake</p>
+                ) : (
+                  <p className={`font-semibold ${teamColorClass}`}>{teamId === 100 ? 'Blue Side' : 'Red Side'}</p>
+                )}
+                <p className="text-gray-500 dark:text-gray-400">{formatDuration(gameDuration)}</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
           {/* Player Stats - Hidden when details are shown */}
-        {!showDetails && (
-          <PlayerStats 
-            participant={player} 
-            teamParticipants={participants.filter(p => p.teamId === player.teamId)} 
-          />
-        )}
+          {!showDetails && (
+            <PlayerStats
+              participant={player}
+              teamParticipants={participants.filter(p => p.teamId === player.teamId)}
+            />
+          )}
 
           {/* "VS" Separator - Hidden when details are shown */}
-        {!showDetails && (
-          <div className="text-center">
-            {opponent && <span className="text-lg font-bold text-gray-400 dark:text-gray-600 px-2">vs</span>}
-          </div>
-        )}
+          {!showDetails && (
+            <div className="text-center">
+              {opponent && <span className="text-lg font-bold text-gray-400 dark:text-gray-600 px-2">vs</span>}
+            </div>
+          )}
 
           {/* Opponent Stats - Hidden when details are shown */}
-        {!showDetails && (
-          <div className="text-gray-500 dark:text-gray-400 flex justify-start w-full">
-            {opponent && (
-              <PlayerStats 
-                participant={opponent}
-                teamParticipants={participants.filter(p => p.teamId === opponent.teamId)}
-                onPlayerClick={onPlayerClick}
-                isOpponent={true}
-              />
-            )}
-          </div>
-        )}
+          {!showDetails && (
+            <div className="text-gray-500 dark:text-gray-400 flex justify-start w-full">
+              {opponent && (
+                <PlayerStats
+                  participant={opponent}
+                  teamParticipants={participants.filter(p => p.teamId === opponent.teamId)}
+                  onPlayerClick={onPlayerClick}
+                  isOpponent={true}
+                />
+              )}
+            </div>
+          )}
 
           {/* Items - Hidden when details are shown */}
-        {!showDetails && (
-          <div className="flex items-center justify-center">
-            <ItemList mainItems={mainItems} trinket={trinket} />
-          </div>
-        )}
+          {!showDetails && (
+            <div className="flex items-center justify-center">
+              <ItemList mainItems={mainItems} trinket={trinket} />
+            </div>
+          )}
         </div>
 
         {/* Expand Button */}
         <div className="flex-shrink-0 flex items-center justify-center w-16 h-full">
-          <button 
-            onClick={() => setShowDetails(!showDetails)} 
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDetails(!showDetails);
+            }}
             className={`p-2 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${showDetails ? 'rotate-180 bg-gray-300 dark:bg-gray-700' : 'bg-gray-200 dark:bg-gray-800/50 hover:bg-gray-300 dark:hover:bg-gray-800'}`}
             aria-expanded={showDetails}
             aria-label={showDetails ? 'Collapse match details' : 'Expand match details'}
