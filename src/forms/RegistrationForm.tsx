@@ -49,7 +49,7 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({ onSuccess, switchTo
       // Registration successful
       if (onSuccess) {
         onSuccess();
-        // Maybe also show a toast or message in login form?
+        // If we want auto-login, we could call the login API here instead.
         // onSuccess usually switches to login view in modal context with a message.
       } else {
         navigate('/login', { state: { message: 'Registration successful! Please verify your email to log in.' } });

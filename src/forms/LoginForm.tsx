@@ -44,7 +44,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, switchToRegister, swit
         if (onSuccess) {
           onSuccess();
         } else {
-          navigate('/dashboard');
+          navigate('/search');
         }
       } else if (data && data.twoFactorRequired && data.tempToken) {
         // 2FA is required: navigate to the verification page with a temporary token.

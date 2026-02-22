@@ -5,6 +5,7 @@ import RegistrationForm from '../forms/RegistrationForm';
 import SearchPage from '../pages/SearchPage';
 import ProtectedRoute from './ProtectedRoute';
 import DashboardPage from '../pages/DashboardPage';
+import FeedbackPage from '../pages/FeedbackPage';
 import StatusPage from '../pages/StatusPage';
 import TwoFAPage from '../pages/TwoFAPage';
 import RedirectIfLoggedIn from './RedirectIfLoggedIn';
@@ -40,6 +41,7 @@ const NavigationLayout: React.FC = () => {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/status" element={<StatusPage />} />
+        <Route path="/feedback" element={<FeedbackPage />} />
         <Route path="/admin" element={<AdminDashboard />} />
       </Route>
 
@@ -47,7 +49,7 @@ const NavigationLayout: React.FC = () => {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/2fa" element={<TwoFAPage />} />
       </Route>
-      <Route path="/" element={<Navigate to="/dashboard" />} />
+      <Route path="/" element={<Navigate to="/search" />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

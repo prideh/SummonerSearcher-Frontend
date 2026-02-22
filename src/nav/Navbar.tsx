@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { updateDarkModePreference } from '../api/user';
-import { toast } from 'react-toastify';
 
 /**
  * The main navigation bar for the application.
@@ -57,7 +56,7 @@ const Navbar: React.FC = () => {
         if (import.meta.env.DEV) {
             console.error('Failed to update dark mode preference:', error);
         }
-        toast.error('Could not save theme preference.');
+        console.error('Could not save theme preference.', error);
         setDarkMode(!newDarkModeState);
         }
     }
@@ -69,9 +68,10 @@ const Navbar: React.FC = () => {
 
   // Main navigation links visible to everyone
   const navLinks = [
-    { name: 'Dashboard', path: '/dashboard' },
     { name: 'Search', path: '/search' },
+    { name: 'Dashboard', path: '/dashboard' },
     { name: 'Status', path: '/status' },
+    { name: 'Feedback', path: '/feedback' },
   ];
 
   // User-specific links (Dropdown / Mobile)
@@ -162,7 +162,7 @@ const Navbar: React.FC = () => {
                         onClick={async () => {
                             await logout();
                             setIsDropdownOpen(false);
-                            navigate('/dashboard');
+                            navigate('/search');
                         }}
                         className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                         >
@@ -270,7 +270,7 @@ const Navbar: React.FC = () => {
                   onClick={async () => {
                     await logout();
                     setIsOpen(false);
-                    navigate('/dashboard');
+                    navigate('/search');
                   }}
                   className="mt-3 w-full text-left px-3 py-2 text-base font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
                 >
