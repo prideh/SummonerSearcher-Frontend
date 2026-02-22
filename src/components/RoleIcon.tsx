@@ -32,7 +32,7 @@ const RoleIcon: React.FC<RoleIconProps> = ({ role, className = 'w-5 h-5' }) => {
   };
 
   return (
-    <img
+    <img loading="lazy"
       src={iconUrl}
       alt={formatRole(role)}
       title={formatRole(role)}

@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import type { MatchDto } from '../types/match';
-import RunesTab from './RunesTab';
-import AnalysisTab from './AnalysisTab';
-import ScoreboardTab from './ScoreboardTab';
-import GraphsTab from './GraphsTab';
+import { Skeleton } from './ui/Skeleton';
+
+const RunesTab = lazy(() => import('./RunesTab'));
+const AnalysisTab = lazy(() => import('./AnalysisTab'));
+const ScoreboardTab = lazy(() => import('./ScoreboardTab'));
+const GraphsTab = lazy(() => import('./GraphsTab'));
 
 /**
  * Props for the MatchDetails component.
@@ -51,10 +53,12 @@ const MatchDetails: React.FC<MatchDetailsProps> = ({ match, puuid, onPlayerClick
         </button>
       </div>
       {/* Conditionally render the content of the active tab. */}
-      {activeTab === 'scoreboard' && <ScoreboardTab match={match} puuid={puuid} onPlayerClick={onPlayerClick} />}
-      {activeTab === 'graphs' && <GraphsTab match={match} puuid={puuid} onPlayerClick={onPlayerClick} />}
-      {activeTab === 'runes' && <RunesTab match={match} puuid={puuid} onPlayerClick={onPlayerClick} />}
-      {activeTab === 'analysis' && <AnalysisTab match={match} puuid={puuid} onPlayerClick={onPlayerClick} />}
+      <Suspense fallback={<div className="p-4"><Skeleton className="w-full h-48 rounded-md bg-gray-200/50 dark:bg-gray-800/50" /></div>}>
+        {activeTab === 'scoreboard' && <ScoreboardTab match={match} puuid={puuid} onPlayerClick={onPlayerClick} />}
+        {activeTab === 'graphs' && <GraphsTab match={match} puuid={puuid} onPlayerClick={onPlayerClick} />}
+        {activeTab === 'runes' && <RunesTab match={match} puuid={puuid} onPlayerClick={onPlayerClick} />}
+        {activeTab === 'analysis' && <AnalysisTab match={match} puuid={puuid} onPlayerClick={onPlayerClick} />}
+      </Suspense>
     </div>
   );
 };

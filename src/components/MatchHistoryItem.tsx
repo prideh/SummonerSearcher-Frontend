@@ -1,9 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, memo } from 'react';
 import type { MatchDto } from '../types/match';
 import MatchDetails from './MatchDetails.tsx';
 import { getQueueType, formatDuration, getMatchOutcomeStyles } from '../utils/matchHistoryHelper';
 import PlayerStats from './PlayerStats.tsx';
 import { useTimeAgo } from '../hooks/useTimeAgo';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '../utils/cn';
 
 /**
  * Props for the MatchHistoryItem component.
@@ -91,18 +93,26 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
   const outcome = getMatchOutcomeStyles(win, gameEndedInEarlySurrender);
   const teamColorClass = teamId === 100 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400';
   return (
-    <div
-      ref={(el) => {
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-20px" }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      ref={(el: HTMLDivElement | null) => {
         // Assign to both refs
         if (ref && 'current' in ref) {
           (ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
         }
         cardRef.current = el;
       }}
-      className={`relative border-l-4 ${outcome.container} ${showDetails ? 'rounded-t-lg' : 'rounded-lg'}`}
+      className={cn("relative border-l-4 shadow-sm hover:shadow-md transition-shadow", outcome.container, showDetails ? 'rounded-t-lg' : 'rounded-lg')}
     >
       <div
-        className="flex items-center bg-white/50 dark:bg-gray-900/50 cursor-pointer transition-colors hover:bg-white/60 dark:hover:bg-gray-800/60"
+        className={cn(
+          "flex items-center cursor-pointer transition-colors",
+          "bg-white/60 dark:bg-gray-900/40 backdrop-blur-sm",
+          "hover:bg-white/80 dark:hover:bg-gray-800/60"
+        )}
         onClick={() => setShowDetails(!showDetails)}
       >
         {/* Main content area that changes on expand/collapse */}
@@ -197,9 +207,23 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
           </button>
         </div>
       </div>
-      {showDetails && <MatchDetails match={match} puuid={puuid} onPlayerClick={onPlayerClick} id={`match-details-${match.info.gameId}`} />}
-    </div>
+      <AnimatePresence>
+        {showDetails && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <MatchDetails match={match} puuid={puuid} onPlayerClick={onPlayerClick} id={`match-details-${match.info.gameId}`} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 };
 
-export default MatchHistoryItem;
+export default memo(MatchHistoryItem, (prevProps, nextProps) => {
+  return prevProps.match.info?.gameId === nextProps.match.info?.gameId && prevProps.puuid === nextProps.puuid;
+});

@@ -27,6 +27,8 @@ interface SummonerInfoProps {
   onPlayerClick: (name: string, tag: string) => void;
   /** Callback to open the full seasonal profile. */
   onViewProfile: () => void;
+  /** Boolean indicating if the full profile is currently shown. */
+  showFullProfile: boolean;
 }
 
 /**
@@ -34,7 +36,7 @@ interface SummonerInfoProps {
  * It includes their profile icon, Riot ID, level, and a "Refresh" button.
  * It also contains the `RankedInfo` component to show ranked statistics.
  */
-const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh, loading, refreshing, visibleMatches, onPlayerClick, onViewProfile }) => {
+const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh, loading, refreshing, visibleMatches, onPlayerClick, onViewProfile, showFullProfile }) => {
   const [timeAgo, ref] = useTimeAgo(new Date(summonerData.lastUpdated).getTime());
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
   const [showAiModal, setShowAiModal] = useState(false);
@@ -99,12 +101,14 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
         </div>
         {!loading && (
           <div className="shrink-0 flex flex-wrap justify-center sm:justify-end gap-2 mt-2 sm:mt-0">
-            <button
-                onClick={onViewProfile}
-                className="text-xs sm:text-sm font-bold text-white bg-cyan-600 hover:bg-cyan-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-md shadow-sm transition-colors"
-            >
-                View Full Seasonal Profile
-            </button>
+            {!showFullProfile && (
+              <button
+                  onClick={onViewProfile}
+                  className="text-xs sm:text-sm font-bold text-white bg-cyan-600 hover:bg-cyan-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-md shadow-sm transition-colors"
+              >
+                  View Full Seasonal Profile
+              </button>
+            )}
             <button
               onClick={handleLiveGameClick}
               disabled={loadingLiveGame}

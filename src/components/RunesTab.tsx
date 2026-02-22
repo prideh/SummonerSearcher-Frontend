@@ -41,7 +41,7 @@ const RunesTab: React.FC<RunesTabProps> = ({ match, puuid, onPlayerClick }) => {
                 className="flex items-center space-x-2 mb-3 cursor-pointer group"
                 onClick={() => onPlayerClick(player.riotIdGameName!, player.riotIdTagline!)}
               >
-                <img src={`${CDN_URL}/img/champion/${getCorrectChampionName(player.championName)}.png`} alt={player.championName} className="w-8 h-8 rounded-full" />
+                <img src={`${CDN_URL}/img/champion/${getCorrectChampionName(player.championName)}.png`} loading="lazy" alt={player.championName} className="w-8 h-8 rounded-full" />
                 <span className="font-semibold text-gray-800 dark:text-gray-200 truncate group-hover:text-cyan-500 dark:group-hover:text-cyan-400">{player.riotIdGameName}</span>
               </div>
               {/* Mobile View: Single row of runes */}

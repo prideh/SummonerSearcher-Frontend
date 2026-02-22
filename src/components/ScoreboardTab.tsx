@@ -5,6 +5,7 @@ import SummonerSpellIcon from './SummonerSpellIcon';
 import RuneIcon from './RuneIcon';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import { getCorrectChampionName } from '../utils/championNameHelper';
+import { getKdaColorClass } from '../utils/colorUtils';
 
 /**
  * Props for the ScoreboardTab component.
@@ -91,7 +92,7 @@ const TeamDetails: React.FC<{ team: ParticipantDto[]; searchedPlayerPuuid: strin
             {/* Player (Champion, Name) - Combined for mobile and desktop */}
             <div className="flex items-center space-x-2 min-w-0 col-span-2 md:col-span-1">
               <div className="shrink-0">
-                <img src={`${CDN_URL}/img/champion/${getCorrectChampionName(p.championName)}.png`} alt={p.championName} className="w-8 h-8 rounded" />
+                <img src={`${CDN_URL}/img/champion/${getCorrectChampionName(p.championName)}.png`} loading="lazy" alt={p.championName} className="w-8 h-8 rounded" />
               </div>
               <div className="hidden md:flex flex-col space-y-0.5 shrink-0">
                 <SummonerSpellIcon spellId={p.summoner1Id} className="w-5 h-5" />
@@ -119,7 +120,7 @@ const TeamDetails: React.FC<{ team: ParticipantDto[]; searchedPlayerPuuid: strin
             </div>
 
             {/* KDA - Repositioned for mobile */}
-            <div className="text-right md:text-center font-semibold text-gray-800 dark:text-gray-200 text-[11px]">{p.kills} / {p.deaths} / {p.assists}</div>
+            <div className={`text-right md:text-center font-bold text-[11px] ${getKdaColorClass(((p.kills ?? 0) + (p.assists ?? 0)) / (p.deaths === 0 ? 1 : (p.deaths ?? 1)))}`}>{p.kills} / {p.deaths} / {p.assists}</div>
 
             {/* Damage - Hidden on mobile */}
             <div 

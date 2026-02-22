@@ -1,5 +1,6 @@
 import React from 'react';
 import { getCorrectChampionName } from '../utils/championNameHelper';
+import { getKdaColorClass, getWinRateColorClass } from '../utils/colorUtils';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import type { ChampionStats, OverallStats } from '../types/summoner';
 
@@ -41,7 +42,7 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ championStats
       <div className="flex justify-between items-center mb-2">
         <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last {overallStats.wins + overallStats.losses} Games</h3>
         <div className="text-xs text-right">
-          <span className={`font-semibold ${overallStats.winRate > 50 ? 'text-green-600 dark:text-green-400' : overallStats.winRate < 50 ? 'text-red-500 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}`}>
+          <span className={`font-bold ${getWinRateColorClass(Number(overallStats.winRate))}`}>
             {overallStats.wins}W {overallStats.losses}L ({Number(overallStats.winRate).toFixed(0)}%)
           </span>
         </div>
@@ -56,8 +57,8 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ championStats
           const tooltipContent = `
             <div class="text-center">
               <div class="font-bold text-gray-100">${stat.championName}</div>
-              <div class="text-sm font-semibold ${Number(winRate) > 50 ? 'text-green-400' : Number(winRate) < 50 ? 'text-red-400' : 'text-gray-400'}">${winRate}% WR <span class="text-gray-500">(${stat.games} G)</span></div>
-              <div class="text-sm text-gray-100 mt-1">${kda === Infinity ? 'Infinite' : kda.toFixed(2)} KDA</div>
+              <div class="text-sm font-bold ${getWinRateColorClass(Number(winRate))}">${winRate}% WR <span class="text-gray-500">(${stat.games} G)</span></div>
+              <div class="text-sm font-bold ${getKdaColorClass(kda)} mt-1">${kda === Infinity ? 'Infinite' : kda.toFixed(2)} KDA</div>
               <div class="text-xs text-gray-500">${avgKda}</div>
               ${stat.soloKills > 0 ? `<div class="text-xs text-yellow-400 mt-1">Solo Kills: ${stat.soloKills}</div>` : ''}
             </div>
@@ -65,6 +66,7 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ championStats
 
           return (
             <img 
+              loading="lazy"
               key={stat.championName}
               src={`${CDN_URL}/img/champion/${getCorrectChampionName(stat.championName)}.png`} 
               alt={stat.championName} 
@@ -81,12 +83,12 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ championStats
               <div className="flex items-center space-x-1">
                   <span className="text-blue-500 font-bold">Blue:</span>
                   <span className="text-gray-600 dark:text-gray-400">{overallStats.blueSide.games}G</span>
-                  <span className={`font-semibold ${overallStats.blueSide.winRate > 50 ? 'text-green-500' : overallStats.blueSide.winRate < 50 ? 'text-red-500' : 'text-gray-500'}`}>({Number(overallStats.blueSide.winRate).toFixed(0)}%)</span>
+                  <span className={`font-bold ${getWinRateColorClass(Number(overallStats.blueSide.winRate))}`}>({Number(overallStats.blueSide.winRate).toFixed(0)}%)</span>
               </div>
               <div className="flex items-center space-x-1">
                   <span className="text-red-500 font-bold">Red:</span>
                   <span className="text-gray-600 dark:text-gray-400">{overallStats.redSide.games}G</span>
-                  <span className={`font-semibold ${overallStats.redSide.winRate > 50 ? 'text-green-500' : overallStats.redSide.winRate < 50 ? 'text-red-500' : 'text-gray-500'}`}>({Number(overallStats.redSide.winRate).toFixed(0)}%)</span>
+                  <span className={`font-bold ${getWinRateColorClass(Number(overallStats.redSide.winRate))}`}>({Number(overallStats.redSide.winRate).toFixed(0)}%)</span>
               </div>
           </div>
           <div className="flex flex-col space-y-1 text-gray-500 dark:text-gray-400 text-right">
@@ -94,7 +96,7 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ championStats
               <div className="flex items-center justify-end space-x-1">
                   <span>KDA:</span>
                   <div className="flex items-center space-x-1">
-                    <span className="text-gray-700 dark:text-gray-300 font-semibold">{Number(overallStats.kda) === Infinity ? 'Inf' : Number(overallStats.kda).toFixed(2)}</span>
+                    <span className={`font-bold ${getKdaColorClass(Number(overallStats.kda))}`}>{Number(overallStats.kda) === Infinity ? 'Inf' : Number(overallStats.kda).toFixed(2)}</span>
                     <span className="text-gray-500 text-[10px]">({Number(overallStats.oppAvgKda) === Infinity ? 'Inf' : Number(overallStats.oppAvgKda).toFixed(2)})</span>
                   </div>
               </div>

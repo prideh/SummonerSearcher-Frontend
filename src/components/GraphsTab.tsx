@@ -62,7 +62,7 @@ const StatGraph: React.FC<StatGraphProps> = ({ participants, puuid, onPlayerClic
 
         return (
           <div key={player.puuid} className={`flex items-center space-x-3 text-sm p-1 rounded-md transition-colors ${isSearchedPlayer ? 'bg-gray-200 dark:bg-gray-800/50' : ''}`}>
-            <img src={`${CDN_URL}/img/champion/${getCorrectChampionName(player.championName)}.png`} alt={player.championName} className="w-8 h-8 rounded shrink-0" />
+            <img src={`${CDN_URL}/img/champion/${getCorrectChampionName(player.championName)}.png`} loading="lazy" alt={player.championName} className="w-8 h-8 rounded shrink-0" />
             <div
               className={`w-24 md:w-32 truncate cursor-pointer ${isSearchedPlayer ? 'text-gray-900 dark:text-gray-100 font-bold' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'}`}
               onClick={() => onPlayerClick(player.riotIdGameName!, player.riotIdTagline!)}

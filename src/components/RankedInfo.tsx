@@ -5,6 +5,7 @@ import ConsistencyStats from './ConsistencyStats';
 import RecentChampionStats from './RecentChampionStats';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import { calculateStatsFromMatches } from '../utils/statsCalculator';
+import { getWinRateColorClass } from '../utils/colorUtils';
 
 /**
  * Props for the RankedInfo component.
@@ -91,7 +92,7 @@ const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData, match
                 <span>{rankedData.leaguePoints} LP</span>
                 <span className="text-gray-300 dark:text-gray-600">|</span>
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {rankedData.wins}W / {rankedData.losses}L (<span className={`${parseFloat(winRate) > 50 ? 'text-green-600 dark:text-green-400 font-semibold' : parseFloat(winRate) < 50 ? 'text-red-500 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'}`}>{winRate}%</span>)
+                  {rankedData.wins}W / {rankedData.losses}L (<span className={`${getWinRateColorClass(parseFloat(winRate))} font-semibold`}>{winRate}%</span>)
                 </span>
               </div>
             </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import SummonerSpellIcon from './SummonerSpellIcon';
 import RuneIcon from './RuneIcon';
+import { getWinRateColorClass } from '../utils/colorUtils';
 
 interface BannedChampion {
   pickTurn: number;
@@ -164,6 +165,7 @@ const LiveGameDisplay: React.FC<LiveGameDisplayProps> = ({ gameData, onPlayerCli
           <span className="text-xs text-gray-500 mr-1">Bans:</span>
           {bans.map(ban => (
               <img
+                loading="lazy"
                   key={ban.pickTurn}
                   src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${ban.championId}.png`}
                   alt="Banned Champion"
@@ -203,13 +205,7 @@ const LiveGameDisplay: React.FC<LiveGameDisplayProps> = ({ gameData, onPlayerCli
         totalGames = participant.wins + participant.losses;
         if (totalGames > 0) {
             winrate = Math.round((participant.wins / totalGames) * 100);
-            if (winrate > 50) {
-                winrateColor = 'text-green-400';
-            } else if (winrate < 50) {
-                winrateColor = 'text-red-400';
-            } else {
-                winrateColor = 'text-gray-400';
-            }
+            winrateColor = getWinRateColorClass(winrate);
         }
     }
 
@@ -221,6 +217,7 @@ const LiveGameDisplay: React.FC<LiveGameDisplayProps> = ({ gameData, onPlayerCli
       >
         {/* Champion Icon */}
         <img
+          loading="lazy"
           src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${participant.championId}.png`}
           alt="Champion"
           className="w-9 h-9 rounded-full border-2 border-gray-600 shrink-0"
@@ -249,6 +246,7 @@ const LiveGameDisplay: React.FC<LiveGameDisplayProps> = ({ gameData, onPlayerCli
             {participant.tier && (
                 <div className="text-xs text-gray-400 flex items-center space-x-1">
                     <img
+                      loading="lazy"
                         src={`${communityDragonUrl}/rcp-fe-lol-shared-components/global/default/images/${participant.tier.toLowerCase()}.png`}
                         alt={participant.tier}
                         className="w-3.5 h-3.5"

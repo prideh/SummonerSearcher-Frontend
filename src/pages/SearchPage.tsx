@@ -9,8 +9,10 @@ import axios from 'axios';
 import { getRecentSearches, clearRecentSearches, type RecentSearch } from '../api/user';
 import { Tooltip } from 'react-tooltip';
 import 'react-tooltip/dist/react-tooltip.css';
+import { AnimatePresence } from 'framer-motion';
 
 import SearchBar from '../components/SearchBar';
+import { Skeleton } from '../components/ui/Skeleton';
 
 import SummonerInfo from '../components/SummonerInfo';
 import PlayerProfile from '../components/PlayerProfile';
@@ -363,26 +365,26 @@ const SearchPage: React.FC = () => {
    * Renders a skeleton loading state for the summoner info card while data is being fetched.
    */
   const renderSkeleton = () => (
-    <div className="bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-6 rounded-lg shadow-lg animate-pulse">
+    <div className="bg-white/60 dark:bg-gray-900/40 backdrop-blur-sm border border-gray-200/50 dark:border-gray-800/50 p-6 rounded-lg shadow-lg">
       <div className="flex items-center space-x-4">
-        <div className="w-20 h-20 rounded-full bg-gray-300 dark:bg-gray-700"></div>
-        <div>
-          <div className="h-7 bg-gray-300 dark:bg-gray-700 rounded w-48 mb-2"></div>
-          <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-24"></div>
+        <Skeleton className="w-20 h-20 rounded-full" />
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-48" />
+          <Skeleton className="h-4 w-24" />
         </div>
       </div>
-      <div className="bg-transparent dark:bg-transparent p-4 rounded-lg mt-4 border border-gray-200 dark:border-gray-800">
-        <div className="h-5 bg-gray-300 dark:bg-gray-700 rounded w-32 mb-4"></div>
+      <div className="bg-transparent dark:bg-transparent p-4 rounded-lg mt-4 border border-gray-200/50 dark:border-gray-800/50">
+        <Skeleton className="h-5 w-32 mb-4" />
         <div className="flex items-center space-x-4 mt-2">
-          <div className="w-20 h-20 bg-gray-300 dark:bg-gray-700 rounded"></div>
-          <div>
-            <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-36 mb-2"></div>
-            <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-20"></div>
+          <Skeleton className="w-20 h-20 rounded" />
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-36" />
+            <Skeleton className="h-4 w-20" />
           </div>
-          <div className="text-sm space-y-2">
-            <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-20"></div>
-            <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-20"></div>
-            <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-24"></div>
+          <div className="space-y-2 ml-4">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-24" />
           </div>
         </div>
       </div>
@@ -469,12 +471,14 @@ const SearchPage: React.FC = () => {
           )}
           {summonerData && (
             <>
-              {showFullProfile && (
-                  <PlayerProfile 
-                      summonerData={summonerData} 
-                      onClose={() => setShowFullProfile(false)} 
-                  />
-              )}
+              <AnimatePresence>
+                {showFullProfile && (
+                    <PlayerProfile 
+                        summonerData={summonerData} 
+                        onClose={() => setShowFullProfile(false)} 
+                    />
+                )}
+              </AnimatePresence>
 
               <SummonerInfo
                 summonerData={summonerData}
@@ -484,6 +488,7 @@ const SearchPage: React.FC = () => {
                 visibleMatches={matches}
                 onPlayerClick={handlePlayerClick}
                 onViewProfile={() => setShowFullProfile(true)}
+                showFullProfile={showFullProfile}
               />
             </>
           )}

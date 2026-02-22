@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import type { SummonerData } from '../types/summoner';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import { getCorrectChampionName } from '../utils/championNameHelper';
+import { motion } from 'framer-motion';
+import { cn } from '../utils/cn';
+import { getKdaColorClass, getWinRateColorClass } from '../utils/colorUtils';
 
 interface PlayerProfileProps {
   summonerData: SummonerData;
@@ -18,12 +21,31 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ summonerData, onClose }) 
 
   const winRate = Number(overallStats.winRate || 0).toFixed(1);
 
+  const statBoxClass = cn(
+    "bg-gray-50/80 dark:bg-gray-800/40 p-3 rounded-lg border",
+    "border-gray-200/50 dark:border-gray-700/50 transition-all duration-200",
+    "hover:bg-gray-100 dark:hover:bg-gray-700/50 shadow-sm hover:shadow-md"
+  );
+  const statTitleClass = "text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-0.5 font-semibold";
+  const statValueClass = "text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight";
+
   return (
-    <div className="bg-white dark:bg-transparent rounded-xl border border-gray-200 dark:border-gray-800 shadow-2xl p-4 mt-4 relative animate-fade-in overflow-hidden">
+    <motion.div 
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      className={cn(
+        "rounded-xl border shadow-2xl p-4 mt-4 relative overflow-hidden",
+        "bg-white/90 dark:bg-gray-950/70 backdrop-blur-md",
+        "border-gray-200/50 dark:border-gray-800/50"
+      )}
+    >
       
       <button 
         onClick={onClose}
-        className="absolute top-4 right-4 p-2 rounded-full text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        aria-label="Close Profile"
+        className="absolute top-4 right-4 p-2 rounded-full text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 transition-colors"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -47,23 +69,42 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ summonerData, onClose }) 
                 Champion Statistics
             </h3>
             
-            <div className={`relative rounded-xl bg-gray-50 dark:bg-gray-700/10 border border-gray-100 dark:border-gray-700/50 ${isExpanded ? 'overflow-y-auto custom-scrollbar' : 'overflow-hidden'}`} style={{ height: '370px' }}>
-              <div className="p-2 space-y-2">
+            <div className={`relative rounded-xl bg-gray-50/50 dark:bg-gray-800/20 border border-gray-100/50 dark:border-gray-700/30 ${isExpanded ? 'overflow-y-auto custom-scrollbar' : 'overflow-hidden'}`} style={{ height: '370px' }}>
+              <motion.div 
+                className="p-2 space-y-2"
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  hidden: { opacity: 0 },
+                  visible: {
+                    opacity: 1,
+                    transition: { staggerChildren: 0.05 }
+                  }
+                }}
+              >
                 {championStats.map((stat, index) => (
-                  <div key={stat.championName} className="group flex items-center justify-between bg-white dark:bg-gray-700/30 p-2 rounded-lg border border-transparent hover:border-gray-200 dark:hover:border-gray-600 transition-all shadow-sm hover:shadow-md">
+                  <motion.div 
+                    key={stat.championName} 
+                    variants={{
+                      hidden: { opacity: 0, x: -10 },
+                      visible: { opacity: 1, x: 0 }
+                    }}
+                    className="group flex items-center justify-between bg-white/60 dark:bg-gray-800/40 p-2 rounded-lg border border-transparent hover:border-gray-200/60 dark:hover:border-gray-600/50 transition-all shadow-sm hover:shadow-md hover:scale-[1.01]"
+                  >
                     <div className="flex items-center space-x-3">
                       <div className="relative">
                           <img 
                           src={`${cdnUrl}/img/champion/${getCorrectChampionName(stat.championName)}.png`} 
                           alt={stat.championName} 
+                          loading="lazy"
                           className="w-10 h-10 rounded-lg shadow-sm"
                           />
-                          <div className="absolute -bottom-1 -right-1 bg-gray-800 text-white text-[9px] px-1 rounded-md font-bold border border-gray-600">
+                          <div className="absolute -bottom-1 -right-1 bg-gray-800/90 backdrop-blur-sm text-white text-[9px] px-1 rounded-md font-bold border border-gray-600/50">
                               #{index + 1}
                           </div>
                       </div>
                       <div>
-                        <p className="font-bold text-gray-900 dark:text-white text-sm">{stat.championName}</p>
+                        <p className="font-bold text-gray-900 dark:text-gray-100 text-sm">{stat.championName}</p>
                         <p className="text-[10px] text-gray-500 dark:text-gray-400">{stat.games} Games</p>
                       </div>
                     </div>
@@ -71,41 +112,41 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ summonerData, onClose }) 
                     <div className="flex items-center space-x-1 sm:space-x-2 text-right pr-1">
                       <div className="w-12 sm:w-16">
                         <div className="flex items-center justify-end space-x-1">
-                            <p className={`font-bold text-xs sm:text-sm ${Number(stat.winRate) >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                            <p className={cn("font-bold text-xs sm:text-sm", getWinRateColorClass(Number(stat.winRate || 0)))}>
                               {Number(stat.winRate || 0).toFixed(0)}%
                             </p>
-                            {Number(stat.winRate) >= 60 && <span className="text-[8px] sm:text-[10px] text-yellow-500">🔥</span>}
+                            {Number(stat.winRate) >= 60 && <span className="text-[8px] sm:text-[10px] text-yellow-500 max-w-[12px]">🔥</span>}
                         </div>
                         <p className="text-[8px] sm:text-[10px] text-gray-400 uppercase tracking-wide font-medium">Winrate</p>
                       </div>
                       <div className="w-12 sm:w-16">
-                        <p className={`font-bold text-xs sm:text-sm ${Number(stat.kda) >= 3 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-white'}`}>
+                        <p className={`font-bold text-xs sm:text-sm ${getKdaColorClass(Number(stat.kda || 0))}`}>
                           {Number(stat.kda) === Infinity ? 'Perf' : Number(stat.kda || 0).toFixed(2)}
                         </p>
                         <p className="text-[8px] sm:text-[10px] text-gray-400 uppercase tracking-wide font-medium">KDA</p>
                       </div>
                       <div className="w-10 sm:w-16">
-                        <p className="font-bold text-xs sm:text-sm text-gray-900 dark:text-white">
+                        <p className="font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-200">
                           {Number(stat.averageCsPerMinute || 0).toFixed(1)}
                         </p>
                         <p className="text-[8px] sm:text-[10px] text-gray-400 uppercase tracking-wide font-medium">CS/M</p>
                       </div>
                       <div className="w-16 hidden sm:block">
-                        <p className="font-bold text-sm text-gray-900 dark:text-white">
+                        <p className="font-bold text-sm text-gray-900 dark:text-gray-200">
                           {Number(stat.averageSoloKills || 0).toFixed(1)}
                         </p>
                         <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Avg Solo</p>
                       </div>
                       <div className="w-16 hidden sm:block">
-                        <p className="font-bold text-sm text-gray-900 dark:text-white">
+                        <p className="font-bold text-sm text-gray-900 dark:text-gray-200">
                           {Number(stat.averageTurretPlates || 0).toFixed(1)}
                         </p>
                         <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Avg Plates</p>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
 
               {!isExpanded && championStats.length > 5 && (
                 <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-gray-50 via-gray-50/90 to-transparent dark:from-gray-800 dark:via-gray-800/90 dark:to-transparent flex items-end justify-center pb-4 rounded-b-xl">
@@ -146,7 +187,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ summonerData, onClose }) 
                         <div className="flex items-center text-gray-600 dark:text-gray-300 space-x-2 mt-0.5">
                             <span className="font-medium text-sm">{soloQueueRank?.leaguePoints || 0} LP</span>
                             <span className="text-gray-300 dark:text-gray-600 text-xs">|</span>
-                            <span className={`${parseFloat(winRate) > 50 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'} font-bold text-sm`}>
+                            <span className={`${getWinRateColorClass(parseFloat(winRate))} font-bold text-sm`}>
                                 {winRate}% WR
                             </span>
                         </div>
@@ -157,37 +198,37 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ summonerData, onClose }) 
                 </div>
             </div>
 
-            {/* Stats Grid */}
+             {/* Stats Grid */}
             <div className="grid grid-cols-3 gap-3">
-                 <div className="bg-gray-50 dark:bg-gray-700/30 p-3 rounded-lg border border-gray-100 dark:border-gray-700/50">
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-0.5 font-semibold">KDA Ratio</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+                 <div className={statBoxClass}>
+                    <p className={statTitleClass}>KDA Ratio</p>
+                    <p className={cn(statValueClass, getKdaColorClass(Number(overallStats.kda || 0)))}>
                         {Number(overallStats.kda) === Infinity ? 'Perfect' : Number(overallStats.kda || 0).toFixed(2)}
                     </p>
-                    <p className="text-[10px] text-gray-500 mt-0.5 font-mono">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 font-mono">
                         {Number(overallStats.avgKills || 0).toFixed(1)} / {Number(overallStats.avgDeaths || 0).toFixed(1)} / {Number(overallStats.avgAssists || 0).toFixed(1)}
                     </p>
                  </div>
-                 <div className="bg-gray-50 dark:bg-gray-700/30 p-3 rounded-lg border border-gray-100 dark:border-gray-700/50">
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-0.5 font-semibold">CS / Min</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{Number(overallStats.avgCsPerMinute || 0).toFixed(1)}</p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">Creep Score</p>
+                 <div className={statBoxClass}>
+                    <p className={statTitleClass}>CS / Min</p>
+                    <p className={statValueClass}>{Number(overallStats.avgCsPerMinute || 0).toFixed(1)}</p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Creep Score</p>
                  </div>
-                 <div className="bg-gray-50 dark:bg-gray-700/30 p-3 rounded-lg border border-gray-100 dark:border-gray-700/50">
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-0.5 font-semibold">Kill Part.</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{Number(overallStats.avgKillParticipation || 0).toFixed(0)}%</p>
+                 <div className={statBoxClass}>
+                    <p className={statTitleClass}>Kill Part.</p>
+                    <p className={statValueClass}>{Number(overallStats.avgKillParticipation || 0).toFixed(0)}%</p>
                  </div>
-                 <div className="bg-gray-50 dark:bg-gray-700/30 p-3 rounded-lg border border-gray-100 dark:border-gray-700/50">
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-0.5 font-semibold">Vision</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{Number(overallStats.avgVisionScore || 0).toFixed(1)}</p>
+                 <div className={statBoxClass}>
+                    <p className={statTitleClass}>Vision</p>
+                    <p className={statValueClass}>{Number(overallStats.avgVisionScore || 0).toFixed(1)}</p>
                  </div>
-                 <div className="bg-gray-50 dark:bg-gray-700/30 p-3 rounded-lg border border-gray-100 dark:border-gray-700/50">
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-0.5 font-semibold">Avg Plates</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{Number(overallStats.avgTurretPlates || 0).toFixed(1)}</p>
+                 <div className={statBoxClass}>
+                    <p className={statTitleClass}>Avg Plates</p>
+                    <p className={statValueClass}>{Number(overallStats.avgTurretPlates || 0).toFixed(1)}</p>
                  </div>
-                 <div className="bg-gray-50 dark:bg-gray-700/30 p-3 rounded-lg border border-gray-100 dark:border-gray-700/50">
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-0.5 font-semibold">Avg Solo Kills</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{Number(overallStats.avgSoloKills || 0).toFixed(1)}</p>
+                 <div className={statBoxClass}>
+                    <p className={statTitleClass}>Avg Solo Kills</p>
+                    <p className={statValueClass}>{Number(overallStats.avgSoloKills || 0).toFixed(1)}</p>
                  </div>
             </div>
 
@@ -198,7 +239,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ summonerData, onClose }) 
                         <span className="text-blue-600 dark:text-blue-400 font-bold uppercase text-[10px] tracking-wider block">Blue Side</span>
                         <span className="text-[9px] font-bold bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300 px-1.5 py-0.5 rounded mt-1 inline-block">{overallStats.blueSide.games} G</span>
                     </div>
-                    <div className="text-xl font-black text-gray-900 dark:text-white">
+                    <div className={cn("text-xl font-black", getWinRateColorClass(Number(overallStats.blueSide.winRate || 0)))}>
                         {Number(overallStats.blueSide.winRate || 0).toFixed(0)}%
                     </div>
                  </div>
@@ -207,7 +248,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ summonerData, onClose }) 
                         <span className="text-red-600 dark:text-red-400 font-bold uppercase text-[10px] tracking-wider block">Red Side</span>
                         <span className="text-[9px] font-bold bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-300 px-1.5 py-0.5 rounded mt-1 inline-block">{overallStats.redSide.games} G</span>
                     </div>
-                    <div className="text-xl font-black text-gray-900 dark:text-white">
+                    <div className={cn("text-xl font-black", getWinRateColorClass(Number(overallStats.redSide.winRate || 0)))}>
                         {Number(overallStats.redSide.winRate || 0).toFixed(0)}%
                     </div>
                  </div>
@@ -215,7 +256,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ summonerData, onClose }) 
         </div>
 
       </div>
-    </div>
+    </motion.div>
   );
 };
 

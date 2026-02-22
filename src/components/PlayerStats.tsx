@@ -5,6 +5,7 @@ import SummonerSpellIcon from './SummonerSpellIcon';
 import RuneIcon from './RuneIcon';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import { getCorrectChampionName } from '../utils/championNameHelper';
+import { getKdaColorClass } from '../utils/colorUtils';
 
 /**
  * Props for the PlayerStats component.
@@ -97,9 +98,9 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
             <span className="text-green-700 dark:text-green-400">{kills}</span> / <span className="text-red-700 dark:text-red-400">{deaths}</span> / <span className="text-yellow-600 dark:text-yellow-400">{assists}</span>
           </p>
           {deaths === 0 ? (
-            <p className="text-xs font-semibold text-yellow-600 dark:text-yellow-400 mt-1">Infinite KDA</p>
+            <p className="text-xs font-bold text-yellow-600 dark:text-yellow-400 mt-1">Perfect KDA</p>
           ) : (
-            <p className="text-xs text-gray-700 dark:text-gray-400 mt-1">{kda.toFixed(2)} KDA</p>
+            <p className={`text-xs font-bold ${getKdaColorClass(kda)} mt-1`}>{kda.toFixed(2)} KDA</p>
           )}
           <p
             className="text-xs text-gray-600 dark:text-gray-300 mt-1"
@@ -165,9 +166,9 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
               <span className="text-green-700 dark:text-green-400">{kills}</span> / <span className="text-red-700 dark:text-red-400">{deaths}</span> / <span className="text-yellow-600 dark:text-yellow-400">{assists}</span>
             </p>
             {deaths === 0 ? (
-              <p className="text-xs font-semibold text-yellow-600 dark:text-yellow-400 mt-1">Infinite KDA</p>
+              <p className="text-xs font-bold text-yellow-600 dark:text-yellow-400 mt-1">Perfect KDA</p>
             ) : (
-              <p className="text-xs text-gray-700 dark:text-gray-400 mt-1">{kda.toFixed(2)} KDA</p>
+              <p className={`text-xs font-bold ${getKdaColorClass(kda)} mt-1`}>{kda.toFixed(2)} KDA</p>
             )}
             <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">CS: {cs}</p>
             <p className="text-xs text-red-600 dark:text-red-300 mt-1">KP: {killParticipation.toFixed(0)}%</p>

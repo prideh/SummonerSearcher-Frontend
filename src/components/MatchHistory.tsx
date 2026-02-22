@@ -1,6 +1,7 @@
 import React from 'react';
 import type { MatchDto } from '../types/match';
 import MatchHistoryItem from './MatchHistoryItem';
+import { Skeleton } from './ui/Skeleton';
 
 /**
  * Props for the MatchHistory component.
@@ -38,14 +39,22 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ puuid, matches, onPlayerCli
         // Each match is rendered by the MatchHistoryItem component.
         <MatchHistoryItem key={index} match={match} puuid={puuid} onPlayerClick={onPlayerClick} />
       ))}
-      {hasMore && (
+      {loadingMore && (
+        <div className="space-y-2 mt-4">
+          {[...Array(3)].map((_, i) => (
+             <Skeleton key={`skeleton-${i}`} className="h-[120px] w-full rounded-lg bg-white/50 dark:bg-gray-900/40 backdrop-blur-sm" />
+          ))}
+        </div>
+      )}
+      
+      {hasMore && !loadingMore && (
         <div className="mt-4 text-center">
           <button 
             onClick={onLoadMore} 
             disabled={loadingMore}
             className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold py-3 px-8 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loadingMore ? 'Loading...' : 'Load More'}
+            Load More
           </button>
         </div>
       )}
