@@ -55,6 +55,7 @@ describe('SummonerInfo', () => {
     visibleMatches: [],
     onPlayerClick: vi.fn(),
     onViewProfile: vi.fn(),
+    showFullProfile: false,
   };
 
   beforeEach(() => {
