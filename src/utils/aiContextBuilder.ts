@@ -1,6 +1,6 @@
 import type { MatchDto, ParticipantDto } from '../types/match';
 import type { ChampionStats, OverallStats } from '../types/summoner';
-import { calculateConsistency } from './statsCalculator';
+import { calculateConsistency, STAT_ROLE_MAPPING } from './statsCalculator';
 import { camelCaseToTitleCase } from './formatters';
 
 interface MatchDetail {
@@ -16,10 +16,22 @@ interface MatchDetail {
     killParticipation: number;
     visionScore: number;
     turretPlates: number;
+    name?: string; // Optional since it might fallback to champion
   } | null;
   gameDuration: number;
   visionScore: number;
   turretPlates: number;
+  
+  // Advanced Optional Stats
+  damagePerMinute?: number;
+  goldPerMinute?: number;
+  soloKills?: number;
+  earlyLaningPhaseGoldExpAdvantage?: number;
+  maxCsAdvantageOnLaneOpponent?: number;
+  visionScoreAdvantageLaneOpponent?: number;
+  timeCCingOthers?: number;
+  totalDamageShieldedOnTeammates?: number;
+  totalHealsOnTeammates?: number;
 }
 
 /**
@@ -161,6 +173,7 @@ export function buildAiContext(
       const oppAssists = opponent.assists || 0;
       const oppKda = oppDeaths > 0 ? ((oppKills + oppAssists) / oppDeaths).toFixed(2) : 'Perfect';
       const oppTurretPlates = opponent.challenges?.turretPlatesTaken || 0;
+      const oppName = opponent.riotIdGameName || opponent.summonerName || opponent.championName || 'Unknown';
       
       // Calculate opponent KP
       const oppTeamKills = match.info.participants
@@ -169,6 +182,7 @@ export function buildAiContext(
       const oppKp = oppTeamKills > 0 ? ((oppKills + oppAssists) / oppTeamKills) * 100 : 0;
       
       opponentData = {
+        name: oppName,
         champion: opponent.championName || 'Unknown',
         kda: oppKda,
         csPerMin: parseFloat(oppCsPerMin.toFixed(1)),
@@ -184,6 +198,29 @@ export function buildAiContext(
       .reduce((sum, p) => sum + (p.kills || 0), 0);
     const killParticipation = teamKills > 0 ? ((kills + assists) / teamKills) * 100 : 0;
     
+    // Advanced role-filtered stats
+    const damagePerMinute = gameDuration > 0 ? (myParticipant.totalDamageDealtToChampions || 0) / gameDuration : 0;
+    const goldPerMinute = gameDuration > 0 ? (myParticipant.goldEarned || 0) / gameDuration : 0;
+    
+    // Helper to check if a stat applies to the current role
+    const isStatRelevant = (statKey: string) => {
+        const requiredRole = STAT_ROLE_MAPPING[statKey];
+        if (!requiredRole || requiredRole === 'ALL') return true;
+        
+        // Map teamPosition to the role names used in STAT_ROLE_MAPPING
+        const currentRole = role === 'UTILITY' ? 'SUPPORT' : role;
+        return requiredRole === currentRole;
+    };
+    
+    const soloKills = myParticipant.challenges?.soloKills || 0;
+    const earlyLaningPhaseGoldExpAdvantage = myParticipant.challenges?.earlyLaningPhaseGoldExpAdvantage;
+    const maxCsAdvantageOnLaneOpponent = myParticipant.challenges?.maxCsAdvantageOnLaneOpponent;
+    const visionScoreAdvantageLaneOpponent = myParticipant.challenges?.visionScoreAdvantageLaneOpponent;
+    
+    const timeCCingOthers = myParticipant.timeCCingOthers;
+    const totalDamageShieldedOnTeammates = myParticipant.totalDamageShieldedOnTeammates;
+    const totalHealsOnTeammates = myParticipant.totalHealsOnTeammates;
+    
     matchDetails.push({
       champion: myParticipant.championName || 'Unknown',
       win: myParticipant.win || false,
@@ -193,7 +230,22 @@ export function buildAiContext(
       visionScore: myParticipant.visionScore || 0,
       turretPlates,
       opponent: opponentData,
-      gameDuration: parseFloat(gameDuration.toFixed(1))
+      gameDuration: parseFloat(gameDuration.toFixed(1)),
+      
+      // Add advanced stats conditionally & filtered by role
+      ...(isStatRelevant('damagePerMinute') ? { damagePerMinute: Math.round(damagePerMinute) } : {}),
+      ...(isStatRelevant('goldPerMinute') ? { goldPerMinute: Math.round(goldPerMinute) } : {}),
+      ...(isStatRelevant('soloKills') ? { soloKills } : {}),
+      
+      // These laning advantages are usually 'ALL' but highly relevant for non-junglers
+      ...(earlyLaningPhaseGoldExpAdvantage !== undefined ? { earlyLaningPhaseGoldExpAdvantage: Math.round(earlyLaningPhaseGoldExpAdvantage * 100) / 100 } : {}),
+      ...(maxCsAdvantageOnLaneOpponent !== undefined ? { maxCsAdvantageOnLaneOpponent: Math.round(maxCsAdvantageOnLaneOpponent * 10) / 10 } : {}),
+      ...(visionScoreAdvantageLaneOpponent !== undefined ? { visionScoreAdvantageLaneOpponent: Math.round(visionScoreAdvantageLaneOpponent * 10) / 10 } : {}),
+      
+      // These are usually support/tank focused
+      ...(timeCCingOthers !== undefined ? { timeCCingOthers } : {}),
+      ...(totalDamageShieldedOnTeammates !== undefined ? { totalDamageShieldedOnTeammates } : {}),
+      ...(totalHealsOnTeammates !== undefined ? { totalHealsOnTeammates } : {})
     });
   }
   
