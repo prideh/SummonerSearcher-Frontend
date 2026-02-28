@@ -17,6 +17,8 @@ interface MatchHistoryItemProps {
   puuid: string;
   /** Callback function to handle clicks on player names, allowing for a new search. */
   onPlayerClick: (name: string, tag: string) => void;
+  /** The server region, used for timeline API calls in the Details tab. */
+  region: string;
 }
 
 import ItemList from './ItemList';
@@ -24,7 +26,7 @@ import ItemList from './ItemList';
  * Represents a single match in the match history list. It provides a summary view
  * and can be expanded to show more detailed information via the MatchDetails component.
  */
-const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPlayerClick }) => {
+const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPlayerClick, region }) => {
   const [showDetails, setShowDetails] = useState(false);
   const [timeAgo, ref] = useTimeAgo(match.info?.gameCreation);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -216,7 +218,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
             transition={{ duration: 0.3, ease: 'easeInOut' }}
             className="overflow-hidden"
           >
-            <MatchDetails match={match} puuid={puuid} onPlayerClick={onPlayerClick} id={`match-details-${match.info.gameId}`} />
+            <MatchDetails match={match} puuid={puuid} onPlayerClick={onPlayerClick} id={`match-details-${match.info.gameId}`} region={region} />
           </motion.div>
         )}
       </AnimatePresence>

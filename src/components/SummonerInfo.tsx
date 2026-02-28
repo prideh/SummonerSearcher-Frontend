@@ -8,6 +8,9 @@ import AiAnalysisModal from './AiAnalysisModal';
 import { getLiveGame } from '../api/riot';
 import LiveGameDisplay, { type CurrentGameInfo } from './LiveGameDisplay';
 import { buildAiContext } from '../utils/aiContextBuilder';
+import { analyzeTimelines } from '../api/timeline';
+import TimelineAnalysisModal from './TimelineAnalysisModal';
+import type { TimelineAnalysisDto } from '../types/timeline';
 
 /**
  * Props for the SummonerInfo component.
@@ -40,22 +43,54 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
   const [timeAgo, ref] = useTimeAgo(new Date(summonerData.lastUpdated).getTime());
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
   const [showAiModal, setShowAiModal] = useState(false);
+  const [liveGameData, setLiveGameData] = useState<CurrentGameInfo | null>(null);
+  const [loadingLiveGame, setLoadingLiveGame] = useState(false);
+  const [showLiveGame, setShowLiveGame] = useState(false);
+  const [liveGameError, setLiveGameError] = useState<string | null>(null);
 
-  // Build comprehensive AI context from ALL matches (not just visible ones)
-  const aiContext = buildAiContext(
+  // Timeline analysis state — must be declared before buildAiContext so it can be merged in
+  const [timelineAnalysis, setTimelineAnalysis] = useState<TimelineAnalysisDto | null>(null);
+  const [loadingTimeline, setLoadingTimeline] = useState(false);
+  const [showTimelineModal, setShowTimelineModal] = useState(false);
+  const [aiInitialMessage, setAiInitialMessage] = useState<string | undefined>(undefined);
+
+  // Build comprehensive AI context from all loaded matches.
+  // If timeline has been analyzed, merge its aggregate summary under 'timelineInsights'
+  // so the backend's buildTimelineInsightsSection() can inject it into the AI prompt.
+  const baseAiContext = buildAiContext(
     summonerData.gameName,
     summonerData.tagLine,
-    visibleMatches, // Use visibleMatches to include loaded pages
+    visibleMatches,
     summonerData.puuid,
     summonerData.soloQueueRank,
     summonerData.championStats,
     summonerData.overallStats
   );
+  const aiContext = timelineAnalysis
+    ? { ...baseAiContext, timelineInsights: timelineAnalysis.aggregateSummary }
+    : baseAiContext;
 
-  const [liveGameData, setLiveGameData] = useState<CurrentGameInfo | null>(null);
-  const [loadingLiveGame, setLoadingLiveGame] = useState(false);
-  const [showLiveGame, setShowLiveGame] = useState(false);
-  const [liveGameError, setLiveGameError] = useState<string | null>(null);
+  const handleAnalyzeTimeline = async () => {
+    if (timelineAnalysis) {
+      setShowTimelineModal(true);
+      return;
+    }
+    setLoadingTimeline(true);
+    try {
+      const data = await analyzeTimelines(summonerData.region, summonerData.puuid);
+      setTimelineAnalysis(data);
+      setShowTimelineModal(true);
+    } catch {
+      // Silently fail — could add a toast notification here
+    } finally {
+      setLoadingTimeline(false);
+    }
+  };
+
+  const handleAiCoachFromTimeline = (suggestion?: string) => {
+    setAiInitialMessage(suggestion);
+    setShowAiModal(true);
+  };
 
   const handleLiveGameClick = async () => {
     if (showLiveGame) {
@@ -127,6 +162,23 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
               <span>{showLiveGame ? 'Close Live' : 'Live Game'}</span>
             </button>
             <button
+              onClick={handleAnalyzeTimeline}
+              disabled={loadingTimeline}
+              className="flex items-center space-x-1 sm:space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3 text-xs sm:py-2 sm:px-4 sm:text-sm rounded-md transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {loadingTimeline ? (
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                </svg>
+              )}
+              <span>{loadingTimeline ? 'Analyzing...' : 'Analyze Timeline'}</span>
+            </button>
+            <button
               onClick={() => setShowAiModal(true)}
               className="flex items-center space-x-1 sm:space-x-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-3 text-xs sm:py-2 sm:px-4 sm:text-sm rounded-md transition-colors"
             >
@@ -185,10 +237,20 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
       
       <AiAnalysisModal 
         isOpen={showAiModal}
-        onClose={() => setShowAiModal(false)}
+        onClose={() => { setShowAiModal(false); setAiInitialMessage(undefined); }}
         summonerName={`${summonerData.gameName}#${summonerData.tagLine}`}
         context={aiContext}
+        initialMessage={aiInitialMessage}
       />
+      {timelineAnalysis && (
+        <TimelineAnalysisModal
+          isOpen={showTimelineModal}
+          onClose={() => setShowTimelineModal(false)}
+          analysis={timelineAnalysis}
+          summonerName={`${summonerData.gameName}#${summonerData.tagLine}`}
+          onOpenAiCoach={handleAiCoachFromTimeline}
+        />
+      )}
     </div>
   );
 };

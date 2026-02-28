@@ -19,13 +19,15 @@ interface MatchHistoryProps {
   hasMore: boolean;
   /** Whether more matches are currently loading. */
   loadingMore: boolean;
+  /** The server region, forwarded to the Details timeline tab. */
+  region: string;
 }
 
 /**
  * Renders a list of a summoner's recent matches.
  * It implements a "Load More" functionality to progressively display the match history.
  */
-const MatchHistory: React.FC<MatchHistoryProps> = ({ puuid, matches, onPlayerClick, onLoadMore, hasMore, loadingMore }) => {
+const MatchHistory: React.FC<MatchHistoryProps> = ({ puuid, matches, onPlayerClick, onLoadMore, hasMore, loadingMore, region }) => {
   // The loading and error states are now handled by SearchPage.
   // We just need to handle the case where there are no matches.
 
@@ -37,7 +39,7 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ puuid, matches, onPlayerCli
     <div className="mt-4 space-y-2">
       {matches.map((match, index) => (
         // Each match is rendered by the MatchHistoryItem component.
-        <MatchHistoryItem key={index} match={match} puuid={puuid} onPlayerClick={onPlayerClick} />
+        <MatchHistoryItem key={index} match={match} puuid={puuid} onPlayerClick={onPlayerClick} region={region} />
       ))}
       {loadingMore && (
         <div className="space-y-2 mt-4">

@@ -162,5 +162,9 @@ export interface MatchInfo {
 }
 
 export interface MatchDto {
+  metadata?: {
+    matchId?: string;
+    participants?: string[];
+  };
   info?: MatchInfo;
 }

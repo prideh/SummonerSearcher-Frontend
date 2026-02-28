@@ -14,6 +14,8 @@ interface AiAnalysisModalProps {
   onClose: () => void;
   summonerName: string;
   context: AiContextData;
+  /** If provided, automatically sends this message when the modal first opens. */
+  initialMessage?: string;
 }
 
 interface Message {
@@ -65,7 +67,7 @@ const generatePersonalizedSuggestions = (context: AiContextData): string[] => {
   return suggestions.slice(0, 5);
 };
 
-const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summonerName, context }) => {
+const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summonerName, context, initialMessage }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -184,6 +186,20 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
       setSuggestions(personalizedSuggestions);
     }
   }, [isOpen, context.totalGamesAnalyzed, summonerName, STORAGE_KEY, EXPIRATION_TIME]);
+
+  // Auto-send initialMessage if provided (e.g., from TimelineAnalysisModal)
+  const hasSentInitial = useRef(false);
+  useEffect(() => {
+    if (isOpen && initialMessage && !hasSentInitial.current && !loading) {
+      hasSentInitial.current = true;
+      // Small delay to ensure the modal is fully rendered
+      const t = setTimeout(() => handleSendMessage(initialMessage), 300);
+      return () => clearTimeout(t);
+    }
+    if (!isOpen) {
+      hasSentInitial.current = false;
+    }
+  }, [isOpen, initialMessage, loading, handleSendMessage]);
 
   // Save history on update
   useEffect(() => {

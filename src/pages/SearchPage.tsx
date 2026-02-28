@@ -500,6 +500,7 @@ const SearchPage: React.FC = () => {
               onLoadMore={loadMoreMatches}
               hasMore={hasMore}
               loadingMore={loadingMore}
+              region={summonerData.region}
             />
           )}
         </div>
