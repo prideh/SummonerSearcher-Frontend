@@ -33,12 +33,6 @@ type ActiveTab = 'scoreboard' | 'graphs' | 'runes' | 'analysis' | 'details';
 const MatchDetails: React.FC<MatchDetailsProps> = ({ match, puuid, onPlayerClick, id, region }) => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('scoreboard');
 
-  const getTabClass = (tabName: ActiveTab) =>
-    `px-4 py-2 font-semibold rounded-t-lg transition-colors shrink-0 ${
-      activeTab === tabName
-        ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
-        : 'bg-gray-100/60 dark:bg-gray-900/60 text-gray-500 dark:text-gray-400 hover:bg-white/80 dark:hover:bg-gray-800/80'
-    }`;
 
   // Resolve player + opponent for the Details tab
   const playerParticipant = match.info?.participants.find(p => p.puuid === puuid);
@@ -53,24 +47,23 @@ const MatchDetails: React.FC<MatchDetailsProps> = ({ match, puuid, onPlayerClick
 
   return (
     <div id={id} className="col-span-full bg-white dark:bg-gray-900/70 rounded-b-lg text-gray-800 dark:text-gray-200 border-t border-gray-200 dark:border-gray-800/50 overflow-hidden">
-      <div className="flex border-b border-gray-200 dark:border-gray-800/50 px-2 sm:px-4 overflow-x-auto">
-        <button onClick={() => setActiveTab('scoreboard')} className={getTabClass('scoreboard')}>
-          Scoreboard
-        </button>
-        <button onClick={() => setActiveTab('graphs')} className={getTabClass('graphs')}>
-          Graphs
-        </button>
-        <button onClick={() => setActiveTab('runes')} className={getTabClass('runes')}>
-          Runes
-        </button>
-        <button onClick={() => setActiveTab('analysis')} className={getTabClass('analysis')}>
-          Analysis
-        </button>
-        <button onClick={() => setActiveTab('details')} className={getTabClass('details')}>
-          <span className="flex items-center gap-1">
-            <span>📋</span> Details
-          </span>
-        </button>
+      {/* Tab bar */}
+      <div className="relative border-b border-gray-200 dark:border-gray-800/50">
+        <div className="flex w-full px-1 pt-1">
+          {(['scoreboard', 'graphs', 'runes', 'analysis', 'details'] as ActiveTab[]).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 text-center py-2 text-xs sm:text-sm font-semibold whitespace-nowrap capitalize transition-all border-b-2 -mb-px ${
+                activeTab === tab
+                  ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+              }`}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
       </div>
       <Suspense fallback={<div className="p-4"><Skeleton className="w-full h-48 rounded-md bg-gray-200/50 dark:bg-gray-800/50" /></div>}>
         {activeTab === 'scoreboard' && <ScoreboardTab match={match} puuid={puuid} onPlayerClick={onPlayerClick} />}
@@ -84,6 +77,7 @@ const MatchDetails: React.FC<MatchDetailsProps> = ({ match, puuid, onPlayerClick
             puuid={puuid}
             playerParticipant={playerParticipant}
             opponentParticipant={opponentParticipant}
+            allParticipants={match.info?.participants || []}
           />
         )}
         {activeTab === 'details' && !playerParticipant && (

@@ -4,6 +4,7 @@ export interface HeatmapPoint {
   x: number;
   y: number;
   matchId: string;
+  minute: number;
 }
 
 export interface PowerSpikePoint {
@@ -11,8 +12,13 @@ export interface PowerSpikePoint {
   playerGold: number;
   opponentGold: number;
   playerGoldLead: number;
+  playerXp: number;
+  opponentXp: number;
+  playerCs: number;
+  opponentCs: number;
   playerItems: number[];
   opponentItems: number[];
+  events: MatchEventEntry[];
 }
 
 export interface MatchPowerSpikeDto {
@@ -56,6 +62,8 @@ export interface MatchEventEntry {
   secondMark: number;
   actor: string | null;
   target: string | null;
+  killer?: string | null;
+  assistants?: string[];
   isPlayer: boolean;
   isOpponent: boolean;
   laneType: string | null;
@@ -79,6 +87,7 @@ export interface TimelineAggregateSummary {
   wardsPlacedTotal: number;
   deathsTotal: number;
   killsTotal: number;
+  assistsTotal: number;
   gamesAnalyzed: number;
 }
 
@@ -87,6 +96,7 @@ export interface TimelineAnalysisDto {
   deathPositions: HeatmapPoint[];
   wardPositions: HeatmapPoint[];
   killPositions: HeatmapPoint[];
+  assistPositions: HeatmapPoint[];
   powerSpikeTimelines: MatchPowerSpikeDto[];
   buildOrders: BuildOrderDto[];
   skillOrders: SkillOrderDto[];
@@ -127,6 +137,7 @@ export interface TimelineEventDto {
   monsterType?: string;
   monsterSubType?: string;
   teamId?: number;
+  creatorId?: number;
   position?: TimelinePositionDto;
 }
 
@@ -144,6 +155,6 @@ export interface MatchTimelineDto {
   info?: {
     frameInterval: number;
     frames: TimelineFrameDto[];
-    participants: Array<{ participantId: number; puuid: string }>;
+    participants: Array<{ participantId: number; puuid: string; championName?: string }>;
   };
 }

@@ -11,6 +11,7 @@ interface MatchDetailsTabProps {
   puuid: string;
   playerParticipant: ParticipantDto;
   opponentParticipant?: ParticipantDto;
+  allParticipants: ParticipantDto[];
   gameDuration?: number;
 }
 
@@ -25,7 +26,7 @@ const formatTime = (totalSeconds: number) => {
 };
 
 const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
-  matchId, region, puuid, playerParticipant, opponentParticipant
+  matchId, region, puuid, playerParticipant, opponentParticipant, allParticipants
 }) => {
   const [timeline, setTimeline] = useState<MatchTimelineDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,13 +79,17 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
   const skillUps = React.useMemo<SkillUp[]>(() => {
     if (!timeline?.info || !playerPid) return [];
     const ups: SkillUp[] = [];
+    let currentLevel = 1;
     for (const frame of timeline.info.frames) {
       for (const event of frame.events) {
-        if (event.type === 'SKILL_LEVEL_UP' && event.participantId === playerPid && event.skillSlot && event.level) {
+        if (event.type === 'LEVEL_UP' && event.participantId === playerPid && event.level) {
+          currentLevel = event.level;
+        }
+        if (event.type === 'SKILL_LEVEL_UP' && event.participantId === playerPid && event.skillSlot) {
           ups.push({
             skillSlot: event.skillSlot,
-            level: event.level,
-            minuteMark: Math.floor(event.timestamp / 60000),
+            level: currentLevel,
+            minuteMark: Math.floor((event.timestamp || 0) / 60000),
           });
         }
       }
@@ -96,6 +101,7 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
   const events = React.useMemo<MatchEventEntry[]>(() => {
     if (!timeline?.info || !playerPid) return [];
     const result: MatchEventEntry[] = [];
+    const pMap = new Map((allParticipants || []).map(p => [p.participantId, p.championName]));
 
     for (const frame of timeline.info.frames) {
       for (const event of frame.events) {
@@ -105,20 +111,38 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
         if (event.type === 'CHAMPION_KILL') {
           const isPlayerKiller = event.killerId === playerPid;
           const isPlayerVictim = event.victimId === playerPid;
-          const isPlayerAssist = event.assistingParticipantIds?.includes(playerPid);
+          const isPlayerAssist = playerPid ? event.assistingParticipantIds?.includes(playerPid) : false;
           const isOpponentKiller = opponentPid !== undefined && event.killerId === opponentPid;
           const isOpponentVictim = opponentPid !== undefined && event.victimId === opponentPid;
+          const isOpponentAssist = opponentPid !== undefined && event.assistingParticipantIds?.includes(opponentPid);
 
-          if (isPlayerKiller || isPlayerVictim || isPlayerAssist || isOpponentKiller || isOpponentVictim) {
-            const type = isPlayerKiller ? 'KILL' : isPlayerVictim ? 'DEATH' : isPlayerAssist ? 'ASSIST' : isOpponentKiller ? 'KILL' : 'DEATH';
-            const actor = isPlayerKiller ? playerParticipant.championName : isOpponentKiller ? opponentParticipant?.championName : null;
-            const target = isPlayerVictim ? playerParticipant.championName : isOpponentVictim ? opponentParticipant?.championName : null;
-            result.push({ type, minuteMark: minute, secondMark: second, actor: actor || null, target: target || null, isPlayer: !!(isPlayerKiller || isPlayerVictim || isPlayerAssist), isOpponent: !!(isOpponentKiller || isOpponentVictim), laneType: null, monsterType: null, position: event.position || null });
+          if (isPlayerKiller || isPlayerVictim || isPlayerAssist || isOpponentKiller || isOpponentVictim || isOpponentAssist) {
+            const type = isPlayerKiller ? 'KILL'
+              : isPlayerVictim ? 'DEATH'
+              : isPlayerAssist ? 'ASSIST'
+              : isOpponentKiller ? 'KILL'
+              : isOpponentAssist ? 'ASSIST'
+              : 'DEATH';
+
+            // For assists, the actor is the assisting player, not the killer
+            const actorId = isPlayerAssist
+              ? playerPid
+              : isOpponentAssist && !isOpponentKiller
+              ? opponentPid
+              : event.killerId;
+
+            const actor = actorId ? pMap.get(actorId) : null;
+            const target = event.victimId ? pMap.get(event.victimId) : null;
+            const killer = (type === 'ASSIST' && event.killerId) ? pMap.get(event.killerId) : null;
+            const assistants = (type === 'KILL' || type === 'DEATH')
+              ? (event.assistingParticipantIds || []).map(id => pMap.get(id)).filter(Boolean) as string[]
+              : [];
+            result.push({ type, minuteMark: minute, secondMark: second, actor: actor || null, target: target || null, killer: killer || null, assistants, isPlayer: !!(isPlayerKiller || isPlayerVictim || isPlayerAssist), isOpponent: !!(isOpponentKiller || isOpponentVictim || isOpponentAssist), laneType: null, monsterType: null, position: event.position || null });
           }
         }
 
         if (event.type === 'BUILDING_KILL') {
-          const playerInvolved = event.killerId === playerPid || event.assistingParticipantIds?.includes(playerPid);
+          const playerInvolved = event.killerId === playerPid || (playerPid ? event.assistingParticipantIds?.includes(playerPid) : false);
           const opponentInvolved = opponentPid !== undefined && (event.killerId === opponentPid || event.assistingParticipantIds?.includes(opponentPid));
           if (playerInvolved || opponentInvolved) {
             const lane = event.laneType?.replace('_LANE', '') || 'UNKNOWN';
@@ -127,7 +151,7 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
         }
 
         if (event.type === 'ELITE_MONSTER_KILL') {
-          const playerInvolved = event.killerId === playerPid || event.assistingParticipantIds?.includes(playerPid);
+          const playerInvolved = event.killerId === playerPid || (playerPid ? event.assistingParticipantIds?.includes(playerPid) : false);
           const opponentInvolved = opponentPid !== undefined && (event.killerId === opponentPid || event.assistingParticipantIds?.includes(opponentPid));
           if (playerInvolved || opponentInvolved) {
             result.push({ type: 'OBJECTIVE', minuteMark: minute, secondMark: second, actor: playerInvolved ? playerParticipant.championName || null : opponentParticipant?.championName || null, target: event.monsterType || 'OBJECTIVE', isPlayer: !!playerInvolved, isOpponent: !!opponentInvolved, laneType: null, monsterType: event.monsterType || null, position: event.position || null });
@@ -136,7 +160,7 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
       }
     }
     return result.sort((a, b) => (a.minuteMark * 60 + a.secondMark) - (b.minuteMark * 60 + b.secondMark));
-  }, [timeline, playerPid, opponentPid, playerParticipant, opponentParticipant]);
+  }, [timeline, playerPid, opponentPid, playerParticipant, opponentParticipant, allParticipants]);
 
   // Compute skill max order
   const maxOrder = React.useMemo(() => {
@@ -184,39 +208,46 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
   const accentClass = isWin ? 'border-green-500/50' : 'border-red-500/50';
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-3 sm:p-4 space-y-6">
 
       {/* ── Build Order ── */}
       <section>
         <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
           <span className="text-lg">🛡️</span> Item Build Order
         </h3>
-        <div className="flex flex-wrap items-start gap-3">
-            {buildGroups.map((group, gi) => (
-              <React.Fragment key={gi}>
-                {gi > 0 && (
-                  <div className="self-center text-gray-400 dark:text-gray-600 text-lg mt-[-12px]">›</div>
-                )}
-                <div className="flex flex-col items-center gap-1">
-                  <div className="flex gap-1">
-                    {group.items.map((item, ii) => (
-                      <div
-                        key={ii}
-                        className={`rounded-md overflow-hidden border ${accentClass} hover:scale-110 transition-transform`}
-                        title={`Item ${item.itemId}`}
-                      >
-                      <ItemIcon itemId={item.itemId} className="w-9 h-9 rounded" />
-                      </div>
-                    ))}
+        {buildGroups.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">No item purchases found.</p>
+        ) : (
+          <div className="overflow-x-auto sm:overflow-x-visible pb-2">
+            <div className="flex items-center gap-2 min-w-max sm:min-w-0 flex-wrap">
+              {buildGroups.map((group, gi) => (
+                <React.Fragment key={gi}>
+                  {gi > 0 && (
+                    <span className="text-gray-300 dark:text-gray-600 text-xl select-none">›</span>
+                  )}
+                  <div className="flex flex-col items-center gap-1.5">
+                    {/* Item icons */}
+                    <div className={`flex gap-1 p-1.5 rounded-xl bg-gray-100 dark:bg-gray-800/60 border ${accentClass}`}>
+                      {group.items.map((item, ii) => (
+                        <div
+                          key={ii}
+                          className="rounded-lg overflow-hidden hover:scale-110 transition-transform shadow-sm"
+                          title={`Item ${item.itemId}`}
+                        >
+                          <ItemIcon itemId={item.itemId} className="w-8 h-8 rounded-lg" />
+                        </div>
+                      ))}
+                    </div>
+                    {/* Minute badge */}
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 tracking-wide">
+                      {group.minute}m
+                    </span>
                   </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{group.minute}min</span>
-                </div>
-              </React.Fragment>
-            ))}
-          {buildGroups.length === 0 && (
-              <p className="text-sm text-gray-500 dark:text-gray-400">No item purchases found.</p>
-            )}
+                </React.Fragment>
+              ))}
+            </div>
           </div>
+        )}
       </section>
 
       {/* ── Skill Order ── */}
@@ -272,22 +303,25 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
           <span className="text-lg">📋</span> Key Events
         </h3>
         {events.length > 0 ? (
-          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto overflow-y-auto max-h-96 rounded-lg border border-gray-200 dark:border-gray-800 w-full sm:inline-block sm:w-auto">
+            <table className="text-sm w-full sm:w-auto">
               <thead>
                 <tr className="bg-gray-100 dark:bg-gray-800/80 text-gray-500 dark:text-gray-400 text-xs uppercase">
-                  <th className="px-4 py-2 text-left">Time</th>
-                  <th className="px-4 py-2 text-left">Side</th>
-                  <th className="px-4 py-2 text-left">Actor</th>
-                  <th className="px-4 py-2 text-center">Action</th>
-                  <th className="px-4 py-2 text-left">Target</th>
+                  <th className="px-2 sm:px-4 py-2 text-left">Time</th>
+                  <th className="px-2 sm:px-4 py-2 text-left">Actor</th>
+                  <th className="px-2 sm:px-4 py-2 text-center">Action</th>
+                  <th className="px-2 sm:px-4 py-2 text-left">Target</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-200/10">
                 {events.map((ev, i) => {
-                  const rowClass = ev.isPlayer
-                    ? (isWin ? 'bg-green-50/40 dark:bg-green-900/10' : 'bg-red-50/40 dark:bg-red-900/10')
-                    : 'bg-white/30 dark:bg-gray-900/20';
+                  const rowClass = !ev.isPlayer ? 'bg-white/10 dark:bg-transparent'
+                    : ev.type === 'KILL'      ? 'bg-green-50/30 dark:bg-green-900/10'
+                    : ev.type === 'DEATH'     ? 'bg-red-50/30 dark:bg-red-900/10'
+                    : ev.type === 'ASSIST'    ? 'bg-yellow-50/30 dark:bg-yellow-900/10'
+                    : ev.type === 'PLATE'     ? 'bg-blue-50/20 dark:bg-blue-900/10'
+                    : ev.type === 'OBJECTIVE' ? 'bg-purple-50/20 dark:bg-purple-900/10'
+                    : 'bg-white/20 dark:bg-gray-900/10';
 
                   const actionIcon = {
                     'KILL': '⚔️',
@@ -303,17 +337,11 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
                   const targetName = ev.target;
 
                   return (
-                    <tr key={i} className={`${rowClass} hover:bg-gray-100/60 dark:hover:bg-gray-800/40 transition-colors`}>
-                      <td className="px-4 py-2 font-mono text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                    <tr key={i} className={`${rowClass} hover:brightness-95 dark:hover:bg-gray-800/40 transition-colors`}>
+                      <td className="px-2 sm:px-4 py-2 font-mono text-gray-700 dark:text-gray-300 whitespace-nowrap">
                         {formatTime(ev.minuteMark * 60 + ev.secondMark)}
                       </td>
-                      <td className="px-4 py-2">
-                        <div className="flex gap-0.5">
-                          <div className={`w-2.5 h-5 rounded-sm ${ev.isPlayer ? (isWin ? 'bg-blue-500' : 'bg-red-500') : 'bg-gray-400'}`} />
-                          <div className={`w-2.5 h-5 rounded-sm ${ev.isOpponent ? (isWin ? 'bg-red-500' : 'bg-blue-500') : 'bg-gray-400'}`} />
-                        </div>
-                      </td>
-                      <td className="px-4 py-2">
+                      <td className="px-2 sm:px-4 py-2">
                         {actorChamp && (
                           <div className="flex items-center gap-1.5">
                             <img
@@ -322,12 +350,12 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
                               className="w-5 h-5 rounded-full"
                               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                             />
-                            <span className="text-gray-700 dark:text-gray-200">{actorChamp}</span>
+                            <span className={actorChamp === playerParticipant.championName ? "text-cyan-600 dark:text-cyan-400 font-bold" : actorChamp === opponentParticipant?.championName ? "text-orange-600 dark:text-orange-400 font-bold" : "text-gray-700 dark:text-gray-200"}>{actorChamp}</span>
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-2 text-center text-lg">{actionIcon}</td>
-                      <td className="px-4 py-2">
+                      <td className="px-2 sm:px-4 py-2 text-center text-lg">{actionIcon}</td>
+                      <td className="px-2 sm:px-4 py-2">
                         {targetName && (
                           <div className="flex items-center gap-1.5">
                             {(ev.type === 'KILL' || ev.type === 'DEATH' || ev.type === 'ASSIST') && (
@@ -338,7 +366,36 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
                                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                               />
                             )}
-                            <span className="text-gray-700 dark:text-gray-200">{targetName}</span>
+                            <span className={targetName === playerParticipant.championName ? "text-cyan-600 dark:text-cyan-400 font-bold" : targetName === opponentParticipant?.championName ? "text-orange-600 dark:text-orange-400 font-bold" : "text-gray-700 dark:text-gray-200"}>{targetName}</span>
+                            {ev.type === 'ASSIST' && ev.killer && (
+                              <span className="flex items-center gap-1 text-gray-400 dark:text-gray-500 text-xs ml-1">
+                                <span>via</span>
+                                <img
+                                  src={`${CDN_URL}/img/champion/${ev.killer}.png`}
+                                  alt={ev.killer}
+                                  className="w-4 h-4 rounded-full inline"
+                                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                />
+                                <span className={ev.killer === playerParticipant.championName ? "text-cyan-600 dark:text-cyan-400" : ev.killer === opponentParticipant?.championName ? "text-orange-600 dark:text-orange-400" : "text-gray-500 dark:text-gray-400"}>{ev.killer}</span>
+                              </span>
+                            )}
+                            {(ev.type === 'KILL' || ev.type === 'DEATH') && ev.assistants && ev.assistants.length > 0 && (
+                              <span className="flex items-center gap-1 text-gray-400 dark:text-gray-500 text-xs ml-1 flex-wrap">
+                                <span>with</span>
+                                {ev.assistants.map((a, ai) => (
+                                  <span key={ai} className="flex items-center gap-0.5">
+                                    <img
+                                      src={`${CDN_URL}/img/champion/${a}.png`}
+                                      alt={a}
+                                      className="w-4 h-4 rounded-full"
+                                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                    />
+                                    <span className={a === playerParticipant.championName ? "text-cyan-600 dark:text-cyan-400" : a === opponentParticipant?.championName ? "text-orange-600 dark:text-orange-400" : "text-gray-500 dark:text-gray-400"}>{a}</span>
+                                    {ai < ev.assistants!.length - 1 && <span className="text-gray-400">,</span>}
+                                  </span>
+                                ))}
+                              </span>
+                            )}
                           </div>
                         )}
                       </td>

@@ -133,7 +133,7 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
     } finally {
       setLoading(false);
     }
-  }, [context]);
+  }, [context, sessionId]);
 
   const handleFeedback = async (interactionId: string | undefined, feedbackType: 'positive' | 'negative', messageTimestamp: number | undefined) => {
     if (!interactionId || !messageTimestamp) return;
@@ -185,7 +185,7 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
       }]);
       setSuggestions(personalizedSuggestions);
     }
-  }, [isOpen, context.totalGamesAnalyzed, summonerName, STORAGE_KEY, EXPIRATION_TIME]);
+  }, [isOpen, context, summonerName, STORAGE_KEY, EXPIRATION_TIME]);
 
   // Auto-send initialMessage if provided (e.g., from TimelineAnalysisModal)
   const hasSentInitial = useRef(false);

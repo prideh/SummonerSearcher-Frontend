@@ -43,42 +43,152 @@ interface StatGraphProps {
  * A reusable component that displays a horizontal bar graph for a specific game statistic.
  * It shows all players, sorted by the stat, with bars proportional to their value.
  */
-const StatGraph: React.FC<StatGraphProps> = ({ participants, puuid, onPlayerClick, statSelector }) => {
-  const CDN_URL = useDataDragonStore(state => state.cdnUrl);
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
+} from 'recharts';
 
-  const maxStat = Math.max(...participants.map(p => statSelector(p) || 0));
+/**
+ * Custom YAxis tick to render champion images and names next to the bars.
+ */
+const CustomYAxisTick = (props: { x?: number; y?: number; payload?: { value: string } }) => {
+  const { x, y, payload } = props;
+  const CDN_URL = useDataDragonStore(state => state.cdnUrl);
+  // payload.value is the participant object we stringified or a complex object
+  // Recharts passes strings to the tick if dataKey is string, so we'll pass the JSON string 
+  // and parse it back, or just use payload.value as the raw data if recharts allows it.
+  
+  let playerInfo;
+  if (!payload) return null;
+  try {
+    playerInfo = typeof payload.value === 'string' ? JSON.parse(payload.value) : payload.value;
+  } catch {
+    return null;
+  }
+
+  const isSearchedPlayer = playerInfo.isSearchedPlayer;
+  
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <foreignObject x={-140} y={-14} width={130} height={28}>
+        <div className="flex items-center justify-end space-x-2 pr-2" title={`${playerInfo.name}#${playerInfo.tag}`}>
+          <div className={`truncate text-sm text-right flex-1 ${isSearchedPlayer ? 'font-bold text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300'}`}>
+            {playerInfo.name}
+          </div>
+          <img 
+            src={`${CDN_URL}/img/champion/${getCorrectChampionName(playerInfo.champion)}.png`} 
+            alt={playerInfo.champion} 
+            className="w-7 h-7 rounded shrink-0" 
+          />
+        </div>
+      </foreignObject>
+    </g>
+  );
+};
+
+/**
+ * Custom Tooltip for the Recharts BarChart
+ */
+const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { playerInfo: { name: string; tag: string; champion: string; isSearchedPlayer: boolean }; value: number } }> }) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    const isSearched = data.playerInfo.isSearchedPlayer;
+    return (
+      <div className="bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm shadow-xl flex items-center space-x-3">
+        <img 
+          src={useDataDragonStore.getState().cdnUrl + `/img/champion/${getCorrectChampionName(data.playerInfo.champion)}.png`} 
+          alt={data.playerInfo.champion} 
+          className="w-10 h-10 rounded shrink-0" 
+        />
+        <div>
+          <p className={`font-bold ${isSearched ? 'text-cyan-400' : 'text-gray-200'}`}>
+            {data.playerInfo.name}<span className="text-gray-500 font-normal">#{data.playerInfo.tag}</span>
+          </p>
+          <p className="text-gray-300 mt-0.5">
+            Value: <span className="font-semibold text-white">{data.value.toLocaleString()}</span>
+          </p>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+/**
+ * Recharts implementation of the StatGraph.
+ */
+const StatGraph: React.FC<StatGraphProps> = ({ participants, puuid, onPlayerClick, statSelector }) => {
+  // Sort participants so the highest stat is at the top of the chart
   const sortedParticipants = [...participants].sort((a, b) => (statSelector(b) || 0) - (statSelector(a) || 0));
 
+  // Prepare data for recharts
+  const chartData = sortedParticipants.map(player => ({
+    // We pass serialized JSON as the YAxis key so our custom tick can access the player details
+    playerId: JSON.stringify({
+      id: player.puuid,
+      name: player.riotIdGameName,
+      tag: player.riotIdTagline,
+      champion: player.championName,
+      isSearchedPlayer: player.puuid === puuid
+    }),
+    value: statSelector(player) || 0,
+    teamId: player.teamId,
+    // Store original object for tooltip
+    playerInfo: {
+      name: player.riotIdGameName,
+      tag: player.riotIdTagline,
+      champion: player.championName,
+      isSearchedPlayer: player.puuid === puuid,
+      puuid: player.puuid
+    }
+  }));
+
+  const onBarClick = (data: unknown) => {
+    const d = data as { playerInfo: { name: string; tag: string } };
+    onPlayerClick(d.playerInfo.name, d.playerInfo.tag);
+  };
+
   return (
-    <div className="space-y-2">
-      {sortedParticipants.map(player => {
-        const statValue = statSelector(player) || 0;
-        const barWidth = maxStat > 0 ? (statValue / maxStat) * 100 : 0;
-        const isSearchedPlayer = player.puuid === puuid;
-
-        const gradientClass = player.teamId === 100 
-          ? 'from-blue-500 to-blue-400' 
-          : 'from-red-600 to-red-500';
-
-        return (
-          <div key={player.puuid} className={`flex items-center space-x-3 text-sm p-1 rounded-md transition-colors ${isSearchedPlayer ? 'bg-gray-200 dark:bg-gray-800/50' : ''}`}>
-            <img src={`${CDN_URL}/img/champion/${getCorrectChampionName(player.championName)}.png`} loading="lazy" alt={player.championName} className="w-8 h-8 rounded shrink-0" />
-            <div
-              className={`w-24 md:w-32 truncate cursor-pointer ${isSearchedPlayer ? 'text-gray-900 dark:text-gray-100 font-bold' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'}`}
-              onClick={() => onPlayerClick(player.riotIdGameName!, player.riotIdTagline!)}
-            >
-              {player.riotIdGameName}
-            </div>
-            <div className="flex-1 bg-gray-200 dark:bg-gray-900/50 rounded-full h-5 overflow-hidden">
-              <div
-                className={`h-full rounded-full bg-gradient-to-r ${gradientClass} transition-all duration-500 ease-out`}
-                style={{ width: `${barWidth}%` }}
-              />
-            </div>
-            <div className="w-12 md:w-16 text-right font-semibold text-gray-800 dark:text-white shrink-0">{formatNumber(statValue)}</div>
-          </div>
-        );
-      })}
+    <div className="w-full h-[400px] sm:h-[450px] mt-4">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          layout="vertical"
+          data={chartData}
+          margin={{ top: 5, right: 30, left: 140, bottom: 5 }}
+          barSize={24}
+        >
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#374151" />
+          <XAxis 
+            type="number" 
+            stroke="#6b7280" 
+            tickFormatter={(val) => formatNumber(val)}
+            tick={{ fill: '#9ca3af', fontSize: 12 }}
+            axisLine={{ stroke: '#4b5563' }}
+            tickLine={false}
+          />
+          <YAxis 
+            type="category" 
+            dataKey="playerId" 
+            axisLine={false}
+            tickLine={false}
+            tick={<CustomYAxisTick />}
+          />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: '#374151', opacity: 0.2 }} />
+          <Bar 
+            dataKey="value" 
+            radius={[0, 4, 4, 0]} 
+            onClick={onBarClick}
+            cursor="pointer"
+          >
+            {chartData.map((entry, index) => {
+              // Same colors as original implementation
+              const isBlueTeam = entry.teamId === 100;
+              const isBlueFilled = isBlueTeam ? '#3b82f6' : '#ef4444'; // Solid colors work better for Recharts cells
+              const fill = entry.playerInfo.isSearchedPlayer ? (isBlueTeam ? '#60a5fa' : '#f87171') : isBlueFilled;
+              return <Cell key={`cell-${index}`} fill={fill} className="transition-all hover:opacity-80" />;
+            })}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 };
