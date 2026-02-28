@@ -24,13 +24,46 @@ interface Message {
   timestamp?: number; // When message was shown
 }
 
-const INITIAL_SUGGESTIONS = [
-  "Analyze my profile",
-  "What are my biggest strengths?",
-  "How can I improve my CS?",
-  "Analyze my champion pool",
-  "Why is my winrate low?"
-];
+const generatePersonalizedSuggestions = (context: AiContextData): string[] => {
+  const suggestions = ["Analyze my profile"];
+  
+  if (context.primaryRole && context.primaryRole !== 'unknown' && typeof context.primaryRole === 'string') {
+    let formattedRole = context.primaryRole.charAt(0).toUpperCase() + context.primaryRole.slice(1).toLowerCase();
+    if (context.primaryRole === 'UTILITY') formattedRole = 'Support';
+    if (context.primaryRole === 'BOTTOM') formattedRole = 'Bot Carry';
+    suggestions.push(`Analyze my ${formattedRole} macro`);
+  } else {
+    suggestions.push("What are my biggest strengths?");
+  }
+
+  // Suggest an analysis on their most played champ instead of matchups
+  const topChamps = context.topChampions as Array<{ name: string; games: number }> | undefined;
+  if (topChamps && topChamps.length > 0) {
+    suggestions.push(`How can I improve my ${topChamps[0].name}?`);
+  } else {
+    suggestions.push("How can I improve my CS?");
+  }
+
+  // Add role-specific learning questions
+  if (context.primaryRole === 'JUNGLE') {
+    suggestions.push("How is my jungle pathing?");
+  } else if (context.primaryRole === 'SUPPORT' || context.primaryRole === 'UTILITY') {
+    suggestions.push("How is my vision control?");
+  } else {
+    suggestions.push("How is my wave management?");
+  }
+
+  // Conditionally format the winrate prompt
+  const winRate = parseFloat(context.winRate as string || '0');
+  if (winRate > 55) {
+    suggestions.push("How can I snowball my leads?");
+  } else {
+    suggestions.push("Why is my win rate low?");
+  }
+  
+  // Return exactly 5 suggestions
+  return suggestions.slice(0, 5);
+};
 
 const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summonerName, context }) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -143,11 +176,12 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
       }
 
       // Default initialization if no valid history
+      const personalizedSuggestions = generatePersonalizedSuggestions(context);
       setMessages([{ 
         role: 'model', 
-        content: `Hi! I'm your AI Coach. I've analyzed ${context.totalGamesAnalyzed} of your recent games. Ask me anything about your playstyle, strengths, or areas for improvement!` 
+        content: `Hi! I'm your AI Coach. I've analyzed ${context.totalGamesAnalyzed || 0} of your recent games. Ask me anything about your playstyle, strengths, or areas for improvement!` 
       }]);
-      setSuggestions(INITIAL_SUGGESTIONS);
+      setSuggestions(personalizedSuggestions);
     }
   }, [isOpen, context.totalGamesAnalyzed, summonerName, STORAGE_KEY, EXPIRATION_TIME]);
 
@@ -164,11 +198,12 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
 
   const handleClearChat = () => {
     localStorage.removeItem(STORAGE_KEY);
+    const personalizedSuggestions = generatePersonalizedSuggestions(context);
     setMessages([{ 
       role: 'model', 
-      content: `Hi! I'm your AI Coach. I've analyzed ${context.totalGamesAnalyzed} of your recent games. Ask me anything about your playstyle, strengths, or areas for improvement!` 
+      content: `Hi! I'm your AI Coach. I've analyzed ${context.totalGamesAnalyzed || 0} of your recent games. Ask me anything about your playstyle, strengths, or areas for improvement!` 
     }]);
-    setSuggestions(INITIAL_SUGGESTIONS);
+    setSuggestions(personalizedSuggestions);
   };
 
   useEffect(() => {
