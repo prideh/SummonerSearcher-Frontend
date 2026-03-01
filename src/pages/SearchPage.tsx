@@ -38,9 +38,10 @@ const SearchPage: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // Zustand store for managing global state like search input, region, and last search results.
-  const searchInput = useAuthStore((state) => state.searchInput);
-  const setSearchInput = useAuthStore((state) => state.setSearchInput);
+  // Local state for the search input to avoid debounce resetting from global authStore re-renders
+  const [localSearchInput, setLocalSearchInput] = useState('');
+  
+  // Zustand store for managing global state like region, and last search results.
   const region = useAuthStore((state) => state.region);
   const setRegion = useAuthStore((state) => state.setRegion);
   const lastSearchedSummoner = useAuthStore((state) => state.lastSearchedSummoner);
@@ -142,11 +143,11 @@ const SearchPage: React.FC = () => {
         setRefreshing(false);
         // Clear the search input after search completes (but not on refresh)
         if (!isRefresh) {
-          setSearchInput('');
+           setLocalSearchInput('');
         }
       }
     }
-  }, [fetchRecentSearches, setLastSearchedSummoner, setSearchInput, addRecentSearch]);
+  }, [fetchRecentSearches, setLastSearchedSummoner, addRecentSearch]);
 
   /**
    * Loads the next page of matches.
@@ -196,7 +197,7 @@ const SearchPage: React.FC = () => {
    * Handles the click event of the main search button.
    */
   const handleSearchClick = () => {
-    const parts = searchInput.split('#');
+    const parts = localSearchInput.split('#');
     if (parts.length !== 2 || !parts[0].trim() || !parts[1].trim()) {
       setError('Please use the format "SummonerName#TagLine". Both parts are required.');
       return;
@@ -224,7 +225,7 @@ const SearchPage: React.FC = () => {
    */
   const handlePlayerClick = (name: string, tag: string) => {
     const combined = `${name}#${tag}`;
-    setSearchInput(combined);
+    setLocalSearchInput(combined);
     startSearch(name, tag, region); // A click on a player in match history should use the current region
     window.scrollTo(0, 0); // Scroll to top for the new search
   };
@@ -265,7 +266,7 @@ const SearchPage: React.FC = () => {
         return;
       }
 
-      setSearchInput(`${gameNameFromUrl}#${tagLineFromUrl}`);
+      setLocalSearchInput(`${gameNameFromUrl}#${tagLineFromUrl}`);
       setLoading(true);
       setError(null);
       // Only clear data if we are actually searching for a different person/region
@@ -295,7 +296,7 @@ const SearchPage: React.FC = () => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, performSearch, lastSearchedSummoner, setSearchInput, summonerData, setRegion]);
+  }, [searchParams, performSearch, lastSearchedSummoner, summonerData, setRegion]);
   
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const localRecentSearches = useAuthStore((state) => state.recentSearches);
@@ -431,8 +432,8 @@ const SearchPage: React.FC = () => {
         />
         <h1 className="text-4xl font-bold mb-8 text-center text-gray-800 dark:text-gray-100 tracking-wider">Summoner Search</h1>
         <SearchBar
-          searchInput={searchInput}
-          setSearchInput={setSearchInput}
+          searchInput={localSearchInput}
+          setSearchInput={setLocalSearchInput}
           region={region}
           setRegion={setRegion}
           handleSearchClick={handleSearchClick}

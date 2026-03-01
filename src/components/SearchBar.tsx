@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { RecentSearch } from '../api/user';
 import { Search } from 'lucide-react';
 import { toApiRegion, toUrlRegion } from '../utils/regionUtils';
+import { fetchAutocompleteSuggestions, type AutocompletePlayerDto } from '../api/search';
 
 /**
  * Props for the SearchBar component.
@@ -45,8 +46,39 @@ const SearchBar: React.FC<SearchBarProps> = ({
   const apiRegion = toApiRegion(toUrlRegion(region)); 
   const filteredRecentSearches = recentSearches.filter(search => search.server === apiRegion && search.query.toLowerCase().includes(searchInput.toLowerCase()));
 
+  const [suggestions, setSuggestions] = useState<AutocompletePlayerDto[]>([]);
+  const [isSearchingAutocomplete, setIsSearchingAutocomplete] = useState(false);
+
   const inputRef = React.useRef<HTMLInputElement>(null);
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounce autocomplete search
+  useEffect(() => {
+    if (searchInput.length < 2) {
+      setSuggestions([]);
+      setIsSearchingAutocomplete(false);
+      return;
+    }
+
+    setIsSearchingAutocomplete(true);
+    const debounceTimer = setTimeout(async () => {
+      try {
+        const results = await fetchAutocompleteSuggestions(apiRegion, searchInput);
+        
+        // Ensure we don't overwrite current results if user typed more while fetching
+        if (inputRef.current?.value === searchInput) {
+           setSuggestions(results);
+        }
+      } catch (error) {
+        console.error('Error fetching autocomplete:', error);
+        setSuggestions([]);
+      } finally {
+        setIsSearchingAutocomplete(false);
+      }
+    }, 250); // 250ms debounce
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchInput, apiRegion]);
 
   const handleMouseEnter = () => {
     if (timeoutRef.current) {
@@ -101,45 +133,103 @@ const SearchBar: React.FC<SearchBarProps> = ({
             className="w-full h-full bg-transparent border-none p-4 text-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-0 focus:outline-none rounded-l-2xl"
           />
 
-          {/* Recent Searches Dropdown */}
-          {showRecent && filteredRecentSearches.length > 0 && (
+          {/* Dropdown Container */}
+          {showRecent && (suggestions.length > 0 || searchInput.length >= 2 || filteredRecentSearches.length > 0) && (
             <div 
-              className="absolute top-full left-0 w-full min-w-[300px] mt-2 bg-white/90 dark:bg-[#0f172a]/95 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 animate-fade-in-down"
+              className="absolute top-full left-0 w-full min-w-[300px] mt-2 bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-2xl border border-gray-200 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 animate-fade-in-down"
               onMouseDown={(e) => e.preventDefault()} // Prevent focus loss when clicking dropdown
             >
-              <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5">
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">Recent Searches</span>
-                <button 
-                  onClick={handleClearRecentSearches} 
-                  className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 transition-colors focus:outline-none"
-                >
-                  Clear History
-                </button>
-              </div>
-              <ul className="">
-                {filteredRecentSearches.map((search, index) => (
-                  <li
-                    key={index}
-                    className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer transition-colors flex items-center justify-between group"
-                    onClick={() => {
-                      setSearchInput(search.query);
-                      const [name, tag] = search.query.split('#');
-                      startSearch(name, tag, apiRegion);
-                      setShowRecent(false);
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-500 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <span className="font-medium">{search.query}</span>
-                    </div>
-                    <span className="text-xs text-gray-400 dark:text-gray-500 uppercase">{search.server}</span>
-                  </li>
-                ))}
-              </ul>
+              
+              {/* Recent Searches Section - Always shows when there are matching local searches */}
+              {filteredRecentSearches.length > 0 && (
+                <>
+                  <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">Recent Searches</span>
+                    <button 
+                      onClick={handleClearRecentSearches} 
+                      className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 transition-colors focus:outline-none"
+                    >
+                      Clear History
+                    </button>
+                  </div>
+                  <ul>
+                    {filteredRecentSearches.map((search, index) => (
+                      <li
+                        key={`recent-${index}`}
+                        className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer transition-colors flex items-center justify-between group"
+                        onClick={() => {
+                          setSearchInput(search.query);
+                          const [name, tag] = search.query.split('#');
+                          startSearch(name, tag, apiRegion);
+                          setShowRecent(false);
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-500 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                            <Search className="h-4 w-4" />
+                          </div>
+                          <span className="font-medium">{search.query}</span>
+                        </div>
+                        <span className="px-2 py-1 text-[10px] font-bold text-gray-500 bg-gray-200 dark:bg-gray-800 rounded-md uppercase tracking-wider">
+                          {search.server.replace(/[0-9]/g, '')}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+
+              {/* Autocomplete Section - Shows below if user is typing at least 2 characters */}
+              {searchInput.length >= 2 && (
+                <>
+                  <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">Players</span>
+                    {isSearchingAutocomplete && <span className="text-xs text-blue-500 animate-pulse">Searching...</span>}
+                  </div>
+                  <ul>
+                    {suggestions.length === 0 && !isSearchingAutocomplete ? (
+                      <li className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400 text-center">
+                        No players found. Press enter to search Riot directly.
+                      </li>
+                    ) : (
+                      suggestions.map((player) => (
+                        <li
+                          key={`auto-${player.puuid}`}
+                          className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer transition-colors flex items-center justify-between group"
+                          onClick={() => {
+                            setSearchInput(`${player.gameName}#${player.tagLine}`);
+                            startSearch(player.gameName, player.tagLine, apiRegion);
+                            setShowRecent(false);
+                          }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <img 
+                              src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/${player.profileIconId}.jpg`}
+                              alt="Profile"
+                              className="w-10 h-10 rounded-xl shadow-sm group-hover:shadow-md transition-shadow object-cover"
+                              onError={(e) => {
+                                // Fallback icon if communitydragon fails
+                                (e.target as HTMLImageElement).src = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/29.jpg';
+                              }}
+                            />
+                            <div className="flex flex-col">
+                              <span className="font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                {player.gameName}
+                              </span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                #{player.tagLine} • Lvl {player.summonerLevel}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="px-2 py-1 text-[10px] font-bold text-white bg-blue-600/80 rounded-md uppercase tracking-wider hidden sm:block">
+                            {apiRegion.replace(/[0-9]/g, '')}
+                          </span>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </>
+              )}
             </div>
           )}
         </div>
