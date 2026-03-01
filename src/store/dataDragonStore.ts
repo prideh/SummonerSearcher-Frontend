@@ -1,12 +1,7 @@
 import { create } from 'zustand'; 
 import axios from 'axios';
 
-/** The current version of Riot's Data Dragon, used for fetching static game data. */
-const ddragonVersion = import.meta.env.VITE_DDRAGON_VERSION || '15.23.1';
-
-/** The base URL for Data Dragon's data and image assets for a specific version. */
-const CDN_URL = `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}`;
-/** The base URL for Data Dragon's general image assets (not version-specific). */
+/** Always version-independent. Used for certain rune icon paths stored outside versioned paths. */
 const DDRAGON_IMG_URL = 'https://ddragon.leagueoflegends.com/cdn/img';
 /** The base URL for Community Dragon, used for assets not available in the official Data Dragon (e.g., rank emblems). */
 const COMMUNITY_DRAGON_URL = 'https://raw.communitydragon.org/latest/plugins';
@@ -104,6 +99,8 @@ interface DDragonRunePath {
  * Defines the state and actions for the Data Dragon Zustand store.
  */
 interface DataDragonState {
+  version: string;
+  versionReady: boolean;
   cdnUrl: string;
   cdnImgUrl: string;
   communityDragonUrl: string;
@@ -117,6 +114,7 @@ interface DataDragonState {
     runes: boolean;
     champions: boolean;
   };
+  fetchVersion: () => Promise<void>;
   fetchItemData: () => Promise<void>;
   fetchSummonerSpellData: () => Promise<void>;
   fetchRuneData: () => Promise<void>;
@@ -129,7 +127,9 @@ interface DataDragonState {
  * The data is fetched on-demand and stored in the state.
  */
 export const useDataDragonStore = create<DataDragonState>((set, get) => ({
-  cdnUrl: CDN_URL,
+  version: '',
+  versionReady: false,
+  cdnUrl: '',  // Populated dynamically by fetchVersion()
   cdnImgUrl: DDRAGON_IMG_URL,
   communityDragonUrl: COMMUNITY_DRAGON_URL,
   itemMap: null,
@@ -141,6 +141,31 @@ export const useDataDragonStore = create<DataDragonState>((set, get) => ({
     spells: false,
     runes: false,
     champions: false,
+  },
+  /**
+   * Fetches the latest patch version from Riot's API and sets the CDN URL.
+   * This MUST be called before any other fetch actions.
+   */
+  fetchVersion: async () => {
+    if (get().versionReady) return;
+    try {
+      const response = await axios.get<string[]>('https://ddragon.leagueoflegends.com/api/versions.json');
+      const latestVersion = response.data[0];
+      set({
+        version: latestVersion,
+        cdnUrl: `https://ddragon.leagueoflegends.com/cdn/${latestVersion}`,
+        versionReady: true,
+      });
+    } catch (e) {
+      // Fallback to last known good version if the API call fails (e.g., offline)
+      console.warn('Failed to fetch DDragon version, falling back to 16.4.1', e);
+      const fallback = '16.4.1';
+      set({
+        version: fallback,
+        cdnUrl: `https://ddragon.leagueoflegends.com/cdn/${fallback}`,
+        versionReady: true,
+      });
+    }
   },
   /**
    * Fetches item data from Data Dragon and stores it in the `itemMap`.

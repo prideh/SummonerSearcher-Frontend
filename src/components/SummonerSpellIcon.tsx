@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useDataDragonStore } from '../store/dataDragonStore';
 
 interface SummonerSpellIconProps {
@@ -7,16 +7,10 @@ interface SummonerSpellIconProps {
 }
 
 const SummonerSpellIcon: React.FC<SummonerSpellIconProps> = ({ spellId, className = 'w-8 h-8' }) => {
-  const { summonerSpellMap, fetchSummonerSpellData } = useDataDragonStore();
+  const summonerSpellMap = useDataDragonStore(state => state.summonerSpellMap);
   const cdnUrl = useDataDragonStore(state => state.cdnUrl);
 
-  useEffect(() => {
-    if (!summonerSpellMap) {
-      fetchSummonerSpellData();
-    }
-  }, [summonerSpellMap, fetchSummonerSpellData]);
-
-  if (!spellId) {
+  if (!spellId || !cdnUrl) {
     return <div className={`${className} bg-gray-200 dark:bg-gray-800/50 rounded`}></div>;
   }
 

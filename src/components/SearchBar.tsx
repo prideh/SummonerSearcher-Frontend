@@ -63,7 +63,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
     setIsSearchingAutocomplete(true);
     const debounceTimer = setTimeout(async () => {
       try {
-        const results = await fetchAutocompleteSuggestions(apiRegion, searchInput);
+        const results = await fetchAutocompleteSuggestions(searchInput);
         
         // Ensure we don't overwrite current results if user typed more while fetching
         if (inputRef.current?.value === searchInput) {
@@ -198,7 +198,8 @@ const SearchBar: React.FC<SearchBarProps> = ({
                           className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer transition-colors flex items-center justify-between group"
                           onClick={() => {
                             setSearchInput(`${player.gameName}#${player.tagLine}`);
-                            startSearch(player.gameName, player.tagLine, apiRegion);
+                            setRegion(player.region);
+                            startSearch(player.gameName, player.tagLine, player.region);
                             setShowRecent(false);
                           }}
                         >
@@ -222,7 +223,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
                             </div>
                           </div>
                           <span className="px-2 py-1 text-[10px] font-bold text-white bg-blue-600/80 rounded-md uppercase tracking-wider hidden sm:block">
-                            {apiRegion.replace(/[0-9]/g, '')}
+                            {player.region.replace(/[0-9]/g, '')}
                           </span>
                         </li>
                       ))

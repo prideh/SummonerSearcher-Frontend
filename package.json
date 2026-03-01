@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "vite",
     "test": "vitest",
+    "prebuild": "npm run update-tags",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "update-tags": "node scripts/updateChampionTags.js"
   },
   "dependencies": {
     "axios": "^1.12.2",

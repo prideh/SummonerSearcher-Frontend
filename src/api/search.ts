@@ -16,13 +16,12 @@ export interface AutocompletePlayerDto {
  * @returns A promise resolving to a list of matching players.
  */
 export const fetchAutocompleteSuggestions = async (
-  region: string,
   query: string
 ): Promise<AutocompletePlayerDto[]> => {
   if (query.length < 2) return [];
   
   try {
-    const response = await apiClient.get<AutocompletePlayerDto[]>(`/search/autocomplete/${region.toLowerCase()}`, {
+    const response = await apiClient.get<AutocompletePlayerDto[]>(`/search/autocomplete`, {
       params: { query }
     });
     return response.data;

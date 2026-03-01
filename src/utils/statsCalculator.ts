@@ -1,4 +1,5 @@
 import type { MatchDto } from '../types/match';
+import { hasTag } from './championTags';
 
 export interface StatConsistency {
   key: string;
@@ -110,16 +111,34 @@ export const calculateConsistency = (matches: MatchDto[], puuid: string) => {
         if (requiredRole === 'JUNGLE' && player.teamPosition !== 'JUNGLE') return;
         if (requiredRole === 'SUPPORT' && player.teamPosition !== 'UTILITY') return;
 
+        const champName = player.championName || '';
+
+        // Filter out irrelevant stats based on champion archetype
+        if (key === 'effectiveHealAndShielding' && !hasTag(champName, 'Support')) return;
+        if ((key === 'timeCCingOthers' || key === 'enemyChampionImmobilizations') && hasTag(champName, 'Assassin')) return;
+
         const playerValue = playerChallenges[key];
         const opponentValue = opponentChallenges[key];
         
-        const isCarryRole = player.teamPosition === 'MIDDLE' || player.teamPosition === 'BOTTOM';
-        const isDamageTaken = key === 'damageTakenOnTeamPercentage';
+        let isLowerBetter = false;
+        const keyLower = key.toLowerCase();
 
-        const isLowerBetter = key.toLowerCase().startsWith('earliest') || 
-                              key.toLowerCase().startsWith('fastest') || 
-                              key.toLowerCase().startsWith('shortest') ||
-                              (isCarryRole && isDamageTaken);
+        if (keyLower.startsWith('earliest') || keyLower.startsWith('fastest') || keyLower.startsWith('shortest')) {
+            isLowerBetter = true;
+        } else if (key === 'damageTakenOnTeamPercentage') {
+            const isBackline = hasTag(champName, 'Marksman') || hasTag(champName, 'Mage') || hasTag(champName, 'Assassin');
+            const isFrontline = hasTag(champName, 'Tank') || hasTag(champName, 'Fighter');
+            const isSupportTag = hasTag(champName, 'Support');
+            
+            if (isFrontline) {
+                isLowerBetter = false; // Tanks should take damage
+            } else if (isBackline || isSupportTag) {
+                isLowerBetter = true;  // Squishies should avoid taking damage
+            } else {
+                // Fallback to role if tags are ambiguous
+                isLowerBetter = player.teamPosition === 'MIDDLE' || player.teamPosition === 'BOTTOM' || player.teamPosition === 'UTILITY';
+            }
+        }
 
         let pVal = playerValue;
         if (pVal === undefined || pVal === null || (isLowerBetter && pVal === 0)) {
@@ -166,12 +185,12 @@ export const calculateConsistency = (matches: MatchDto[], puuid: string) => {
     const bestStats = [...validStats]
         .filter(s => s.wins > s.losses)
         .sort((a, b) => b.consistency - a.consistency)
-        .slice(0, 5);
+        .slice(0, 10);
 
     const worstStats = [...validStats]
         .filter(s => s.losses > s.wins)
         .sort((a, b) => b.lossConsistency - a.lossConsistency)
-        .slice(0, 5);
+        .slice(0, 10);
 
     return { bestStats, worstStats };
 };

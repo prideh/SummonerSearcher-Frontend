@@ -23,7 +23,7 @@ const ConsistencyStats: React.FC<ConsistencyStatsProps> = ({ matches, puuid }) =
             <div className="text-center md:text-left">
                 <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Top Strengths</h3>
                 <ul className="space-y-0.5">
-                    {consistentStats.bestStats.slice(0, 5).map(stat => {
+                    {consistentStats.bestStats.slice(0, 3).map(stat => {
                         const displayName = camelCaseToTitleCase(stat.key);
                         return (
                             <li key={stat.key} className="text-xs text-gray-700 dark:text-gray-300 flex justify-between items-center">
@@ -40,7 +40,7 @@ const ConsistencyStats: React.FC<ConsistencyStatsProps> = ({ matches, puuid }) =
             <div className="text-center md:text-left">
                 <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Top Weaknesses</h3>
                 <ul className="space-y-0.5">
-                    {consistentStats.worstStats.slice(0, 5).map(stat => {
+                    {consistentStats.worstStats.slice(0, 3).map(stat => {
                         const displayName = camelCaseToTitleCase(stat.key);
                         return (
                             <li key={stat.key} className="text-xs text-gray-700 dark:text-gray-300 flex justify-between items-center">

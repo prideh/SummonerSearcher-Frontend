@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useDataDragonStore } from '../store/dataDragonStore';
 
 interface ItemIconProps {
@@ -7,16 +7,10 @@ interface ItemIconProps {
 }
 
 const ItemIcon: React.FC<ItemIconProps> = ({ itemId, className = 'w-8 h-8' }) => {
-  const { itemMap, fetchItemData } = useDataDragonStore();
+  const itemMap = useDataDragonStore(state => state.itemMap);
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
 
-  useEffect(() => {
-    if (!itemMap) {
-      fetchItemData();
-    }
-  }, [itemMap, fetchItemData]);
-
-  if (!itemId) {
+  if (!itemId || !CDN_URL) {
     return <div className={`${className} bg-gray-200 dark:bg-gray-800/50 rounded`}></div>;
   }
 
