@@ -2,6 +2,8 @@ import React, { useState, type ReactNode } from 'react';
 import { getRiotServerStatus } from '../api/riot';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
+import SEO from '../components/SEO';
+import Footer from '../components/Footer';
 
 /** Defines the structure for a single status update (maintenance or incident). */
 interface StatusItemDto {
@@ -83,6 +85,7 @@ const StatusPage = () => {
 
   return (
     <div className="container mx-auto p-4 min-h-screen">
+      <SEO title="Server Status | Summoner Searcher" description="Check live server status, maintenances, and incidents for League of Legends regions." />
       <h2 className="text-3xl font-bold mb-6 text-center">Riot Games Server Status</h2>
       <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-8">
         <select value={region} onChange={(e) => setRegion(e.target.value)} aria-label="Select Region" className="p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-500">
@@ -112,6 +115,7 @@ const StatusPage = () => {
           <React.Fragment key="maintenances">{renderUpdates(status.maintenances, 'Maintenance')}</React.Fragment>
         )}
       </div>
+      <Footer />
     </div>
   );
 };

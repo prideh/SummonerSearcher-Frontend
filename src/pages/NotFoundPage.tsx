@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import SEO from '../components/SEO';
 
 /**
  * A simple 404 "Not Found" page that is displayed for any routes that are not defined.
@@ -6,6 +7,7 @@ import { Link } from 'react-router-dom';
 const NotFoundPage = () => {
   return (
     <div className="flex flex-col items-center justify-center h-screen">
+      <SEO title="Page Not Found | Summoner Searcher" description="The page you are looking for does not exist." />
       <h1 className="text-4xl font-bold mb-4">404 - Page Not Found</h1>
       <p className="text-lg mb-8">Oops! We couldn't find the page you were looking for.</p>
       <Link to="/search" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">

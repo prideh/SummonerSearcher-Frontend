@@ -72,7 +72,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
         )}
         <img
           src={`${CDN_URL}/img/champion/${getCorrectChampionName(championName)}.png`}
-          alt={championName}
+          alt={`${championName} Champion Icon`}
           loading="lazy"
           className="w-16 h-16 rounded-md"
           data-tooltip-id="player-name-tooltip"
@@ -131,10 +131,22 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
             onPlayerClick(riotIdGameName, riotIdTagline);
           }
         }}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (onPlayerClick && riotIdGameName && riotIdTagline) {
+              onPlayerClick(riotIdGameName, riotIdTagline);
+            }
+          }
+        }}
+        aria-label={`View profile for ${riotIdGameName}`}
       >
         <img
           src={`${CDN_URL}/img/champion/${getCorrectChampionName(championName)}.png`}
-          alt={championName}
+          alt={`${championName} Champion Icon`}
           loading="lazy"
           className="w-16 h-16 rounded-md group-hover:opacity-80 transition-opacity"
           data-tooltip-id="player-name-tooltip"

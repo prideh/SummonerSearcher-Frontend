@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { getSummonerByName, getMatches } from '../api/riot';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import type { SummonerData } from '../types/summoner';
 import type { MatchDto } from '../types/match';
 import MatchHistory from '../components/MatchHistory';
@@ -17,6 +17,8 @@ import { Skeleton } from '../components/ui/Skeleton';
 import SummonerInfo from '../components/SummonerInfo';
 import PlayerProfile from '../components/PlayerProfile';
 import { toApiRegion, toUrlRegion } from '../utils/regionUtils';
+import SEO from '../components/SEO';
+import Footer from '../components/Footer';
 
 /**
  * The main page for searching for summoners and viewing their profile and match history.
@@ -26,7 +28,9 @@ const SearchPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
+  const { region: pathRegion, riotId } = useParams<{ region: string; riotId: string }>();
+  const navigate = useNavigate();
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [showRecent, setShowRecent] = useState(false);
   const [showFullProfile, setShowFullProfile] = useState(false);
@@ -188,10 +192,9 @@ const SearchPage: React.FC = () => {
       setError('Please enter both a summoner name and a tagline.');
       return;
     }
-    // Update the URL with the search parameters.
-    // The useEffect hook will detect this change and trigger the actual search.
-    setSearchParams({ gameName: name, tagLine: tag, region: toUrlRegion(searchRegion) });
-  }, [setSearchParams]);
+    const urlRegion = toUrlRegion(searchRegion);
+    navigate(`/profile/${urlRegion}/${encodeURIComponent(name)}-${encodeURIComponent(tag)}`);
+  }, [navigate]);
 
   /**
    * Handles the click event of the main search button.
@@ -244,9 +247,18 @@ const SearchPage: React.FC = () => {
    * This acts as the source of truth for the current search state.
    */
   useEffect(() => {
-    const gameNameFromUrl = searchParams.get('gameName');
-    const tagLineFromUrl = searchParams.get('tagLine');
-    const regionFromUrl = searchParams.get('region');
+    let gameNameFromUrl = searchParams.get('gameName');
+    let tagLineFromUrl = searchParams.get('tagLine');
+    let regionFromUrl = searchParams.get('region');
+
+    if (pathRegion && riotId) {
+      const lastDashIndex = riotId.lastIndexOf('-');
+      if (lastDashIndex !== -1) {
+        gameNameFromUrl = decodeURIComponent(riotId.substring(0, lastDashIndex));
+        tagLineFromUrl = decodeURIComponent(riotId.substring(lastDashIndex + 1));
+        regionFromUrl = pathRegion;
+      }
+    }
 
     if (gameNameFromUrl && tagLineFromUrl && regionFromUrl) {
       const apiRegion = toApiRegion(regionFromUrl);
@@ -254,6 +266,12 @@ const SearchPage: React.FC = () => {
       // Sync region from URL to store if different
       if (apiRegion !== region) {
         setRegion(apiRegion);
+      }
+
+      // If we got here from query params, immediately act as a redirect to the clean URL
+      if (!pathRegion || !riotId) {
+        navigate(`/profile/${toUrlRegion(apiRegion)}/${encodeURIComponent(gameNameFromUrl)}-${encodeURIComponent(tagLineFromUrl)}`, { replace: true });
+        return;
       }
 
       // Avoid re-fetching if the data is already displayed for the current URL params and region
@@ -283,7 +301,7 @@ const SearchPage: React.FC = () => {
       };
     }
     // If no search from URL, load the last searched summoner from the store
-    else if (lastSearchedSummoner && !gameNameFromUrl && !tagLineFromUrl) {
+    else if (lastSearchedSummoner && !gameNameFromUrl && !tagLineFromUrl && !pathRegion && !riotId) {
       if (lastSearchedSummoner === 'NOT_FOUND') {
         setError('NOT_FOUND');
       } else {
@@ -296,7 +314,7 @@ const SearchPage: React.FC = () => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, performSearch, lastSearchedSummoner, summonerData, setRegion]);
+  }, [searchParams, performSearch, lastSearchedSummoner, summonerData, setRegion, pathRegion, riotId, navigate]);
   
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const localRecentSearches = useAuthStore((state) => state.recentSearches);
@@ -417,8 +435,28 @@ const SearchPage: React.FC = () => {
     );
   };
 
+  const seoTitle = summonerData 
+    ? `${summonerData.gameName}#${summonerData.tagLine} (${summonerData.region}) - Match History & Stats` 
+    : 'Summoner Search | Summoner Searcher';
+    
+  const seoDescription = summonerData 
+    ? `View match history, stats, and live games for ${summonerData.gameName}#${summonerData.tagLine} on ${summonerData.region}.` 
+    : 'Search for League of Legends summoner profiles, view match history, analyze game statistics, and check leaderboards.';
+    
+  const seoSchema = summonerData ? {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    "mainEntity": {
+      "@type": "Person",
+      "name": `${summonerData.gameName}#${summonerData.tagLine}`,
+      "identifier": summonerData.puuid,
+      "description": `League of Legends player profile for ${summonerData.gameName}#${summonerData.tagLine} in ${summonerData.region}.`
+    }
+  } : undefined;
+
   return (
     <div className="flex-1 h-full overflow-y-auto w-full">
+      <SEO title={seoTitle} description={seoDescription} schema={seoSchema} />
       <div className="container mx-auto p-4 md:p-8 flex flex-col items-center">
         <Tooltip 
           id="item-tooltip" 
@@ -506,6 +544,7 @@ const SearchPage: React.FC = () => {
           )}
         </div>
       </div>
+      <Footer />
     </div>
   );
 };

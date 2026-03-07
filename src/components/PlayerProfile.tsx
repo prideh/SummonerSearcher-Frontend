@@ -95,7 +95,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ summonerData, onClose }) 
                       <div className="relative">
                           <img 
                           src={`${cdnUrl}/img/champion/${getCorrectChampionName(stat.championName)}.png`} 
-                          alt={stat.championName} 
+                          alt={`${stat.championName} Champion Icon`} 
                           loading="lazy"
                           className="w-10 h-10 rounded-lg shadow-sm"
                           />
@@ -172,7 +172,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ summonerData, onClose }) 
                     {soloQueueRank?.tier ? (
                     <img
                         src={`${communityDragonUrl}/rcp-fe-lol-shared-components/global/default/images/${soloQueueRank.tier.toLowerCase()}.png`}
-                        alt={soloQueueRank.tier}
+                        alt={`${soloQueueRank.tier} Rank Icon`}
                         className="w-16 h-16 drop-shadow-md"
                     />
                     ) : (

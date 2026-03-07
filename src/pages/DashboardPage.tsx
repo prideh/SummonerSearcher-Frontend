@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { getLeaderboard } from '../api/riot';
 import { toUrlRegion } from '../utils/regionUtils';
 import axios from 'axios';
+import SEO from '../components/SEO';
+import Footer from '../components/Footer';
 
 interface LeaderboardEntry {
   gameName: string;
@@ -94,7 +96,7 @@ const DashboardPage = () => {
    */
   const handleRowClick = useCallback((gameName: string, tagLine: string) => {
     if (gameName && tagLine) {
-      navigate(`/search?gameName=${encodeURIComponent(gameName)}&tagLine=${encodeURIComponent(tagLine)}&region=${toUrlRegion(region)}`);
+      navigate(`/profile/${toUrlRegion(region)}/${encodeURIComponent(gameName)}-${encodeURIComponent(tagLine)}`);
     }
   }, [navigate, region]);
 
@@ -270,6 +272,7 @@ const DashboardPage = () => {
                 Loading more...
               </div>
             )}
+            <Footer />
           </div>
         </div>
       </div>
@@ -279,6 +282,7 @@ const DashboardPage = () => {
   return (
     // Main container - Fixed height to prevent body scrollbar
     <div className="flex-1 h-full overflow-hidden w-full text-gray-800 dark:text-gray-200">
+      <SEO title="Challenger Leaderboard | Summoner Searcher" description="View the League of Legends Challenger leaderboards, top players, and rankings across all regions." />
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col items-center h-full">
         
         {/* Header Section - Toned down & Reduced spacing */}

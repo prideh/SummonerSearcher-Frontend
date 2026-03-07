@@ -40,6 +40,7 @@ const NavigationLayout: React.FC = () => {
       <Route element={<PublicLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/search" element={<SearchPage />} />
+        <Route path="/profile/:region/:riotId" element={<SearchPage />} />
         <Route path="/status" element={<StatusPage />} />
         <Route path="/feedback" element={<FeedbackPage />} />
         <Route path="/admin" element={<AdminDashboard />} />

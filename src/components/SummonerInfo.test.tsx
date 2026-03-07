@@ -69,7 +69,7 @@ describe('SummonerInfo', () => {
     expect(screen.getByText('#EUW')).toBeInTheDocument();
     expect(screen.getByText('Level 100')).toBeInTheDocument();
     expect(screen.getByText('Last updated: 2 hours ago')).toBeInTheDocument();
-    expect(screen.getByAltText('Profile Icon')).toHaveAttribute('src', 'https://ddragon.leagueoflegends.com/cdn/13.1.1/img/profileicon/1.png');
+    expect(screen.getByAltText("TestUser's Profile Icon")).toHaveAttribute('src', 'https://ddragon.leagueoflegends.com/cdn/13.1.1/img/profileicon/1.png');
   });
 
   it('renders RankedInfo when ranked data is available', () => {

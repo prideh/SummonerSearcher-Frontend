@@ -1,4 +1,4 @@
-// Auto-generated from Riot Data Dragon 16.4.1
+// Auto-generated from Riot Data Dragon 16.5.1
 // Tags usually are: Assassin, Fighter, Mage, Marksman, Support, Tank
 export const CHAMPION_TAGS: Record<string, string[]> = {
   "Aatrox": [

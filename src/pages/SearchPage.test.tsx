@@ -110,6 +110,7 @@ describe('SearchPage', () => {
       <MemoryRouter initialEntries={['/search?gameName=Test&tagLine=123&region=eu']}>
         <Routes>
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/profile/:region/:riotId" element={<SearchPage />} />
         </Routes>
       </MemoryRouter>
     );
@@ -128,6 +129,7 @@ describe('SearchPage', () => {
       <MemoryRouter initialEntries={['/search']}>
         <Routes>
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/profile/:region/:riotId" element={<SearchPage />} />
         </Routes>
       </MemoryRouter>
     );
@@ -156,6 +158,7 @@ describe('SearchPage', () => {
         <MemoryRouter initialEntries={['/search?gameName=Test&tagLine=123&region=na']}>
           <Routes>
             <Route path="/search" element={<SearchPage />} />
+            <Route path="/profile/:region/:riotId" element={<SearchPage />} />
           </Routes>
         </MemoryRouter>
       );
@@ -184,6 +187,7 @@ describe('SearchPage', () => {
       <MemoryRouter initialEntries={['/search?gameName=Test&tagLine=123&region=eu']}>
         <Routes>
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/profile/:region/:riotId" element={<SearchPage />} />
         </Routes>
       </MemoryRouter>
     );

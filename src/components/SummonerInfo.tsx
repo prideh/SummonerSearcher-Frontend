@@ -120,7 +120,7 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
       <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
         <img
           src={`${CDN_URL}/img/profileicon/${summonerData.profileIconId}.png`}
-          alt="Profile Icon"
+          alt={`${summonerData.gameName}'s Profile Icon`}
           className="w-20 h-20 rounded-full border-2 border-cyan-400"
         />
         <div className="flex-grow text-center sm:text-left">
