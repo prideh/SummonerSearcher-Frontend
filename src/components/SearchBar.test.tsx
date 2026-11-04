@@ -56,21 +56,41 @@ describe('SearchBar', () => {
     expect(handleSearchClick).toHaveBeenCalled();
   });
 
-  it('shows recent searches when focused and has recent searches', () => {
-    const recentSearches = [{ query: 'Test#123', server: 'EUW1' }];
-    render(<SearchBar {...defaultProps} recentSearches={recentSearches} showRecent={true} />);
+  it('shows recent searches across all regions when focused', () => {
+    const recentSearches = [
+      { query: 'Test#123', server: 'EUW1' },
+      { query: 'Other#456', server: 'NA1' },
+      { query: 'Faker#KR1', server: 'KR' },
+    ];
+    render(<SearchBar {...defaultProps} region="EUW1" recentSearches={recentSearches} showRecent={true} />);
     
     expect(screen.getByText('Test#123')).toBeInTheDocument();
+    expect(screen.getByText('Other#456')).toBeInTheDocument();
+    expect(screen.getByText('Faker#KR1')).toBeInTheDocument();
   });
 
-  it('calls startSearch when clicking a recent search', async () => {
+  it('switches region and calls startSearch with search.server when clicking a recent search', async () => {
     const startSearch = vi.fn();
-    const recentSearches = [{ query: 'Test#123', server: 'EUW1' }];
-    render(<SearchBar {...defaultProps} recentSearches={recentSearches} showRecent={true} startSearch={startSearch} />);
+    const setRegion = vi.fn();
+    const recentSearches = [
+      { query: 'Test#123', server: 'EUW1' },
+      { query: 'NorthAmerica#NA1', server: 'NA1' },
+    ];
+    render(
+      <SearchBar
+        {...defaultProps}
+        region="EUW1"
+        setRegion={setRegion}
+        recentSearches={recentSearches}
+        showRecent={true}
+        startSearch={startSearch}
+      />
+    );
     
-    const recentItem = screen.getByText('Test#123');
+    const recentItem = screen.getByText('NorthAmerica#NA1');
     await userEvent.click(recentItem);
     
-    expect(startSearch).toHaveBeenCalledWith('Test', '123', 'EUW1');
+    expect(setRegion).toHaveBeenCalledWith('NA1');
+    expect(startSearch).toHaveBeenCalledWith('NorthAmerica', 'NA1', 'NA1');
   });
 });

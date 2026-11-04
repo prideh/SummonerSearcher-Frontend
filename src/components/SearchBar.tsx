@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { RecentSearch } from '../api/user';
 import { Search } from 'lucide-react';
-import { toApiRegion, toUrlRegion } from '../utils/regionUtils';
 import { fetchAutocompleteSuggestions, type AutocompletePlayerDto } from '../api/search';
 
 /**
@@ -41,10 +40,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
   handleClearRecentSearches,
   startSearch,
 }) => {
-  // Filter recent searches by the currently selected region (API format)
-  // Ensure we are comparing API regions (e.g. EUW1)
-  const apiRegion = toApiRegion(toUrlRegion(region)); 
-  const filteredRecentSearches = recentSearches.filter(search => search.server === apiRegion && search.query.toLowerCase().includes(searchInput.toLowerCase()));
+  // Filter recent searches across all regions by the current search input
+  const filteredRecentSearches = recentSearches.filter(search =>
+    search.query.toLowerCase().includes(searchInput.toLowerCase())
+  );
 
   const [suggestions, setSuggestions] = useState<AutocompletePlayerDto[]>([]);
   const [isSearchingAutocomplete, setIsSearchingAutocomplete] = useState(false);
@@ -78,7 +77,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
     }, 250); // 250ms debounce
 
     return () => clearTimeout(debounceTimer);
-  }, [searchInput, apiRegion]);
+  }, [searchInput]);
 
   const handleMouseEnter = () => {
     if (timeoutRef.current) {
@@ -160,7 +159,8 @@ const SearchBar: React.FC<SearchBarProps> = ({
                         onClick={() => {
                           setSearchInput(search.query);
                           const [name, tag] = search.query.split('#');
-                          startSearch(name, tag, apiRegion);
+                          setRegion(search.server);
+                          startSearch(name, tag, search.server);
                           setShowRecent(false);
                         }}
                       >
