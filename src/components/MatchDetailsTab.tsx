@@ -208,26 +208,26 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
   const accentClass = isWin ? 'border-emerald-500/50' : 'border-rose-500/50';
 
   return (
-    <div className="p-3.5 sm:p-4 space-y-6 telemetry-nums">
+    <div className="w-full max-w-full min-w-0 p-3 sm:p-4 space-y-6 telemetry-nums overflow-hidden">
 
       {/* ── Build Order ── */}
-      <section>
+      <section className="min-w-0">
         <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
           <span className="text-base">🛡️</span> Item Build Order
         </h3>
         {buildGroups.length === 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">No item purchases found.</p>
         ) : (
-          <div className="overflow-x-auto sm:overflow-x-visible pb-2">
-            <div className="flex items-center gap-2 min-w-max sm:min-w-0 flex-wrap">
+          <div className="w-full min-w-0 pb-1">
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
               {buildGroups.map((group, gi) => (
                 <React.Fragment key={gi}>
                   {gi > 0 && (
                     <span className="text-slate-300 dark:text-slate-600 text-xl select-none">›</span>
                   )}
-                  <div className="flex flex-col items-center gap-1.5">
+                  <div className="flex flex-col items-center gap-1.5 max-w-full">
                     {/* Item icons */}
-                    <div className={`flex gap-1 p-1.5 rounded-lg bg-slate-50 dark:bg-[#0b101d] border ${accentClass}`}>
+                    <div className={`flex flex-wrap gap-1 p-1.5 rounded-lg bg-slate-50 dark:bg-[#0b101d] border ${accentClass}`}>
                       {group.items.map((item, ii) => (
                         <div
                           key={ii}
@@ -251,12 +251,12 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
       </section>
 
       {/* ── Skill Order ── */}
-      <section>
+      <section className="min-w-0">
         <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
           <span className="text-base">⚡</span> Skill Order
         </h3>
         {skillUps.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-3 min-w-0">
             {/* Max order summary */}
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">Max Priority:</span>
@@ -298,19 +298,19 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
       </section>
 
       {/* ── Event Timeline ── */}
-      <section>
+      <section className="min-w-0">
         <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
           <span className="text-base">📋</span> Key Events
         </h3>
         {events.length > 0 ? (
-          <div className="overflow-x-auto overflow-y-auto max-h-96 rounded-lg border border-slate-200 dark:border-slate-800 w-full sm:inline-block sm:w-auto">
-            <table className="text-sm w-full sm:w-auto">
+          <div className="overflow-x-auto overflow-y-auto max-h-96 rounded-lg border border-slate-200 dark:border-slate-800 w-full max-w-full min-w-0 sm:inline-block sm:w-auto">
+            <table className="text-xs sm:text-sm w-full sm:w-auto">
               <thead>
                 <tr className="bg-slate-100 dark:bg-[#090d16] text-slate-500 dark:text-slate-400 text-[11px] font-extrabold uppercase tracking-wider">
-                  <th className="px-2 sm:px-4 py-2 text-left">Time</th>
-                  <th className="px-2 sm:px-4 py-2 text-left">Actor</th>
-                  <th className="px-2 sm:px-4 py-2 text-center">Action</th>
-                  <th className="px-2 sm:px-4 py-2 text-left">Target</th>
+                  <th className="px-1.5 sm:px-4 py-2 text-left">Time</th>
+                  <th className="px-1.5 sm:px-4 py-2 text-left">Actor</th>
+                  <th className="px-1.5 sm:px-4 py-2 text-center">Action</th>
+                  <th className="px-1.5 sm:px-4 py-2 text-left">Target</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200/70 dark:divide-slate-800/70">
@@ -338,42 +338,42 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
 
                   return (
                     <tr key={i} className={`${rowClass} hover:brightness-95 dark:hover:bg-gray-800/40 transition-colors`}>
-                      <td className="px-2 sm:px-4 py-2 font-mono text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                      <td className="px-1.5 sm:px-4 py-2 font-mono text-gray-700 dark:text-gray-300 whitespace-nowrap">
                         {formatTime(ev.minuteMark * 60 + ev.secondMark)}
                       </td>
-                      <td className="px-2 sm:px-4 py-2">
+                      <td className="px-1.5 sm:px-4 py-2">
                         {actorChamp && (
                           <div className="flex items-center gap-1.5">
                             <img
                               src={`${CDN_URL}/img/champion/${actorChamp}.png`}
                               alt={actorChamp}
-                              className="w-5 h-5 rounded-full"
+                              className="w-5 h-5 rounded-full shrink-0"
                               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                             />
                             <span className={actorChamp === playerParticipant.championName ? "text-cyan-600 dark:text-cyan-400 font-bold" : actorChamp === opponentParticipant?.championName ? "text-orange-600 dark:text-orange-400 font-bold" : "text-gray-700 dark:text-gray-200"}>{actorChamp}</span>
                           </div>
                         )}
                       </td>
-                      <td className="px-2 sm:px-4 py-2 text-center text-lg">{actionIcon}</td>
-                      <td className="px-2 sm:px-4 py-2">
+                      <td className="px-1.5 sm:px-4 py-2 text-center text-base sm:text-lg">{actionIcon}</td>
+                      <td className="px-1.5 sm:px-4 py-2">
                         {targetName && (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             {(ev.type === 'KILL' || ev.type === 'DEATH' || ev.type === 'ASSIST') && (
                               <img
                                 src={`${CDN_URL}/img/champion/${targetName}.png`}
                                 alt={targetName}
-                                className="w-5 h-5 rounded-full"
+                                className="w-5 h-5 rounded-full shrink-0"
                                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                               />
                             )}
                             <span className={targetName === playerParticipant.championName ? "text-cyan-600 dark:text-cyan-400 font-bold" : targetName === opponentParticipant?.championName ? "text-orange-600 dark:text-orange-400 font-bold" : "text-gray-700 dark:text-gray-200"}>{targetName}</span>
                             {ev.type === 'ASSIST' && ev.killer && (
-                              <span className="flex items-center gap-1 text-gray-400 dark:text-gray-500 text-xs ml-1">
+                              <span className="flex items-center gap-1 text-gray-400 dark:text-gray-500 text-xs ml-1 flex-wrap">
                                 <span>via</span>
                                 <img
                                   src={`${CDN_URL}/img/champion/${ev.killer}.png`}
                                   alt={ev.killer}
-                                  className="w-4 h-4 rounded-full inline"
+                                  className="w-4 h-4 rounded-full inline shrink-0"
                                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                 />
                                 <span className={ev.killer === playerParticipant.championName ? "text-cyan-600 dark:text-cyan-400" : ev.killer === opponentParticipant?.championName ? "text-orange-600 dark:text-orange-400" : "text-gray-500 dark:text-gray-400"}>{ev.killer}</span>

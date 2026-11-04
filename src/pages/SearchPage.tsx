@@ -491,7 +491,7 @@ const SearchPage: React.FC = () => {
           startSearch={startSearch}
         />
 
-        <div className="mt-6 w-full max-w-7xl">
+        <div className="mt-6 w-full max-w-7xl min-w-0">
           {renderError()}
           {!loading && !summonerData && !error && (
             <div className="text-center text-sm text-slate-500 dark:text-slate-400">

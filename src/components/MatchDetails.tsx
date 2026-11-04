@@ -46,15 +46,15 @@ const MatchDetails: React.FC<MatchDetailsProps> = ({ match, puuid, onPlayerClick
   const matchId = match.metadata?.matchId ?? '';
 
   return (
-    <div id={id} className="col-span-full bg-white dark:bg-[#0d1322] rounded-b-lg text-slate-800 dark:text-slate-200 border-t border-slate-200 dark:border-slate-800 overflow-hidden telemetry-nums">
+    <div id={id} className="w-full max-w-full min-w-0 col-span-full bg-white dark:bg-[#0d1322] rounded-b-lg text-slate-800 dark:text-slate-200 border-t border-slate-200 dark:border-slate-800 overflow-hidden telemetry-nums">
       {/* Tab bar */}
-      <div className="bg-slate-100/90 dark:bg-[#090d16] border-b border-slate-200 dark:border-slate-800 px-3 py-1.5">
-        <div className="flex w-full gap-1.5">
+      <div className="w-full min-w-0 bg-slate-100/90 dark:bg-[#090d16] border-b border-slate-200 dark:border-slate-800 px-1.5 sm:px-3 py-1.5">
+        <div className="flex w-full min-w-0 gap-1 sm:gap-1.5">
           {(['scoreboard', 'graphs', 'runes', 'analysis', 'details'] as ActiveTab[]).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 text-center py-1.5 px-2 text-xs font-extrabold uppercase tracking-wider whitespace-nowrap rounded transition-colors ${
+              className={`flex-auto sm:flex-1 min-w-0 text-center py-1.5 px-1 sm:px-2 text-[10px] sm:text-xs font-extrabold uppercase tracking-tight sm:tracking-wider whitespace-nowrap rounded transition-colors ${
                 activeTab === tab
                   ? 'bg-sky-600 text-white dark:bg-cyan-400 dark:text-slate-950 shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/70 dark:hover:bg-slate-800/70'

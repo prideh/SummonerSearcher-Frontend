@@ -97,27 +97,27 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
           return (
             <li
               key={key}
-              className={`flex justify-between items-center break-all px-2.5 py-1.5 rounded transition-colors ${
+              className={`flex justify-between items-start sm:items-center gap-2 min-w-0 px-2.5 py-1.5 rounded transition-colors ${
                 isWinner
                   ? 'bg-emerald-500/12 dark:bg-emerald-500/15 border-l-2 border-l-emerald-500'
                   : 'bg-white/60 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/60'
               }`}
             >
-              <span className={`font-medium ${isWinner ? 'text-emerald-700 dark:text-emerald-400 font-semibold' : 'text-slate-600 dark:text-slate-400'}`}>
+              <span className={`min-w-0 break-words font-medium ${isWinner ? 'text-emerald-700 dark:text-emerald-400 font-semibold' : 'text-slate-600 dark:text-slate-400'}`}>
                 {camelCaseToTitleCase(key)}:
               </span>
               {laneCsBreakdown ? (
-                <span className={`font-bold pl-2 ${isWinner ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
+                <span className={`font-bold pl-2 shrink-0 text-right ${isWinner ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
                   {laneCsBreakdown.hit} / {laneCsBreakdown.available} ({laneCsBreakdown.missed} missed)
                 </span>
               ) : typeof playerValue === 'number' ? (
-                <span className={`font-bold pl-2 ${isWinner ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
+                <span className={`font-bold pl-2 shrink-0 text-right ${isWinner ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
                     {isTime ? formatDuration(playerValue) : isPercentage ? formatPercentage(playerValue) : formatNumber(playerValue)}
                 </span>
               ) : playerValue !== undefined ? (
-                <span className={`font-bold pl-2 ${isWinner ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{String(playerValue)}</span>
+                <span className={`font-bold pl-2 shrink-0 text-right ${isWinner ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{String(playerValue)}</span>
               ) : (
-                <span className="font-bold pl-2 text-slate-400 dark:text-slate-600">-</span>
+                <span className="font-bold pl-2 shrink-0 text-right text-slate-400 dark:text-slate-600">-</span>
               )}
             </li>
           );
@@ -127,41 +127,41 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
   };
 
   return (
-    <div className="p-3.5 grid grid-cols-1 lg:grid-cols-2 gap-3.5 max-h-[500px] overflow-y-auto telemetry-nums">
-      <div className="bg-slate-50/80 dark:bg-[#0b101d] border border-slate-200 dark:border-slate-800 p-3.5 rounded-lg">
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2.5 mb-2.5">
-          <div className="flex items-center gap-2">
+    <div className="w-full min-w-0 p-3 sm:p-3.5 grid grid-cols-1 lg:grid-cols-2 gap-3.5 max-h-[500px] overflow-y-auto telemetry-nums">
+      <div className="min-w-0 bg-slate-50/80 dark:bg-[#0b101d] border border-slate-200 dark:border-slate-800 p-3 sm:p-3.5 rounded-lg">
+        <div className="flex items-center justify-between gap-2 min-w-0 border-b border-slate-200 dark:border-slate-800 pb-2.5 mb-2.5">
+          <div className="flex items-center gap-2 min-w-0">
             <img
               src={`${CDN_URL}/img/champion/${getCorrectChampionName(mainPlayer.championName)}.png`}
               alt={mainPlayer.championName}
               loading="lazy"
-              className="w-6 h-6 rounded border border-sky-500 dark:border-cyan-400"
+              className="w-6 h-6 rounded border border-sky-500 dark:border-cyan-400 shrink-0"
             />
-            <h4 className="font-extrabold text-sm text-sky-600 dark:text-cyan-400">
+            <h4 className="font-extrabold text-sm text-sky-600 dark:text-cyan-400 truncate">
               {mainPlayer.riotIdGameName} (You)
             </h4>
           </div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0">
             {mainPlayer.championName}
           </span>
         </div>
         {renderPlayerChallenges(mainPlayer, opponent)}
       </div>
       {opponent ? (
-        <div className="bg-slate-50/80 dark:bg-[#0b101d] border border-slate-200 dark:border-slate-800 p-3.5 rounded-lg">
-          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2.5 mb-2.5">
-            <div className="flex items-center gap-2">
+        <div className="min-w-0 bg-slate-50/80 dark:bg-[#0b101d] border border-slate-200 dark:border-slate-800 p-3 sm:p-3.5 rounded-lg">
+          <div className="flex items-center justify-between gap-2 min-w-0 border-b border-slate-200 dark:border-slate-800 pb-2.5 mb-2.5">
+            <div className="flex items-center gap-2 min-w-0">
               <img
                 src={`${CDN_URL}/img/champion/${getCorrectChampionName(opponent.championName)}.png`}
                 alt={opponent.championName}
                 loading="lazy"
-                className="w-6 h-6 rounded border border-rose-500"
+                className="w-6 h-6 rounded border border-rose-500 shrink-0"
               />
-              <h4 className="font-extrabold text-sm text-rose-600 dark:text-rose-400">
+              <h4 className="font-extrabold text-sm text-rose-600 dark:text-rose-400 truncate">
                 {opponent.riotIdGameName} (Opponent)
               </h4>
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0">
               {opponent.championName}
             </span>
           </div>

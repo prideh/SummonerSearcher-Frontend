@@ -36,7 +36,7 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ puuid, matches, onPlayerCli
   }
   
   return (
-    <div className="mt-4 space-y-2.5">
+    <div className="mt-4 space-y-2.5 w-full min-w-0">
       {matches.map((match, index) => (
         // Each match is rendered by the MatchHistoryItem component.
         <MatchHistoryItem key={index} match={match} puuid={puuid} onPlayerClick={onPlayerClick} region={region} />

@@ -112,23 +112,23 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
         }
         cardRef.current = el;
       }}
-      className={cn("relative shadow-xs hover:shadow-sm transition-shadow overflow-hidden telemetry-nums", outcome.container, 'rounded-lg')}
+      className={cn("relative w-full max-w-full min-w-0 shadow-xs hover:shadow-sm transition-shadow overflow-hidden telemetry-nums", outcome.container, 'rounded-lg')}
     >
       <div
         className={cn(
-          "flex items-center cursor-pointer transition-colors",
+          "flex items-center w-full min-w-0 cursor-pointer transition-colors",
           "hover:bg-white/40 dark:hover:bg-slate-900/40"
         )}
         onClick={() => setShowDetails(!showDetails)}
       >
         {/* Main content area that changes on expand/collapse */}
-        <div className={`flex-grow ${showDetails ? "flex items-center justify-between px-4 py-2.5 text-sm" : "grid grid-cols-1 md:grid-cols-[125px_1fr_auto_1fr_auto] xl:grid-cols-[125px_1fr_auto_1fr_auto_185px] gap-3 items-center px-3.5 py-3 text-sm"}`}>
+        <div className={`flex-grow min-w-0 ${showDetails ? "flex items-center justify-between px-3 sm:px-4 py-2.5 text-sm" : "grid grid-cols-1 md:grid-cols-[125px_1fr_auto_1fr_auto] xl:grid-cols-[125px_1fr_auto_1fr_auto_185px] gap-3 items-center px-3.5 py-3 text-sm"}`}>
 
           {/* Title when expanded */}
           {showDetails && (
-            <div className="flex-1 flex items-center gap-2">
+            <div className="flex-1 flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
               <span className={cn(
-                "px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wider rounded border",
+                "px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wider rounded border shrink-0",
                 outcome.label === 'Victory'
                   ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
                   : outcome.label === 'Defeat'
@@ -137,10 +137,10 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
               )}>
                 {outcome.label}
               </span>
-              <span className="font-bold text-slate-800 dark:text-slate-100">
+              <span className="font-bold text-slate-800 dark:text-slate-100 truncate">
                 {getQueueType(queueId)}
               </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
+              <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
                 · {formatDuration(gameDuration)} · {timeAgo}
               </span>
             </div>
