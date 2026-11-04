@@ -316,9 +316,10 @@ describe('aiContextBuilder (#14)', () => {
     expect(ctx.avgLaneCsAt10).toEqual({
       avgActual: 80, // (86 + 74) / 2; missing EUW1_1004 not counted as 0
       matchCount: 2,
-      avgSpawnedSupply: 120,
+      avgSupportedActual: 86,
+      avgSpawnedSupply: null,
       ceilingMatchCount: 1,
-      supplyLabel: 'Theoretical spawned supply (not guaranteed farmable)',
+      supplyLabel: null,
     });
 
     const m1 = ctx.recentMatches[0];
@@ -1215,10 +1216,10 @@ describe('aiContextBuilder (#14)', () => {
     ).byteLength;
 
     // Exact measured deterministic UTF-8 payload sizes & upper bounds
-    expect(oneMatchNotAnalyzedBytes).toBe(2214);
-    expect(oneMatchAnalyzedBytes).toBe(3277);
-    expect(notAnalyzedBytes).toBe(23043);
-    expect(analyzedBytes).toBe(36456);
+    expect(oneMatchNotAnalyzedBytes).toBe(2238);
+    expect(oneMatchAnalyzedBytes).toBe(3301);
+    expect(notAnalyzedBytes).toBe(23067);
+    expect(analyzedBytes).toBe(36480);
     expect(notAnalyzedBytes).toBeLessThan(25000);
     expect(analyzedBytes).toBeLessThan(40000);
   });

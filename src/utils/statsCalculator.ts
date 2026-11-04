@@ -248,15 +248,69 @@ export const calculateLaneCsAt10Comparison = (
   };
 };
 
+/** Standard 5v5 Summoner's Rift PvP queues where 10-minute lane CS is meaningful. */
+export const SUPPORTED_SUMMONERS_RIFT_QUEUE_IDS = new Set<number>([
+  400, // Normal Draft Pick
+  420, // Ranked Solo/Duo
+  430, // Normal Blind Pick
+  440, // Ranked Flex
+  490, // Normal Quickplay
+  700, // Clash
+]);
+
+/**
+ * Checks whether a match is a standard 5v5 Summoner's Rift match that lasted at least 10:00 (600s)
+ * and is not an early surrender / remake or non-SR / unsupported queue (such as ARAM 450, Arena 1700, URF 900/1900).
+ */
+export const isEligibleLaneCsAt10Match = (info?: MatchDto['info']): boolean => {
+  if (!info || !Array.isArray(info.participants)) return false;
+
+  // Reject missing, non-finite, or < 600s (10:00) game duration
+  if (
+    typeof info.gameDuration !== 'number' ||
+    !Number.isFinite(info.gameDuration) ||
+    info.gameDuration < 600
+  ) {
+    return false;
+  }
+
+  // Reject non-CLASSIC game modes when gameMode is provided (e.g. ARAM, CHERRY, URf, NEXUSBLITZ)
+  if (
+    typeof info.gameMode === 'string' &&
+    info.gameMode.trim() !== '' &&
+    info.gameMode.trim().toUpperCase() !== 'CLASSIC'
+  ) {
+    return false;
+  }
+
+  // Reject unsupported queue IDs when queueId is provided (e.g. ARAM 450, Arena 1700, URF 900, Co-op vs AI 830/840/850)
+  if (info.queueId !== undefined && info.queueId !== null) {
+    if (
+      typeof info.queueId !== 'number' ||
+      !Number.isFinite(info.queueId) ||
+      !SUPPORTED_SUMMONERS_RIFT_QUEUE_IDS.has(info.queueId)
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 /**
  * Computes the average lane-only CS @ 10:00 (`challenges.laneMinionsFirst10Minutes`) across the
  * listed matches for a given player `puuid`.
  *
  * Rules:
- * - Includes LANER games only (`TOP`, `MIDDLE`, `BOTTOM`).
- * - Includes only games where `challenges.laneMinionsFirst10Minutes` is a finite number
- *   (missing values are excluded and never counted as `0`).
- * - Computes `avgSpawnedSupply` from Patch 26.1+ (`16.1+` / `26.1+`) eligible laner games only.
+ * - Rejects matches with missing, non-finite, or `< 600`s (`10:00`) `gameDuration`.
+ * - Rejects non-Summoner's Rift `gameMode` (`!== 'CLASSIC'`) and unsupported `queueId`s (e.g. ARAM `450`).
+ * - Includes LANER games only (`TOP`, `MIDDLE`, `BOTTOM`) and excludes early-surrender remakes.
+ * - Includes only games where `challenges.laneMinionsFirst10Minutes` is a finite non-negative number (`>= 0`);
+ *   missing or negative values are rejected and never counted as `0`.
+ * - Suppresses `avgSpawnedSupply` (`null`) whenever the eligible games are a mixed-patch subset
+ *   (`ceilingMatchCount < matchCount`), so an all-patch actual average is never displayed alongside
+ *   a supported-subset ceiling as if they shared the same denominator. Also exposes `avgSupportedActual`
+ *   for the Patch 26.1+ supported subset (`ceilingMatchCount` games).
  * - Returns `null` when no listed games have eligible laner `laneMinionsFirst10Minutes` data.
  */
 export const calculateAverageLaneCsAt10 = (
@@ -269,24 +323,30 @@ export const calculateAverageLaneCsAt10 = (
 
   let actualSum = 0;
   let matchCount = 0;
+  let supportedActualSum = 0;
   let spawnedSupplySum = 0;
   let ceilingMatchCount = 0;
 
   for (const match of matches) {
     const info = match.info;
-    if (!info || info.gameDuration === 0 || !Array.isArray(info.participants)) continue;
+    if (!isEligibleLaneCsAt10Match(info)) continue;
 
-    const participant = info.participants.find(p => p.puuid === puuid);
-    if (!participant || !isLanerPosition(participant.teamPosition)) continue;
+    const participant = info!.participants.find(p => p.puuid === puuid);
+    if (!participant || participant.gameEndedInEarlySurrender || !isLanerPosition(participant.teamPosition)) {
+      continue;
+    }
 
     const rawLaneCs10 = participant.challenges?.laneMinionsFirst10Minutes;
-    if (typeof rawLaneCs10 !== 'number' || !Number.isFinite(rawLaneCs10)) continue;
+    if (typeof rawLaneCs10 !== 'number' || !Number.isFinite(rawLaneCs10) || rawLaneCs10 < 0) {
+      continue;
+    }
 
-    const comparison = calculateLaneCsAt10Comparison(rawLaneCs10, info.gameVersion);
+    const comparison = calculateLaneCsAt10Comparison(rawLaneCs10, info!.gameVersion);
     actualSum += comparison.actual;
     matchCount += 1;
 
     if (comparison.spawnedSupply !== null) {
+      supportedActualSum += comparison.actual;
       spawnedSupplySum += comparison.spawnedSupply;
       ceilingMatchCount += 1;
     }
@@ -297,14 +357,21 @@ export const calculateAverageLaneCsAt10 = (
   }
 
   const avgActual = Math.round((actualSum / matchCount) * 10) / 10;
-  const avgSpawnedSupply =
+  const avgSupportedActual =
     ceilingMatchCount > 0
+      ? Math.round((supportedActualSum / ceilingMatchCount) * 10) / 10
+      : null;
+  // Never display an all-patch actual average alongside a subset ceiling as if they share the same denominator:
+  // only populate avgSpawnedSupply when ALL eligible games in avgActual are on supported 26.1+ patches.
+  const avgSpawnedSupply =
+    ceilingMatchCount > 0 && ceilingMatchCount === matchCount
       ? Math.round((spawnedSupplySum / ceilingMatchCount) * 10) / 10
       : null;
 
   return {
     avgActual,
     matchCount,
+    avgSupportedActual,
     avgSpawnedSupply,
     ceilingMatchCount,
     supplyLabel: avgSpawnedSupply !== null ? SPAWNED_SUPPLY_AT_10_LABEL : null,

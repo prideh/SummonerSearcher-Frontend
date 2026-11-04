@@ -40,9 +40,11 @@ export interface AverageLaneCsAt10Summary {
   avgActual: number;
   /** Number of eligible laner games with a numeric `laneMinionsFirst10Minutes` included in `avgActual`. */
   matchCount: number;
-  /** Average theoretical spawned supply ceiling across eligible 26.1+ laner games, or `null` if no eligible games are on patch 26.1+. */
+  /** Average actual lane-only minions last-hit by 10:00 across the Patch 26.1+ supported subset (`ceilingMatchCount` games), or `null` when `ceilingMatchCount === 0`. */
+  avgSupportedActual?: number | null;
+  /** Average theoretical spawned supply ceiling when all eligible games are on patch 26.1+ (`ceilingMatchCount === matchCount`), or `null` when mixed-patch or pre-26.1 so an all-patch actual average is never paired with a subset ceiling denominator. */
   avgSpawnedSupply: number | null;
-  /** Number of eligible 26.1+ laner games included in `avgSpawnedSupply`. */
+  /** Number of eligible 26.1+ laner games. */
   ceilingMatchCount: number;
   /** Explicit label stating the ceiling is theoretical spawned supply, not guaranteed farmable (`null` when `avgSpawnedSupply` is `null`). */
   supplyLabel: string | null;

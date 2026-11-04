@@ -22,12 +22,18 @@ function buildListedMatch(options: {
   role: string;
   gameVersion?: string;
   laneMinionsFirst10Minutes?: number;
+  gameDuration?: number;
+  gameMode?: string;
+  queueId?: number;
+  gameEndedInEarlySurrender?: boolean;
 }): MatchDto {
   return {
     metadata: { matchId: options.matchId },
     info: {
       gameId: Number(options.matchId.replace(/\D/g, '')) || 1,
-      gameDuration: 1800,
+      gameDuration: options.gameDuration !== undefined ? options.gameDuration : 1800,
+      gameMode: options.gameMode,
+      queueId: options.queueId,
       gameVersion: options.gameVersion,
       participants: [
         {
@@ -41,6 +47,7 @@ function buildListedMatch(options: {
           assists: 7,
           totalMinionsKilled: 200,
           neutralMinionsKilled: 12,
+          gameEndedInEarlySurrender: options.gameEndedInEarlySurrender,
           challenges:
             options.laneMinionsFirst10Minutes !== undefined
               ? { laneMinionsFirst10Minutes: options.laneMinionsFirst10Minutes }
@@ -157,7 +164,7 @@ describe('RecentChampionStats & Average Lane CS@10 (#12 follow-up)', () => {
     expect(screen.getByText(/5.0/)).toBeInTheDocument();
   });
 
-  it('computes average lane CS@10 across listed games for laners only, never counting missing laneMinionsFirst10Minutes as 0, and restricts ceiling average to 26.1+ games', () => {
+  it('shows ceiling (120 spawned*) when all eligible laner games are on Patch 26.1+ and excludes missing, jungle, and support games', () => {
     const puuid = 'player-1';
     const matches: MatchDto[] = [
       // 1) Post-26.1 MID game with 84 CS@10 -> included in actual (84) and ceiling (120)
@@ -176,15 +183,7 @@ describe('RecentChampionStats & Average Lane CS@10 (#12 follow-up)', () => {
         gameVersion: '16.5.1',
         laneMinionsFirst10Minutes: 76,
       }),
-      // 3) Pre-26.1 BOTTOM game with 80 CS@10 -> included in actual (80), excluded from 26.1+ ceiling
-      buildListedMatch({
-        matchId: 'EUW1_3',
-        puuid,
-        role: 'BOTTOM',
-        gameVersion: '15.24.1',
-        laneMinionsFirst10Minutes: 80,
-      }),
-      // 4) Post-26.1 MID game missing laneMinionsFirst10Minutes -> MUST NOT be counted as 0
+      // 3) Post-26.1 MID game missing laneMinionsFirst10Minutes -> MUST NOT be counted as 0
       buildListedMatch({
         matchId: 'EUW1_4',
         puuid,
@@ -192,7 +191,7 @@ describe('RecentChampionStats & Average Lane CS@10 (#12 follow-up)', () => {
         gameVersion: '16.22.1',
         laneMinionsFirst10Minutes: undefined,
       }),
-      // 5) Post-26.1 JUNGLE game with laneMinionsFirst10Minutes -> non-laner, excluded
+      // 4) Post-26.1 JUNGLE game with laneMinionsFirst10Minutes -> non-laner, excluded
       buildListedMatch({
         matchId: 'EUW1_5',
         puuid,
@@ -200,7 +199,7 @@ describe('RecentChampionStats & Average Lane CS@10 (#12 follow-up)', () => {
         gameVersion: '16.22.1',
         laneMinionsFirst10Minutes: 14,
       }),
-      // 6) Post-26.1 UTILITY game with laneMinionsFirst10Minutes -> non-laner, excluded
+      // 5) Post-26.1 UTILITY game with laneMinionsFirst10Minutes -> non-laner, excluded
       buildListedMatch({
         matchId: 'EUW1_6',
         puuid,
@@ -212,9 +211,10 @@ describe('RecentChampionStats & Average Lane CS@10 (#12 follow-up)', () => {
 
     const summary = calculateAverageLaneCsAt10(matches, puuid);
     expect(summary).toEqual({
-      avgActual: 80, // (84 + 76 + 80) / 3 = 80.0 (missing game #4 NOT counted as 0!)
-      matchCount: 3,
-      avgSpawnedSupply: 120, // (120 + 120) / 2 from games #1 and #2 only
+      avgActual: 80, // (84 + 76) / 2 = 80.0 (missing game #3 NOT counted as 0!)
+      matchCount: 2,
+      avgSupportedActual: 80,
+      avgSpawnedSupply: 120, // all 2 eligible games are on 26.1+ (ceilingMatchCount === matchCount)
       ceilingMatchCount: 2,
       supplyLabel: 'Theoretical spawned supply (not guaranteed farmable)',
     });
@@ -226,12 +226,12 @@ describe('RecentChampionStats & Average Lane CS@10 (#12 follow-up)', () => {
       <RecentChampionStats championStats={championStats} overallStats={overallStats} />
     );
     const recentAvgRow = screen.getByTestId('avg-lane-cs-10');
-    expect(recentAvgRow).toHaveTextContent('Avg CS@10 (3G):');
+    expect(recentAvgRow).toHaveTextContent('Avg CS@10 (2G):');
     expect(recentAvgRow).toHaveTextContent('80.0');
     expect(recentAvgRow).toHaveTextContent('/ 120 spawned*');
     expect(recentAvgRow).toHaveAttribute(
       'title',
-      'Average lane-only CS @ 10:00 across 3 laner games: 80.0 last-hit / 120 theoretical spawned supply (2 patch 26.1+ games; not guaranteed farmable)'
+      'Average lane-only CS @ 10:00 across 2 laner games: 80.0 last-hit / 120 theoretical spawned supply (2 patch 26.1+ games; not guaranteed farmable)'
     );
     unmount();
 
@@ -247,12 +247,144 @@ describe('RecentChampionStats & Average Lane CS@10 (#12 follow-up)', () => {
       />
     );
     const banner = screen.getByTestId('match-history-avg-lane-cs-10');
-    expect(banner).toHaveTextContent('Avg Lane CS@10 (3 games):');
+    expect(banner).toHaveTextContent('Avg Lane CS@10 (2 games):');
     expect(banner).toHaveTextContent('80.0');
     expect(banner).toHaveTextContent('/ 120 spawned*');
     expect(banner).toHaveTextContent(
       '*Theoretical spawned supply (2 patch 26.1+ games), not guaranteed farmable'
     );
+  });
+
+  it('suppresses ceiling for mixed-patch subsets (never pairing all-patch actual avg with a subset ceiling denominator) and rejects <600s duration, missing/nonfinite duration, non-SR queues, and negative CS', () => {
+    const puuid = 'player-1';
+    const mixedAndInvalidMatches: MatchDto[] = [
+      // Valid 26.1+ Ranked Solo (420) game: 88 CS@10
+      buildListedMatch({
+        matchId: 'EUW1_101',
+        puuid,
+        role: 'MIDDLE',
+        gameVersion: '16.22.1',
+        queueId: 420,
+        gameMode: 'CLASSIC',
+        gameDuration: 1800,
+        laneMinionsFirst10Minutes: 88,
+      }),
+      // Valid pre-26.1 Ranked Flex (440) game: 72 CS@10 -> makes this a mixed-patch subset (1 of 2 is 26.1+)
+      buildListedMatch({
+        matchId: 'EUW1_102',
+        puuid,
+        role: 'TOP',
+        gameVersion: '15.24.1',
+        queueId: 440,
+        gameMode: 'CLASSIC',
+        gameDuration: 1650,
+        laneMinionsFirst10Minutes: 72,
+      }),
+      // Invalid: duration < 600s (e.g. 599s remake/early termination) -> REJECTED
+      buildListedMatch({
+        matchId: 'EUW1_103',
+        puuid,
+        role: 'MIDDLE',
+        gameVersion: '16.22.1',
+        gameDuration: 599,
+        laneMinionsFirst10Minutes: 12,
+      }),
+      // Invalid: missing duration (undefined) -> REJECTED
+      {
+        metadata: { matchId: 'EUW1_104' },
+        info: {
+          gameId: 104,
+          gameDuration: undefined,
+          gameVersion: '16.22.1',
+          participants: [
+            {
+              puuid,
+              championName: 'Orianna',
+              teamId: 100,
+              teamPosition: 'MIDDLE',
+              challenges: { laneMinionsFirst10Minutes: 50 },
+            },
+          ],
+        },
+      },
+      // Invalid: non-finite duration (NaN) -> REJECTED
+      buildListedMatch({
+        matchId: 'EUW1_105',
+        puuid,
+        role: 'MIDDLE',
+        gameVersion: '16.22.1',
+        gameDuration: Number.NaN,
+        laneMinionsFirst10Minutes: 50,
+      }),
+      // Invalid: ARAM queue (queueId 450) -> REJECTED
+      buildListedMatch({
+        matchId: 'EUW1_106',
+        puuid,
+        role: 'MIDDLE',
+        gameVersion: '16.22.1',
+        queueId: 450,
+        gameMode: 'ARAM',
+        gameDuration: 1200,
+        laneMinionsFirst10Minutes: 40,
+      }),
+      // Invalid: unsupported queueId (Arena 1700) even if gameMode omitted -> REJECTED
+      buildListedMatch({
+        matchId: 'EUW1_107',
+        puuid,
+        role: 'TOP',
+        gameVersion: '16.22.1',
+        queueId: 1700,
+        gameDuration: 1200,
+        laneMinionsFirst10Minutes: 0,
+      }),
+      // Invalid: negative laneMinionsFirst10Minutes (-5) -> REJECTED
+      buildListedMatch({
+        matchId: 'EUW1_108',
+        puuid,
+        role: 'BOTTOM',
+        gameVersion: '16.22.1',
+        gameDuration: 1800,
+        laneMinionsFirst10Minutes: -5,
+      }),
+    ];
+
+    const summary = calculateAverageLaneCsAt10(mixedAndInvalidMatches, puuid);
+    expect(summary).toEqual({
+      avgActual: 80, // (88 + 72) / 2 across the 2 valid SR laner games
+      matchCount: 2,
+      avgSupportedActual: 88, // 26.1+ supported subset actual average is tracked separately
+      avgSpawnedSupply: null, // Suppressed because ceilingMatchCount (1) !== matchCount (2)
+      ceilingMatchCount: 1,
+      supplyLabel: null,
+    });
+
+    const { championStats, overallStats } = calculateStatsFromMatches(mixedAndInvalidMatches, puuid);
+    const { unmount } = render(
+      <RecentChampionStats championStats={championStats} overallStats={overallStats} />
+    );
+    const recentAvgRow = screen.getByTestId('avg-lane-cs-10');
+    expect(recentAvgRow).toHaveTextContent('Avg CS@10 (2G):');
+    expect(recentAvgRow).toHaveTextContent('80.0');
+    expect(recentAvgRow).not.toHaveTextContent('120');
+    expect(recentAvgRow).not.toHaveTextContent('spawned');
+    unmount();
+
+    render(
+      <MatchHistory
+        puuid={puuid}
+        matches={mixedAndInvalidMatches}
+        onPlayerClick={() => {}}
+        onLoadMore={() => {}}
+        hasMore={false}
+        loadingMore={false}
+        region="euw1"
+      />
+    );
+    const banner = screen.getByTestId('match-history-avg-lane-cs-10');
+    expect(banner).toHaveTextContent('Avg Lane CS@10 (2 games):');
+    expect(banner).toHaveTextContent('80.0');
+    expect(banner).not.toHaveTextContent('120');
+    expect(banner).not.toHaveTextContent('spawned');
   });
 
   it('omits the ceiling when all eligible laner games are pre-26.1 and returns null when no laner games have laneMinionsFirst10Minutes', () => {
@@ -278,6 +410,7 @@ describe('RecentChampionStats & Average Lane CS@10 (#12 follow-up)', () => {
     expect(pre26Summary).toEqual({
       avgActual: 78.5,
       matchCount: 2,
+      avgSupportedActual: null,
       avgSpawnedSupply: null,
       ceilingMatchCount: 0,
       supplyLabel: null,
