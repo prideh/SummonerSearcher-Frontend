@@ -9,6 +9,7 @@ import type { TimelineAnalysisDto, MatchPowerSpikeDto, PowerSpikePoint, MatchEve
 import ItemIcon from './ItemIcon';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import { getCorrectChampionName } from '../utils/championNameHelper';
+import { COMMITTED_DDRAGON_VERSION } from '../utils/championTags';
 
 // Riot minimap image (Map11 2dlevelminimap, 512x512 edge-to-edge with no border/padding)
 const MINIMAP_URL = 'https://raw.communitydragon.org/latest/game/levels/map11/info/2dlevelminimap.png';
@@ -269,7 +270,7 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
     events: MatchEventEntry[];
   } | null>(null);
   const cdnUrl = useDataDragonStore(state => state.cdnUrl);
-  const champCdnBase = cdnUrl || 'https://ddragon.leagueoflegends.com/cdn/16.22.1';
+  const champCdnBase = cdnUrl || `https://ddragon.leagueoflegends.com/cdn/${COMMITTED_DDRAGON_VERSION}`;
 
   useEffect(() => {
     const points = analysis.powerSpikeTimelines[selectedMatchIndex]?.points;

@@ -374,4 +374,33 @@ describe('ConsistencyStats', () => {
     render(<AnalysisTab match={supportMatch} puuid={puuid} onPlayerClick={() => {}} />);
     expect(screen.queryByText('Lane minions @ 10 min:')).not.toBeInTheDocument();
   });
+
+  test('syncs champion tags dynamically from Data Dragon at runtime with committed fallback', async () => {
+    const {
+      COMMITTED_DDRAGON_VERSION,
+      getChampionTags,
+      hasTag,
+      setRuntimeChampionTags,
+      syncChampionTagsFromDDragon,
+    } = await import('../utils/championTags');
+
+    expect(COMMITTED_DDRAGON_VERSION).toBe('16.22.1');
+    expect(hasTag('Leona', 'Tank')).toBe(true);
+
+    // Simulate a new/updated patch champion payload fetched from Data Dragon at runtime
+    syncChampionTagsFromDDragon({
+      NewPatchHero: {
+        id: 'NewPatchHero',
+        name: 'New Patch Hero',
+        tags: ['Support', 'Mage'],
+      },
+    });
+
+    expect(getChampionTags('NewPatchHero')).toEqual(['Support', 'Mage']);
+    expect(getChampionTags('New Patch Hero')).toEqual(['Support', 'Mage']);
+    // Committed fallback still works for champions not present in partial payload
+    expect(hasTag('Leona', 'Tank')).toBe(true);
+
+    setRuntimeChampionTags(null);
+  });
 });

@@ -1,5 +1,7 @@
-// Auto-generated from Riot Data Dragon 16.5.1
+// Auto-generated from Riot Data Dragon 16.22.1
 // Tags usually are: Assassin, Fighter, Mage, Marksman, Support, Tank
+export const COMMITTED_DDRAGON_VERSION = '16.22.1';
+
 export const CHAMPION_TAGS: Record<string, string[]> = {
   "Aatrox": [
     "Fighter"
@@ -730,10 +732,42 @@ export const CHAMPION_TAGS: Record<string, string[]> = {
   ]
 };
 
+let runtimeChampionTags: Record<string, string[]> | null = null;
+
+/**
+ * Replaces or clears the runtime champion tag map (used by Data Dragon runtime sync and tests).
+ */
+export const setRuntimeChampionTags = (tagsMap: Record<string, string[]> | null): void => {
+  runtimeChampionTags = tagsMap;
+};
+
+/**
+ * Builds and stores a runtime champion tag map from Data Dragon's `champion.json` data payload.
+ */
+export const syncChampionTagsFromDDragon = (
+  champions: Record<string, { id: string; name: string; tags?: string[] }>
+): Record<string, string[]> => {
+  const nextTags: Record<string, string[]> = {};
+  for (const key in champions) {
+    const champ = champions[key];
+    if (!champ || !Array.isArray(champ.tags)) continue;
+    nextTags[champ.id] = champ.tags;
+    if (champ.name && champ.id !== champ.name) {
+      nextTags[champ.name] = champ.tags;
+    }
+  }
+  runtimeChampionTags = nextTags;
+  return nextTags;
+};
+
 export const getChampionTags = (championName: string): string[] => {
+  if (runtimeChampionTags && runtimeChampionTags[championName]) {
+    return runtimeChampionTags[championName];
+  }
   return CHAMPION_TAGS[championName] || [];
 };
 
 export const hasTag = (championName: string, tag: string): boolean => {
   return getChampionTags(championName).includes(tag);
 };
+

@@ -1,5 +1,6 @@
 import { create } from 'zustand'; 
 import axios from 'axios';
+import { COMMITTED_DDRAGON_VERSION, syncChampionTagsFromDDragon } from '../utils/championTags';
 
 /** Always version-independent. Used for certain rune icon paths stored outside versioned paths. */
 const DDRAGON_IMG_URL = 'https://ddragon.leagueoflegends.com/cdn/img';
@@ -157,9 +158,9 @@ export const useDataDragonStore = create<DataDragonState>((set, get) => ({
         versionReady: true,
       });
     } catch (e) {
-      // Fallback to last known good version if the API call fails (e.g., offline)
-      console.warn('Failed to fetch DDragon version, falling back to 16.4.1', e);
-      const fallback = '16.4.1';
+      // Fallback to committed Data Dragon version if the API call fails (e.g., offline)
+      console.warn(`Failed to fetch DDragon version, falling back to ${COMMITTED_DDRAGON_VERSION}`, e);
+      const fallback = COMMITTED_DDRAGON_VERSION;
       set({
         version: fallback,
         cdnUrl: `https://ddragon.leagueoflegends.com/cdn/${fallback}`,
@@ -176,6 +177,8 @@ export const useDataDragonStore = create<DataDragonState>((set, get) => ({
     try {
       const response = await axios.get(`${get().cdnUrl}/data/en_US/item.json`);
       set({ itemMap: response.data.data });
+    } catch (e) {
+      console.warn('Failed to fetch DDragon item data', e);
     } finally {
       set(state => ({ loading: { ...state.loading, items: false } }));
     }
@@ -194,6 +197,8 @@ export const useDataDragonStore = create<DataDragonState>((set, get) => ({
         spellMap[spellData[spellName].key] = spellData[spellName];
       }
       set({ summonerSpellMap: spellMap });
+    } catch (e) {
+      console.warn('Failed to fetch DDragon summoner spell data', e);
     } finally {
       set(state => ({ loading: { ...state.loading, spells: false } }));
     }
@@ -227,24 +232,30 @@ export const useDataDragonStore = create<DataDragonState>((set, get) => ({
       });
 
       set({ runeMap });
+    } catch (e) {
+      console.warn('Failed to fetch DDragon rune data', e);
     } finally {
       set(state => ({ loading: { ...state.loading, runes: false } }));
     }
   },
   /**
-   * Fetches champion data from Data Dragon and stores it in the `championMap`, keyed by champion ID.
+   * Fetches champion data from Data Dragon, stores it in `championMap` (keyed by numeric champion ID),
+   * and syncs live champion archetype tags for consistency/stat calculations.
    */
   fetchChampionData: async () => {
     if (get().championMap || get().loading.champions) return;
     set(state => ({ loading: { ...state.loading, champions: true } }));
     try {
       const response = await axios.get(`${get().cdnUrl}/data/en_US/champion.json`);
-      const championData = response.data.data;
+      const championData: Record<string, ChampionData> = response.data.data;
       const championMap: ChampionMap = {};
       for (const championName in championData) {
         championMap[championData[championName].key] = championData[championName];
       }
+      syncChampionTagsFromDDragon(championData);
       set({ championMap });
+    } catch (e) {
+      console.warn('Failed to fetch DDragon champion data, using committed championTags fallback', e);
     } finally {
       set(state => ({ loading: { ...state.loading, champions: false } }));
     }

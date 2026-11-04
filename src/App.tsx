@@ -12,20 +12,21 @@ import AuthModal from './components/AuthModal';
  * then loading items, spells, and runes.
  */
 function App() {
-  const { fetchVersion, fetchItemData, fetchSummonerSpellData, fetchRuneData, versionReady } = useDataDragonStore();
+  const { fetchVersion, fetchItemData, fetchSummonerSpellData, fetchRuneData, fetchChampionData, versionReady } = useDataDragonStore();
 
   // Step 1: Resolve the current patch version as soon as the app loads.
   useEffect(() => {
     fetchVersion();
   }, [fetchVersion]);
 
-  // Step 2: Pre-fetch static game data only after the CDN URL has been set.
+  // Step 2: Pre-fetch static game data (including champion tags) only after the CDN URL has been set.
   useEffect(() => {
     if (!versionReady) return;
     fetchItemData();
     fetchSummonerSpellData();
     fetchRuneData();
-  }, [versionReady, fetchItemData, fetchSummonerSpellData, fetchRuneData]);
+    fetchChampionData();
+  }, [versionReady, fetchItemData, fetchSummonerSpellData, fetchRuneData, fetchChampionData]);
 
   return (
     <div className="bg-gray-100 dark:bg-gray-950 text-gray-800 dark:text-gray-200 h-screen flex flex-col overflow-y-auto">
