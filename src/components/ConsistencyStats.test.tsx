@@ -6,8 +6,8 @@ import { useDataDragonStore } from '../store/dataDragonStore';
 import {
   CLASSIC_MINION_WAVE_CONFIG,
   SEASON_2026_MINION_WAVE_CONFIG,
-  calculateAvailableLaneMinionsByMinute,
-  calculateLaneCsMissedAt10,
+  calculateSpawnedLaneMinionsByMinute,
+  calculateLaneCsAt10Comparison,
 } from '../utils/statsCalculator';
 import type { MatchDto } from '../types/match';
 
@@ -293,37 +293,39 @@ describe('ConsistencyStats', () => {
     expect(screen.queryByText('Lane minions @ 10 min')).not.toBeInTheDocument();
   });
 
-  test('computes available lane minions by 10:00 and CS missed from wave spawn/arrival timings', () => {
-    // Classic 1:05 first spawn -> 17 waves arrive in lane before 10:00 (5 cannon waves) = 107 minions
-    const classicResult = calculateAvailableLaneMinionsByMinute(10, CLASSIC_MINION_WAVE_CONFIG);
-    expect(classicResult.wavesArrived).toBe(17);
-    expect(classicResult.cannonWavesArrived).toBe(5);
-    expect(classicResult.availableMinions).toBe(107);
+  test('computes provisional theoretical spawned supply by 10:00 (120 = 19 waves x6 + 6 cannons post-26.1) from patch-parameterized spawn rules', () => {
+    // Classic 1:05 first spawn -> 18 waves spawn strictly before 10:00 (01:05 .. 09:35, 6 cannon waves on 3,6,9,12,15,18) = 114 theoretical spawned supply
+    const classicResult = calculateSpawnedLaneMinionsByMinute(10, CLASSIC_MINION_WAVE_CONFIG);
+    expect(classicResult.wavesSpawned).toBe(18);
+    expect(classicResult.cannonWavesSpawned).toBe(6);
+    expect(classicResult.spawnedSupply).toBe(114);
 
-    // Season 2026 (Patch 26.1 / DDragon 16.x) 0:30 first spawn -> 18 waves arrive before 10:00 (6 cannon waves) = 114 minions
-    const season2026Result = calculateAvailableLaneMinionsByMinute(10, SEASON_2026_MINION_WAVE_CONFIG);
-    expect(season2026Result.wavesArrived).toBe(18);
-    expect(season2026Result.cannonWavesArrived).toBe(6);
-    expect(season2026Result.availableMinions).toBe(114);
+    // Season 2026 (Patch 26.1 / DDragon 16.x) 0:30 first spawn -> 19 waves spawn strictly before 10:00 (00:30 .. 09:30, 6 cannon waves on 3,6,9,12,15,18) = 120 theoretical spawned supply
+    const season2026Result = calculateSpawnedLaneMinionsByMinute(10, SEASON_2026_MINION_WAVE_CONFIG);
+    expect(season2026Result.wavesSpawned).toBe(19);
+    expect(season2026Result.cannonWavesSpawned).toBe(6);
+    expect(season2026Result.spawnedSupply).toBe(120);
 
-    const breakdownClassic = calculateLaneCsMissedAt10(80, '15.24.1');
-    expect(breakdownClassic).toEqual({
-      hit: 80,
-      available: 107,
-      missed: 27,
-      wavesArrived: 17,
+    const comparisonClassic = calculateLaneCsAt10Comparison(80, '15.24.1');
+    expect(comparisonClassic).toEqual({
+      actual: 80,
+      spawnedSupply: 114,
+      wavesSpawned: 18,
+      cannonWavesSpawned: 6,
+      supplyLabel: 'Theoretical spawned supply (not guaranteed farmable)',
     });
 
-    const breakdownSeason2026 = calculateLaneCsMissedAt10(84, '16.5.1');
-    expect(breakdownSeason2026).toEqual({
-      hit: 84,
-      available: 114,
-      missed: 30,
-      wavesArrived: 18,
+    const comparisonSeason2026 = calculateLaneCsAt10Comparison(84, '16.5.1');
+    expect(comparisonSeason2026).toEqual({
+      actual: 84,
+      spawnedSupply: 120,
+      wavesSpawned: 19,
+      cannonWavesSpawned: 6,
+      supplyLabel: 'Theoretical spawned supply (not guaranteed farmable)',
     });
   });
 
-  test('renders role-gated CS@10 and missed CS in PlayerStats and AnalysisTab only for laners', () => {
+  test('renders role-gated CS@10 actual vs 120 theoretical spawned supply (not guaranteed farmable) across all laners with no role-specific cutoffs', () => {
     useDataDragonStore.setState({
       version: '16.5.1',
       versionReady: true,
@@ -334,20 +336,36 @@ describe('ConsistencyStats', () => {
       championMap: {},
     });
 
-    const lanerMatch = createMatch(
-      puuid,
-      { laneMinionsFirst10Minutes: 84, jungleCsBefore10Minutes: 4 },
-      { laneMinionsFirst10Minutes: 70, jungleCsBefore10Minutes: 8 },
-      'TOP'
-    );
-    lanerMatch.info!.gameVersion = '16.5.1';
-    const lanerParticipant = lanerMatch.info!.participants[0];
+    for (const lanerRole of ['TOP', 'MIDDLE', 'BOTTOM'] as const) {
+      const lanerMatch = createMatch(
+        puuid,
+        { laneMinionsFirst10Minutes: 84, jungleCsBefore10Minutes: 4 },
+        { laneMinionsFirst10Minutes: 70, jungleCsBefore10Minutes: 8 },
+        lanerRole
+      );
+      lanerMatch.info!.gameVersion = '16.5.1';
+      const lanerParticipant = lanerMatch.info!.participants[0];
 
-    const { unmount } = render(
-      <PlayerStats participant={lanerParticipant} teamParticipants={lanerMatch.info!.participants} />
-    );
-    expect(screen.getByTestId('lane-cs-10')).toHaveTextContent('CS@10: 84 (-30)');
-    unmount();
+      const { unmount } = render(
+        <PlayerStats participant={lanerParticipant} teamParticipants={lanerMatch.info!.participants} />
+      );
+      const badge = screen.getByTestId('lane-cs-10');
+      expect(badge).toHaveTextContent('CS@10: 84 / 120 spawned*');
+      expect(badge.getAttribute('title')).toContain(
+        'Lane-only CS @ 10:00: 84 last-hit / 120 theoretical spawned supply (19 waves x6 + 6 cannons; not guaranteed farmable)'
+      );
+      unmount();
+
+      const { unmount: unmountAnalysisLaner } = render(
+        <AnalysisTab match={lanerMatch} puuid={puuid} onPlayerClick={() => {}} />
+      );
+      expect(screen.getAllByText('Lane minions @ 10 min:').length).toBeGreaterThan(0);
+      expect(screen.getByText(/84 \/ 120/)).toHaveTextContent(
+        '84 / 120 (theoretical spawned supply, not guaranteed farmable)'
+      );
+      expect(screen.queryByText('Jungle cs @ 10 min:')).not.toBeInTheDocument();
+      unmountAnalysisLaner();
+    }
 
     const supportMatch = createMatch(
       puuid,
@@ -361,15 +379,6 @@ describe('ConsistencyStats', () => {
     );
     expect(screen.queryByTestId('lane-cs-10')).not.toBeInTheDocument();
     unmountSupport();
-
-    const { unmount: unmountAnalysisLaner } = render(
-      <AnalysisTab match={lanerMatch} puuid={puuid} onPlayerClick={() => {}} />
-    );
-    expect(screen.getAllByText('Lane minions @ 10 min:').length).toBeGreaterThan(0);
-    expect(screen.getByText('84 / 114 (30 missed)')).toBeInTheDocument();
-    // Jungle CS @ 10 min should be filtered out for TOP laners
-    expect(screen.queryByText('Jungle cs @ 10 min:')).not.toBeInTheDocument();
-    unmountAnalysisLaner();
 
     render(<AnalysisTab match={supportMatch} puuid={puuid} onPlayerClick={() => {}} />);
     expect(screen.queryByText('Lane minions @ 10 min:')).not.toBeInTheDocument();

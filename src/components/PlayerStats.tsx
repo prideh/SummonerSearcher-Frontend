@@ -6,7 +6,7 @@ import RuneIcon from './RuneIcon';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import { getCorrectChampionName } from '../utils/championNameHelper';
 import { getKdaColorClass } from '../utils/colorUtils';
-import { calculateLaneCsMissedAt10, isLanerPosition } from '../utils/statsCalculator';
+import { calculateLaneCsAt10Comparison, isLanerPosition } from '../utils/statsCalculator';
 
 /**
  * Props for the PlayerStats component.
@@ -52,15 +52,15 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
   // Calculate derived stats like KDA, total CS, and Kill Participation.
   const kda = ((kills ?? 0) + (assists ?? 0)) / (deaths === 0 ? 1 : (deaths ?? 1));
   const cs = (totalMinionsKilled ?? 0) + (neutralMinionsKilled ?? 0);
-  const laneCsAt10Breakdown =
+  const laneCsAt10 =
     isLanerPosition(teamPosition) && typeof challenges?.laneMinionsFirst10Minutes === 'number'
-      ? calculateLaneCsMissedAt10(challenges.laneMinionsFirst10Minutes, patchVersion)
+      ? calculateLaneCsAt10Comparison(challenges.laneMinionsFirst10Minutes, patchVersion)
       : null;
 
   const csTooltipParts = [`Minions: ${totalMinionsKilled ?? 0}`, `Jungle: ${neutralMinionsKilled ?? 0}`];
-  if (laneCsAt10Breakdown) {
+  if (laneCsAt10) {
     csTooltipParts.push(
-      `Lane CS @10: ${laneCsAt10Breakdown.hit}/${laneCsAt10Breakdown.available} (${laneCsAt10Breakdown.missed} missed)`
+      `Lane CS @10: ${laneCsAt10.actual} / ${laneCsAt10.spawnedSupply} theoretical spawned supply (${laneCsAt10.wavesSpawned} waves + ${laneCsAt10.cannonWavesSpawned} cannons; not guaranteed farmable)`
     );
   } else if (teamPosition === 'JUNGLE' && typeof challenges?.jungleCsBefore10Minutes === 'number') {
     csTooltipParts.push(`Jungle CS @10: ${Math.round(challenges.jungleCsBefore10Minutes)}`);
@@ -129,14 +129,18 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
           >
             CS: {cs}
           </p>
-          {laneCsAt10Breakdown && (
+          {laneCsAt10 && (
             <p
               className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5 whitespace-nowrap"
               data-testid="lane-cs-10"
+              title={`Lane-only CS @ 10:00: ${laneCsAt10.actual} last-hit / ${laneCsAt10.spawnedSupply} theoretical spawned supply (${laneCsAt10.wavesSpawned} waves x6 + ${laneCsAt10.cannonWavesSpawned} cannons; not guaranteed farmable)`}
               data-tooltip-id="player-name-tooltip"
-              data-tooltip-content={`Lane minions @ 10:00: ${laneCsAt10Breakdown.hit}/${laneCsAt10Breakdown.available} (${laneCsAt10Breakdown.missed} missed)`}
+              data-tooltip-content={`Lane-only CS @ 10:00: ${laneCsAt10.actual} last-hit / ${laneCsAt10.spawnedSupply} theoretical spawned supply (${laneCsAt10.wavesSpawned} waves x6 + ${laneCsAt10.cannonWavesSpawned} cannons; not guaranteed farmable)`}
             >
-              CS@10: {laneCsAt10Breakdown.hit} <span className="text-slate-400 dark:text-slate-500">(-{laneCsAt10Breakdown.missed})</span>
+              CS@10: {laneCsAt10.actual}{' '}
+              <span className="text-slate-400 dark:text-slate-500">
+                / {laneCsAt10.spawnedSupply} spawned*
+              </span>
             </p>
           )}
           <p className="text-xs font-bold text-rose-600 dark:text-rose-400 mt-0.5">KP: {killParticipation.toFixed(0)}%</p>
@@ -223,14 +227,18 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
             >
               CS: {cs}
             </p>
-            {laneCsAt10Breakdown && (
+            {laneCsAt10 && (
               <p
                 className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5 whitespace-nowrap"
                 data-testid="lane-cs-10"
+                title={`Lane-only CS @ 10:00: ${laneCsAt10.actual} last-hit / ${laneCsAt10.spawnedSupply} theoretical spawned supply (${laneCsAt10.wavesSpawned} waves x6 + ${laneCsAt10.cannonWavesSpawned} cannons; not guaranteed farmable)`}
                 data-tooltip-id="player-name-tooltip"
-                data-tooltip-content={`Lane minions @ 10:00: ${laneCsAt10Breakdown.hit}/${laneCsAt10Breakdown.available} (${laneCsAt10Breakdown.missed} missed)`}
+                data-tooltip-content={`Lane-only CS @ 10:00: ${laneCsAt10.actual} last-hit / ${laneCsAt10.spawnedSupply} theoretical spawned supply (${laneCsAt10.wavesSpawned} waves x6 + ${laneCsAt10.cannonWavesSpawned} cannons; not guaranteed farmable)`}
               >
-                CS@10: {laneCsAt10Breakdown.hit} <span className="text-slate-400 dark:text-slate-500">(-{laneCsAt10Breakdown.missed})</span>
+                CS@10: {laneCsAt10.actual}{' '}
+                <span className="text-slate-400 dark:text-slate-500">
+                  / {laneCsAt10.spawnedSupply} spawned*
+                </span>
               </p>
             )}
             <p className="text-xs font-bold text-rose-600 dark:text-rose-400 mt-0.5">KP: {killParticipation.toFixed(0)}%</p>

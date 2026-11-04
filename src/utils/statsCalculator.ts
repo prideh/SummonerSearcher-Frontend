@@ -63,30 +63,27 @@ export const isStatAllowedForPosition = (statKey: string, teamPosition?: string)
 };
 
 /**
- * Parameters defining Summoner's Rift minion wave spawn and lane arrival rules
- * during the early laning phase (first 10 minutes).
+ * Minion wave spawn parameters used to compute the provisional theoretical spawned
+ * single-lane minion supply before a given minute mark (e.g., 10:00).
  *
- * Sources:
- * - League of Legends Wiki ("Minion (League of Legends)" / "Farming"):
- *   - Pre-Season 2026 (through Patch 15.x): Wave 1 spawns at 1:05 (65s), subsequent waves
- *     spawn every 30s. Each wave has 3 melee + 3 caster minions, plus 1 siege (cannon)
- *     minion every 3rd wave starting on Wave 3 (waves 3, 6, 9, 12, 15, ...).
- *   - Since Patch 13.10, side-lane minions receive bonus movement speed before 14:00 so
- *     that Top, Mid, and Bot waves all reach the lane clash point ~28s after spawning
- *     (clashing at ~1:33-1:35 for a 1:05 spawn), requiring ~5s to be last-hit.
- * - Riot Official Patch 26.1 Notes (Season 2026 / Data Dragon 16.x):
- *   - Minion first spawn shifted 35s earlier from 1:05 (65s) to 0:30 (30s).
- *   - Pre-14:00 wave interval remains 30s; cannon cadence every 3 waves starting Wave 3.
+ * Verified Sources:
+ * - Riot Official Patch 26.1 Notes / Season 2026 Gameplay Preview & LoL Wiki (Minion):
+ *   - First wave spawns at 0:30 (30s); subsequent waves spawn every 30s until 14:00.
+ *   - Each standard wave has 3 melee + 3 caster minions (6 total).
+ *   - Cannon (siege) minions spawn on Wave 3 (1:30) and every 3rd wave thereafter until 14:00
+ *     (waves 3, 6, 9, 12, 15, 18).
+ *   - Waves spawned strictly before 10:00 (`spawnSeconds < 600`): 19 waves (0:30 through 9:30),
+ *     containing 6 cannon waves (3, 6, 9, 12, 15, 18) -> 19 * 6 + 6 = 120 minions.
+ *   - Because the final spawned wave(s) are still in transit / not guaranteed farmable by 10:00,
+ *     this value is surfaced as a provisional theoretical spawned supply ceiling (not guaranteed
+ *     farmable) alongside actual lane-only CS (`challenges.laneMinionsFirst10Minutes`), with no
+ *     role-specific arrival cutoffs.
  */
 export interface MinionWaveTimingConfig {
   /** Game clock (in seconds) when Wave 1 spawns at the Nexus. */
   firstWaveSpawnSeconds: number;
   /** Interval (in seconds) between consecutive wave spawns during the first 10 minutes. */
   waveIntervalSeconds: number;
-  /** Travel time (in seconds) from Nexus spawn to the lane center clash point. */
-  travelToClashSeconds: number;
-  /** Minimum window (in seconds) after waves clash for all minions in the wave to be last-hittable. */
-  clearBufferSeconds: number;
   /** Number of melee minions per wave. */
   meleePerWave: number;
   /** Number of caster minions per wave. */
@@ -98,10 +95,8 @@ export interface MinionWaveTimingConfig {
 }
 
 export const CLASSIC_MINION_WAVE_CONFIG: MinionWaveTimingConfig = {
-  firstWaveSpawnSeconds: 65, // 1:05
+  firstWaveSpawnSeconds: 65, // 1:05 (pre-26.1 / DDragon <= 15.x)
   waveIntervalSeconds: 30,
-  travelToClashSeconds: 28,
-  clearBufferSeconds: 5,
   meleePerWave: 3,
   casterPerWave: 3,
   firstCannonWave: 3,
@@ -111,8 +106,6 @@ export const CLASSIC_MINION_WAVE_CONFIG: MinionWaveTimingConfig = {
 export const SEASON_2026_MINION_WAVE_CONFIG: MinionWaveTimingConfig = {
   firstWaveSpawnSeconds: 30, // 0:30 (Patch 26.1 / DDragon 16.x+)
   waveIntervalSeconds: 30,
-  travelToClashSeconds: 28,
-  clearBufferSeconds: 5,
   meleePerWave: 3,
   casterPerWave: 3,
   firstCannonWave: 3,
@@ -120,7 +113,7 @@ export const SEASON_2026_MINION_WAVE_CONFIG: MinionWaveTimingConfig = {
 };
 
 /**
- * Resolves the minion wave timing configuration for a given Data Dragon or match patch version.
+ * Resolves the minion wave spawn configuration for a given Data Dragon or match patch version.
  * Season 2026 (Patch 26.1 / Data Dragon 16.x+, the current live patch) spawns Wave 1 at 0:30;
  * pre-Season 2026 patches (major version <= 15) spawned Wave 1 at 1:05.
  */
@@ -136,82 +129,88 @@ export const getMinionWaveConfigForPatch = (patchVersion?: string): MinionWaveTi
   return SEASON_2026_MINION_WAVE_CONFIG;
 };
 
-export interface AvailableLaneMinionsResult {
-  wavesArrived: number;
-  cannonWavesArrived: number;
-  availableMinions: number;
+export interface SpawnedLaneMinionsResult {
+  wavesSpawned: number;
+  cannonWavesSpawned: number;
+  spawnedSupply: number;
 }
 
 /**
- * Computes from wave spawn and arrival timings how many single-lane minions have spawned,
- * reached the lane clash point, and become available to last-hit by `minute` (default 10:00).
+ * Computes from patch-parameterized spawn rules how many single-lane minions have spawned
+ * strictly before `minute` (default 10:00, i.e. 19 waves spawning at 0:30..9:30 x6 + 6 cannons = 120
+ * under post-26.1 rules).
  */
-export const calculateAvailableLaneMinionsByMinute = (
+export const calculateSpawnedLaneMinionsByMinute = (
   minute: number = 10,
   config: MinionWaveTimingConfig = SEASON_2026_MINION_WAVE_CONFIG
-): AvailableLaneMinionsResult => {
+): SpawnedLaneMinionsResult => {
   const cutoffSeconds = minute * 60;
-  const arrivalAndClearOffset = config.travelToClashSeconds + config.clearBufferSeconds;
 
-  let wavesArrived = 0;
-  let cannonWavesArrived = 0;
-  let availableMinions = 0;
+  let wavesSpawned = 0;
+  let cannonWavesSpawned = 0;
+  let spawnedSupply = 0;
 
   for (
     let spawnSeconds = config.firstWaveSpawnSeconds, waveIndex = 1;
-    spawnSeconds + arrivalAndClearOffset <= cutoffSeconds;
+    spawnSeconds < cutoffSeconds;
     spawnSeconds += config.waveIntervalSeconds, waveIndex += 1
   ) {
-    wavesArrived += 1;
+    wavesSpawned += 1;
     const isCannonWave =
       waveIndex >= config.firstCannonWave &&
       (waveIndex - config.firstCannonWave) % config.cannonWaveInterval === 0;
     if (isCannonWave) {
-      cannonWavesArrived += 1;
+      cannonWavesSpawned += 1;
     }
-    availableMinions += config.meleePerWave + config.casterPerWave + (isCannonWave ? 1 : 0);
+    spawnedSupply += config.meleePerWave + config.casterPerWave + (isCannonWave ? 1 : 0);
   }
 
   return {
-    wavesArrived,
-    cannonWavesArrived,
-    availableMinions,
+    wavesSpawned,
+    cannonWavesSpawned,
+    spawnedSupply,
   };
 };
 
-export interface LaneCsAt10Breakdown {
-  /** Actual lane minions last-hit in the first 10 minutes (`challenges.laneMinionsFirst10Minutes`). */
-  hit: number;
-  /** Theoretical maximum single-lane minions available to last-hit by 10:00 for the patch. */
-  available: number;
-  /** Perfect possible lane CS minus actual lane minions last-hit (`Math.max(0, available - hit)`). */
-  missed: number;
-  /** Number of waves that arrived in lane by 10:00. */
-  wavesArrived: number;
+export interface LaneCsAt10Comparison {
+  /** Actual lane-only minions last-hit in the first 10 minutes (`challenges.laneMinionsFirst10Minutes`). */
+  actual: number;
+  /** Provisional theoretical spawned supply before 10:00 for the patch (120 = 19 waves x6 + 6 cannons post-26.1). */
+  spawnedSupply: number;
+  /** Number of waves spawned before 10:00 (19 in post-26.1 rules). */
+  wavesSpawned: number;
+  /** Number of cannon waves spawned before 10:00 (6 on waves 3, 6, 9, 12, 15, 18). */
+  cannonWavesSpawned: number;
+  /** Explicit label stating this ceiling is theoretical spawned supply, not guaranteed farmable. */
+  supplyLabel: string;
 }
 
 /**
- * Calculates the player's Lane CS @10 breakdown (hit, available baseline, and missed CS)
- * using `challenges.laneMinionsFirst10Minutes` (which strictly counts lane minions and
- * excludes jungle monsters).
+ * Builds the provisional comparison between actual lane-only minions last-hit by 10:00
+ * (`challenges.laneMinionsFirst10Minutes`) and the patch-computed theoretical spawned supply
+ * (120 under post-26.1 rules: 19 waves x6 + 6 cannons), explicitly labelled as theoretical
+ * spawned supply and not guaranteed farmable.
  */
-export const calculateLaneCsMissedAt10 = (
+export const calculateLaneCsAt10Comparison = (
   laneMinionsFirst10Minutes: number,
   patchOrConfig?: string | MinionWaveTimingConfig
-): LaneCsAt10Breakdown => {
+): LaneCsAt10Comparison => {
   const config =
     typeof patchOrConfig === 'object' && patchOrConfig !== null
       ? patchOrConfig
       : getMinionWaveConfigForPatch(patchOrConfig);
-  const { availableMinions, wavesArrived } = calculateAvailableLaneMinionsByMinute(10, config);
-  const hit = Math.max(0, Math.round(laneMinionsFirst10Minutes));
-  const missed = Math.max(0, availableMinions - hit);
+  const { spawnedSupply, wavesSpawned, cannonWavesSpawned } = calculateSpawnedLaneMinionsByMinute(
+    10,
+    config
+  );
+  const actual = Math.max(0, Math.round(laneMinionsFirst10Minutes));
 
   return {
-    hit,
-    available: availableMinions,
-    missed,
-    wavesArrived,
+    actual,
+    spawnedSupply,
+    wavesSpawned,
+    cannonWavesSpawned,
+    supplyLabel: 'Theoretical spawned supply (not guaranteed farmable)',
   };
 };
 
