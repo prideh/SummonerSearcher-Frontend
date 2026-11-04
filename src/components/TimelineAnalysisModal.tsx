@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -5,6 +6,8 @@ import {
   ResponsiveContainer, ReferenceLine
 } from 'recharts';
 import type { TimelineAnalysisDto, MatchPowerSpikeDto, PowerSpikePoint } from '../types/timeline';
+import ItemIcon from './ItemIcon';
+import { useDataDragonStore } from '../store/dataDragonStore';
 
 // Riot minimap image (Map11 2dlevelminimap, 512x512 edge-to-edge with no border/padding)
 const MINIMAP_URL = 'https://raw.communitydragon.org/latest/game/levels/map11/info/2dlevelminimap.png';
@@ -15,7 +18,6 @@ export const MAP_COORD_ORIGIN_Y = 0;
 export const MAP_COORD_SIZE_X = 14850;
 export const MAP_COORD_SIZE_Y = 14850;
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const projectToMinimapCanvas = (
   x: number,
   y: number,
@@ -61,7 +63,7 @@ interface CustomTooltipProps {
   payload?: Array<{ payload: PowerSpikePoint }>;
   label?: string | number;
 }
-const EventDot = (props: { cx?: number; cy?: number; payload?: PowerSpikePoint; dataKey?: string }) => {
+export const EventDot = (props: { cx?: number; cy?: number; payload?: PowerSpikePoint; dataKey?: string }) => {
   const { cx, cy, payload } = props;
   const dataKey = props.dataKey; // We explicitly passed this in the <Line dot={<EventDot dataKey="..." />} />
   
@@ -104,10 +106,15 @@ const EventDot = (props: { cx?: number; cy?: number; payload?: PowerSpikePoint; 
   );
 };
 
-const PowerSpikeTooltip = ({ active, payload, label }: CustomTooltipProps) => {
+export const PowerSpikeTooltip = ({ active, payload, label }: CustomTooltipProps) => {
+  const itemMap = useDataDragonStore(state => state.itemMap);
+
   if (!active || !payload?.length) return null;
   const data = payload[0].payload;
   const lead = data.playerGoldLead;
+  const playerItems = data.playerItems ?? [];
+  const opponentItems = data.opponentItems ?? [];
+  const hasItems = playerItems.length > 0 || opponentItems.length > 0;
   
   return (
     <div className="bg-white/95 dark:bg-gray-900/95 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-xs shadow-xl min-w-[200px] z-50 relative pointer-events-none">
@@ -135,19 +142,70 @@ const PowerSpikeTooltip = ({ active, payload, label }: CustomTooltipProps) => {
         <div className="text-gray-400 text-center font-mono">{data.playerXp.toLocaleString()}</div>
         <div className="text-gray-400 text-right font-mono">{data.opponentXp.toLocaleString()}</div>
       </div>
+
+      {hasItems && (
+        <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-800 space-y-2">
+          {playerItems.length > 0 && (
+            <div>
+              <div className="text-[10px] font-bold uppercase text-cyan-600 dark:text-cyan-400 mb-1">You Bought</div>
+              <div className="flex flex-wrap gap-1.5">
+                {playerItems.map((itemId, idx) => (
+                  <div
+                    key={`player-item-${itemId}-${idx}`}
+                    className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800/80 px-1.5 py-0.5 rounded text-[10px] text-gray-700 dark:text-gray-200"
+                  >
+                    <ItemIcon itemId={itemId} className="w-4 h-4 rounded shrink-0" />
+                    <span className="truncate max-w-[110px]">{itemMap?.[itemId]?.name ?? `Item ${itemId}`}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {opponentItems.length > 0 && (
+            <div>
+              <div className="text-[10px] font-bold uppercase text-orange-600 dark:text-orange-400 mb-1">Opp Bought</div>
+              <div className="flex flex-wrap gap-1.5">
+                {opponentItems.map((itemId, idx) => (
+                  <div
+                    key={`opp-item-${itemId}-${idx}`}
+                    className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800/80 px-1.5 py-0.5 rounded text-[10px] text-gray-700 dark:text-gray-200"
+                  >
+                    <ItemIcon itemId={itemId} className="w-4 h-4 rounded shrink-0" />
+                    <span className="truncate max-w-[110px]">{itemMap?.[itemId]?.name ?? `Item ${itemId}`}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       
       {data.events && data.events.length > 0 && (
         <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-800 space-y-1.5">
-          {data.events.map((ev, i) => (
-             <div key={i} className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-               <span className="text-xs">{ev.type === 'KILL' ? '⚔️' : ev.type === 'DEATH' ? '💀' : '🏰'}</span>
-               <span className="truncate">
-                 {ev.actor && <span className="text-gray-700 dark:text-gray-300 font-medium">{ev.actor}</span>}
-                 {ev.type === 'KILL' ? ' killed ' : ev.type === 'DEATH' ? ' died to ' : ' destroyed '}
-                 {ev.target && <span className="text-gray-700 dark:text-gray-300 font-medium">{ev.target}</span>}
-               </span>
-             </div>
-          ))}
+          {data.events.map((ev, i) => {
+             const icon =
+               ev.type === 'KILL' ? '⚔️'
+               : ev.type === 'DEATH' ? '💀'
+               : ev.type === 'ASSIST' ? '🤝'
+               : ev.type === 'OBJECTIVE' ? '🎯'
+               : '🏰';
+             const actionText =
+               ev.type === 'KILL' ? ' killed '
+               : ev.type === 'DEATH' ? ' died to '
+               : ev.type === 'ASSIST' ? ' assisted on '
+               : ev.type === 'OBJECTIVE' ? ' secured '
+               : ' destroyed ';
+             return (
+               <div key={i} className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                 <span className="text-xs">{icon}</span>
+                 <span className="truncate">
+                   {ev.actor && <span className="text-gray-700 dark:text-gray-300 font-medium">{ev.actor}</span>}
+                   {actionText}
+                   {ev.target && <span className="text-gray-700 dark:text-gray-300 font-medium">{ev.target}</span>}
+                 </span>
+               </div>
+             );
+          })}
         </div>
       )}
     </div>
