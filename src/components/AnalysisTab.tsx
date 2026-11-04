@@ -9,7 +9,7 @@ import {
   formatNumber
 } from '../utils/formatters';
 import { useDataDragonStore } from '../store/dataDragonStore';
-import { calculateLaneCsMissedAt10, isStatAllowedForPosition } from '../utils/statsCalculator';
+import { calculateLaneCsAt10Comparison, isStatAllowedForPosition } from '../utils/statsCalculator';
 import { getCorrectChampionName } from '../utils/championNameHelper';
 
 /**
@@ -89,9 +89,9 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
 
           const isTime = isTimeChallenge(key);
           const isPercentage = isPercentageChallenge(key);
-          const laneCsBreakdown =
+          const laneCsComparison =
             key === 'laneMinionsFirst10Minutes' && typeof playerValue === 'number'
-              ? calculateLaneCsMissedAt10(playerValue, patchVersion)
+              ? calculateLaneCsAt10Comparison(playerValue, patchVersion)
               : null;
 
           return (
@@ -106,9 +106,12 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
               <span className={`min-w-0 break-words font-medium ${isWinner ? 'text-emerald-700 dark:text-emerald-400 font-semibold' : 'text-slate-600 dark:text-slate-400'}`}>
                 {camelCaseToTitleCase(key)}:
               </span>
-              {laneCsBreakdown ? (
-                <span className={`font-bold pl-2 shrink-0 text-right ${isWinner ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
-                  {laneCsBreakdown.hit} / {laneCsBreakdown.available} ({laneCsBreakdown.missed} missed)
+              {laneCsComparison ? (
+                <span
+                  className={`font-bold pl-2 shrink-0 text-right ${isWinner ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
+                  title={`${laneCsComparison.wavesSpawned} waves spawned by 10:00 (${laneCsComparison.cannonWavesSpawned} cannon waves). ${laneCsComparison.uncertaintyNote}.`}
+                >
+                  {laneCsComparison.actual} last-hit <span className="font-normal text-slate-400 dark:text-slate-500">(≤{laneCsComparison.spawnedCeiling} spawned, ±1–2 waves in transit)</span>
                 </span>
               ) : typeof playerValue === 'number' ? (
                 <span className={`font-bold pl-2 shrink-0 text-right ${isWinner ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
