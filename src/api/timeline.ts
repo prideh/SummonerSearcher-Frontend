@@ -1,4 +1,5 @@
 import apiClient from './apiClient';
+import { normalizeTimelineAnalysisDto, type TimelineAnalysisDto } from '../types/timeline';
 
 export interface TimelineAnalysisRequest {
   region: string;
@@ -15,8 +16,9 @@ export const getMatchTimeline = async (region: string, matchId: string) => {
 
 /**
  * Fetches and analyzes the last 10 ranked match timelines for a player.
+ * Normalizes Jackson boolean field names (`player`/`opponent`) to `isPlayer`/`isOpponent`.
  */
-export const analyzeTimelines = async (region: string, puuid: string) => {
+export const analyzeTimelines = async (region: string, puuid: string): Promise<TimelineAnalysisDto> => {
   const response = await apiClient.get(`/riot/timeline/analyze/${region}/${puuid}`);
-  return response.data;
+  return normalizeTimelineAnalysisDto(response.data);
 };

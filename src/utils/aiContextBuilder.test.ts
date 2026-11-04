@@ -12,7 +12,7 @@ import {
 import { useDataDragonStore } from '../store/dataDragonStore';
 import type { MatchDto, ParticipantDto } from '../types/match';
 import type { ChampionStats, OverallStats } from '../types/summoner';
-import type { TimelineAnalysisDto } from '../types/timeline';
+import { normalizeTimelineAnalysisDto, type TimelineAnalysisDto } from '../types/timeline';
 
 const BASE_OVERALL_STATS: OverallStats = {
   wins: 1,
@@ -422,7 +422,8 @@ describe('aiContextBuilder (#14)', () => {
           opponentChampion: 'Syndra',
           win: true,
           events: [
-            // Real backend DEATH event today: actor = player ("Ahri"), target = killer ("Syndra"),
+            // Real backend Jackson serialization: `player` / `opponent` (NOT `isPlayer` / `isOpponent`),
+            // actor = player ("Ahri"), target = killer ("Syndra"),
             // NO `killer` field, NO `assistants` field, NO `WARD_PLACED` events in eventTimelines.
             {
               minuteMark: 3,
@@ -430,8 +431,8 @@ describe('aiContextBuilder (#14)', () => {
               type: 'DEATH',
               actor: 'Ahri',
               target: 'Syndra',
-              isPlayer: true,
-              isOpponent: true,
+              player: true,
+              opponent: true,
               laneType: null,
               monsterType: null,
               position: { x: 5200, y: 5100 }, // Mid Lane
@@ -442,11 +443,24 @@ describe('aiContextBuilder (#14)', () => {
               type: 'DEATH',
               actor: 'Ahri',
               target: 'Viego',
-              isPlayer: true,
-              isOpponent: false,
+              player: true,
+              opponent: false,
               laneType: null,
               monsterType: null,
               position: null, // Missing position
+            },
+            // Opponent's own death (`player: false, opponent: true`) must NOT be counted as a player death!
+            {
+              minuteMark: 6,
+              secondMark: 15,
+              type: 'DEATH',
+              actor: 'Syndra',
+              target: 'LeeSin',
+              player: false,
+              opponent: true,
+              laneType: null,
+              monsterType: null,
+              position: { x: 7400, y: 7400 },
             },
           ],
         },
@@ -480,7 +494,7 @@ describe('aiContextBuilder (#14)', () => {
     expect(ctx.recentMatches[0].timelineAt10).toBeUndefined();
     expect(ctx.recentMatches[0].deathContext).toBeUndefined();
 
-    // Match 2 (EUW1_1002) receives its matched timeline
+    // Match 2 (EUW1_1002) receives its matched timeline with 2 player deaths (opponent death excluded)
     const m2 = ctx.recentMatches[1];
     expect(m2.matchId).toBe('EUW1_1002');
     expect(m2.timelineAt10).toEqual({ goldDiff: -200, xpDiff: -150, csDiff: -6 });
@@ -525,6 +539,224 @@ describe('aiContextBuilder (#14)', () => {
     expect(ctx.timelineInsights?.missingPositionDeaths).toBe(1);
     expect(ctx.timelineInsights?.wardsByTimeBucket).toBeNull();
     expect(ctx.timelineInsights?.missingTimelineMatches).toBe(1);
+  });
+
+  it('normalizes production-shaped /timeline/analyze Jackson payload (event.player / event.opponent without isPlayer / isOpponent) so 4 Galio player deaths are accurately extracted', () => {
+    const galioMatch = createMatch({
+      matchId: 'NA1_5200001',
+      gameVersion: '26.1.1',
+      playerOverrides: {
+        championName: 'Galio',
+        teamPosition: 'MIDDLE',
+        kills: 3,
+        deaths: 4,
+        assists: 9,
+      },
+    });
+
+    // Production-shaped /riot/timeline/analyze payload serialized by Spring Boot Jackson:
+    // MatchEventEntry getters `boolean isPlayer()` and `boolean isOpponent()` serialize as `"player"` and `"opponent"`.
+    const rawProductionPayload = {
+      heatmapPositions: [{ x: 7100, y: 7200, matchId: 'NA1_5200001', minute: 4 }],
+      wardPositions: [{ x: 6400, y: 8100, matchId: 'NA1_5200001', minute: 3 }],
+      killPositions: [{ x: 7500, y: 7400, matchId: 'NA1_5200001', minute: 7 }],
+      deathPositions: [
+        { x: 6900, y: 7000, matchId: 'NA1_5200001', minute: 4 },
+        { x: 5100, y: 10300, matchId: 'NA1_5200001', minute: 9 },
+        { x: 9800, y: 4500, matchId: 'NA1_5200001', minute: 13 },
+        { x: 8500, y: 8600, matchId: 'NA1_5200001', minute: 21 },
+      ],
+      assistPositions: [],
+      powerSpikeTimelines: [
+        {
+          matchId: 'NA1_5200001',
+          playerChampion: 'Galio',
+          opponentChampion: 'Sylas',
+          win: true,
+          points: [
+            {
+              minute: 10,
+              playerGold: 3350,
+              opponentGold: 3500,
+              playerGoldLead: -150,
+              playerXp: 4400,
+              opponentXp: 4550,
+              playerCs: 74,
+              opponentCs: 81,
+              playerItems: [1056, 3111],
+              opponentItems: [1056, 3020],
+              events: [
+                {
+                  type: 'DEATH' as const,
+                  minuteMark: 9,
+                  secondMark: 24,
+                  actor: 'Galio',
+                  target: 'Viego',
+                  player: true,
+                  opponent: false,
+                  laneType: null,
+                  monsterType: null,
+                  position: { x: 5100, y: 10300 },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      buildOrders: [],
+      skillOrders: [],
+      eventTimelines: [
+        {
+          matchId: 'NA1_5200001',
+          playerChampion: 'Galio',
+          opponentChampion: 'Sylas',
+          win: true,
+          events: [
+            // 4 real Galio deaths (`player: true`) + 2 Sylas opponent deaths (`player: false, opponent: true`)
+            {
+              type: 'DEATH' as const,
+              minuteMark: 4,
+              secondMark: 12,
+              actor: 'Galio',
+              target: 'Sylas',
+              killer: 'Sylas',
+              assistants: ['Viego'],
+              player: true,
+              opponent: true,
+              laneType: 'MID_LANE',
+              monsterType: null,
+              position: { x: 6900, y: 7000 },
+            },
+            {
+              type: 'DEATH' as const,
+              minuteMark: 6,
+              secondMark: 40,
+              actor: 'Sylas',
+              target: 'Galio',
+              killer: 'Galio',
+              assistants: ['LeeSin'],
+              player: false,
+              opponent: true,
+              laneType: 'MID_LANE',
+              monsterType: null,
+              position: { x: 7500, y: 7400 },
+            },
+            {
+              type: 'DEATH' as const,
+              minuteMark: 9,
+              secondMark: 24,
+              actor: 'Galio',
+              target: 'Viego',
+              killer: 'Viego',
+              assistants: ['Sylas'],
+              player: true,
+              opponent: false,
+              laneType: null,
+              monsterType: null,
+              position: { x: 5100, y: 10300 },
+            },
+            {
+              type: 'DEATH' as const,
+              minuteMark: 13,
+              secondMark: 48,
+              actor: 'Galio',
+              target: 'Jinx',
+              killer: 'Jinx',
+              assistants: [],
+              player: true,
+              opponent: false,
+              laneType: null,
+              monsterType: null,
+              position: { x: 9800, y: 4500 },
+            },
+            {
+              type: 'DEATH' as const,
+              minuteMark: 18,
+              secondMark: 15,
+              actor: 'Sylas',
+              target: 'Jinx',
+              killer: 'Jinx',
+              assistants: ['Galio'],
+              player: false,
+              opponent: true,
+              laneType: null,
+              monsterType: null,
+              position: { x: 8000, y: 8000 },
+            },
+            {
+              type: 'DEATH' as const,
+              minuteMark: 21,
+              secondMark: 5,
+              actor: 'Galio',
+              target: 'Sylas',
+              killer: 'Sylas',
+              assistants: [],
+              player: true,
+              opponent: true,
+              laneType: 'MID_LANE',
+              monsterType: null,
+              position: { x: 8500, y: 8600 },
+            },
+          ],
+        },
+      ],
+      aggregateSummary: {
+        avgFirstDeathMinute: 4.2,
+        mostDangerousZone: 'Mid Lane',
+        avgGoldLeadAt10: -150,
+        avgGoldLeadAt15: 100,
+        wardsPlacedTotal: 11,
+        deathsTotal: 4,
+        killsTotal: 3,
+        assistsTotal: 9,
+        gamesAnalyzed: 1,
+      },
+    } satisfies TimelineAnalysisDto;
+
+    // Works both when passed raw to buildAiContext AND when normalized via normalizeTimelineAnalysisDto
+    const ctxRaw = buildAiContext(
+      'Faker',
+      'KR1',
+      [galioMatch],
+      'player-puuid',
+      null,
+      BASE_CHAMPION_STATS,
+      BASE_OVERALL_STATS,
+      rawProductionPayload
+    );
+
+    const m = ctxRaw.recentMatches[0];
+    expect(m.champion).toBe('Galio');
+    expect(m.deathContext).toBeDefined();
+    expect(m.deathContext?.totalDeaths).toBe(4);
+    expect(m.deathContext?.firstDeathMinute).toBe(4.2);
+    expect(m.deathContext?.deathsBefore10).toBe(2);
+    expect(m.deathContext?.assistedDeaths).toBe(2);
+    expect(m.deathContext?.unassistedDeaths).toBe(2);
+    expect(m.deathContext?.unknownAssistDeaths).toBe(0);
+    expect(m.deathContext?.earlyDeaths).toHaveLength(3); // 3 pre-15m Galio deaths (4:12, 9:24, 13:48)
+    expect(m.deathContext?.earlyDeaths.map(d => d.time)).toEqual(['04:12', '09:24', '13:48']);
+    expect(m.deathContext?.earlyDeaths.map(d => d.killer)).toEqual(['Sylas', 'Viego', 'Jinx']);
+
+    const normalizedPayload = normalizeTimelineAnalysisDto(rawProductionPayload);
+    expect(normalizedPayload.eventTimelines[0].events[0].isPlayer).toBe(true);
+    expect(normalizedPayload.eventTimelines[0].events[0].isOpponent).toBe(true);
+    expect(normalizedPayload.eventTimelines[0].events[1].isPlayer).toBe(false);
+    expect(normalizedPayload.eventTimelines[0].events[1].isOpponent).toBe(true);
+    expect(normalizedPayload.powerSpikeTimelines[0].points[0].events[0].isPlayer).toBe(true);
+    expect(normalizedPayload.powerSpikeTimelines[0].points[0].events[0].isOpponent).toBe(false);
+
+    const ctxNormalized = buildAiContext(
+      'Faker',
+      'KR1',
+      [galioMatch],
+      'player-puuid',
+      null,
+      BASE_CHAMPION_STATS,
+      BASE_OVERALL_STATS,
+      normalizedPayload
+    );
+    expect(ctxNormalized.recentMatches[0].deathContext).toEqual(m.deathContext);
   });
 
   it('enriches matches with timeline diffs, death context (labelled assisted, never gank), capped item spikes, and skillMaxOrder when backend provides assistants and WARD_PLACED events', () => {

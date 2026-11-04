@@ -5,7 +5,14 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine
 } from 'recharts';
-import type { TimelineAnalysisDto, MatchPowerSpikeDto, PowerSpikePoint, MatchEventEntry } from '../types/timeline';
+import {
+  isPlayerTimelineEvent,
+  isOpponentTimelineEvent,
+  type TimelineAnalysisDto,
+  type MatchPowerSpikeDto,
+  type PowerSpikePoint,
+  type MatchEventEntry,
+} from '../types/timeline';
 import ItemIcon from './ItemIcon';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import { getCorrectChampionName } from '../utils/championNameHelper';
@@ -70,7 +77,7 @@ export const findHoveredHeatmapEvents = (
   for (const ev of events) {
     if (!ev.position) continue;
     if (ev.minuteMark > timelineMinute) continue;
-    if (ev.isPlayer === false) continue;
+    if (!isPlayerTimelineEvent(ev)) continue;
     if (!isHeatmapEventLayerActive(ev, activeLayers)) continue;
 
     const { cx, cy } = projectToMinimapCanvas(ev.position.x, ev.position.y, canvasW, canvasH);
@@ -116,8 +123,8 @@ export const EventDot = (props: { cx?: number; cy?: number; payload?: PowerSpike
   
   // Look at events related to the line we are drawing on
   const relevantEvents = dataKey === 'playerGold' 
-    ? events.filter(e => e.isPlayer)
-    : events.filter(e => e.isOpponent);
+    ? events.filter(e => isPlayerTimelineEvent(e))
+    : events.filter(e => isOpponentTimelineEvent(e));
     
   if (relevantEvents.length === 0) return null;
 

@@ -67,11 +67,88 @@ export interface MatchEventEntry {
   participants?: string[] | null;
   zone?: string | null;
   wardType?: string | null;
-  isPlayer: boolean;
-  isOpponent: boolean;
+  /** Frontend normalized boolean flag (`true` when event involves the queried player). */
+  isPlayer?: boolean;
+  /** Frontend normalized boolean flag (`true` when event involves the lane opponent). */
+  isOpponent?: boolean;
+  /** Jackson boolean property serialized by Spring Boot (`boolean isPlayer()` -> `"player"`). */
+  player?: boolean;
+  /** Jackson boolean property serialized by Spring Boot (`boolean isOpponent()` -> `"opponent"`). */
+  opponent?: boolean;
   laneType: string | null;
   monsterType: string | null;
   position: { x: number; y: number } | null;
+}
+
+/**
+ * Resolves whether a timeline event belongs to the queried player across both
+ * Jackson's `player` property (`boolean isPlayer()` getter) and `isPlayer`.
+ */
+export function isPlayerTimelineEvent(
+  ev: Pick<MatchEventEntry, 'isPlayer' | 'player'> | null | undefined
+): boolean {
+  if (!ev) return false;
+  if (typeof ev.isPlayer === 'boolean') return ev.isPlayer;
+  if (typeof ev.player === 'boolean') return ev.player;
+  return false;
+}
+
+/**
+ * Resolves whether a timeline event belongs to the lane opponent across both
+ * Jackson's `opponent` property (`boolean isOpponent()` getter) and `isOpponent`.
+ */
+export function isOpponentTimelineEvent(
+  ev: Pick<MatchEventEntry, 'isOpponent' | 'opponent'> | null | undefined
+): boolean {
+  if (!ev) return false;
+  if (typeof ev.isOpponent === 'boolean') return ev.isOpponent;
+  if (typeof ev.opponent === 'boolean') return ev.opponent;
+  return false;
+}
+
+/**
+ * Normalizes a single `MatchEventEntry` so both `isPlayer`/`player` and `isOpponent`/`opponent`
+ * are populated consistently regardless of whether the payload came from Jackson (`player`/`opponent`)
+ * or frontend fixtures (`isPlayer`/`isOpponent`).
+ */
+export function normalizeMatchEventEntry(ev: MatchEventEntry): MatchEventEntry {
+  const isPlayer = isPlayerTimelineEvent(ev);
+  const isOpponent = isOpponentTimelineEvent(ev);
+  return {
+    ...ev,
+    isPlayer,
+    isOpponent,
+    player: isPlayer,
+    opponent: isOpponent,
+  };
+}
+
+/**
+ * Normalizes all `MatchEventEntry` items inside a `TimelineAnalysisDto` (`eventTimelines` and
+ * `powerSpikeTimelines[].points[].events`).
+ */
+export function normalizeTimelineAnalysisDto(dto: TimelineAnalysisDto): TimelineAnalysisDto {
+  if (!dto || typeof dto !== 'object') return dto;
+  return {
+    ...dto,
+    powerSpikeTimelines: Array.isArray(dto.powerSpikeTimelines)
+      ? dto.powerSpikeTimelines.map(spike => ({
+          ...spike,
+          points: Array.isArray(spike.points)
+            ? spike.points.map(pt => ({
+                ...pt,
+                events: Array.isArray(pt.events) ? pt.events.map(normalizeMatchEventEntry) : [],
+              }))
+            : [],
+        }))
+      : [],
+    eventTimelines: Array.isArray(dto.eventTimelines)
+      ? dto.eventTimelines.map(et => ({
+          ...et,
+          events: Array.isArray(et.events) ? et.events.map(normalizeMatchEventEntry) : [],
+        }))
+      : [],
+  };
 }
 
 export interface MatchEventTimelineDto {

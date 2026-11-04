@@ -1,12 +1,13 @@
 import type { MatchDto, ParticipantDto } from '../types/match';
 import type { ChampionStats, OverallStats } from '../types/summoner';
-import type {
-  BuildOrderDto,
-  MatchEventTimelineDto,
-  MatchPowerSpikeDto,
-  SkillOrderDto,
-  TimelineAggregateSummary,
-  TimelineAnalysisDto,
+import {
+  isPlayerTimelineEvent,
+  type BuildOrderDto,
+  type MatchEventTimelineDto,
+  type MatchPowerSpikeDto,
+  type SkillOrderDto,
+  type TimelineAggregateSummary,
+  type TimelineAnalysisDto,
 } from '../types/timeline';
 import { useDataDragonStore, type ItemMap, type RuneMap, type SummonerSpellMap } from '../store/dataDragonStore';
 import {
@@ -404,7 +405,7 @@ function extractMatchDeathContext(
     .map(ev => ev.minuteMark + (ev.secondMark ?? 0) / 60);
 
   const playerDeaths = events
-    .filter(ev => ev.type === 'DEATH' && ev.isPlayer !== false)
+    .filter(ev => ev.type === 'DEATH' && isPlayerTimelineEvent(ev))
     .sort((a, b) => a.minuteMark * 60 + (a.secondMark ?? 0) - (b.minuteMark * 60 + (b.secondMark ?? 0)));
 
   let firstDeathMinute: number | null = null;
@@ -924,7 +925,7 @@ export function buildAiContext(
         totalDeathsNearObjectives += ctx.deathsNearObjectiveWindows;
       }
       for (const ev of evTimeline.events || []) {
-        if (ev.type === 'WARD_PLACED' && ev.isPlayer !== false) {
+        if (ev.type === 'WARD_PLACED' && isPlayerTimelineEvent(ev)) {
           wardEventsCount += 1;
           if (ev.minuteMark < 10) wardBuckets.pre10 += 1;
           else if (ev.minuteMark < 20) wardBuckets.min10To20 += 1;
