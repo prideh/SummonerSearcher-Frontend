@@ -212,9 +212,9 @@ const GraphsTab: React.FC<GraphsTabProps> = ({ match, puuid, onPlayerClick }) =>
   }
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4 telemetry-nums">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">
+        <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
           {/* Dynamically set the title based on the selected graph type */}
           {
             selectedGraph === 'damage' ? 'Damage to Champions' :
@@ -240,7 +240,7 @@ const GraphsTab: React.FC<GraphsTabProps> = ({ match, puuid, onPlayerClick }) =>
         <select
           value={selectedGraph}
           onChange={(e) => setSelectedGraph(e.target.value as GraphType)}
-          className="p-1 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm self-end sm:self-auto"
+          className="px-3 py-1.5 border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-[#0b101d] text-slate-800 dark:text-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs self-end sm:self-auto"
         >
           <option value="damage">Damage</option>
           <option value="damageTaken">Damage Taken</option>

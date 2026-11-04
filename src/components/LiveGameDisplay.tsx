@@ -161,15 +161,15 @@ const LiveGameDisplay: React.FC<LiveGameDisplayProps> = ({ gameData, onPlayerCli
   const redBans = gameData.bannedChampions.filter(b => b.teamId === 200).sort((a, b) => a.pickTurn - b.pickTurn);
 
   const renderBans = (bans: BannedChampion[]) => (
-      <div className="flex items-center space-x-1 mb-3">
-          <span className="text-xs text-gray-500 mr-1">Bans:</span>
+      <div className="flex items-center space-x-1 mb-2.5">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mr-1">Bans:</span>
           {bans.map(ban => (
               <img
                 loading="lazy"
                   key={ban.pickTurn}
                   src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${ban.championId}.png`}
                   alt="Banned Champion"
-                  className="w-6 h-6 rounded border border-gray-600 grayscale opacity-70"
+                  className="w-6 h-6 rounded border border-slate-300 dark:border-slate-700 grayscale opacity-75"
                   title="Banned"
                    onError={(e) => {
                       (e.target as HTMLImageElement).src = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/-1.png';
@@ -180,11 +180,7 @@ const LiveGameDisplay: React.FC<LiveGameDisplayProps> = ({ gameData, onPlayerCli
   );
 
   const renderParticipant = (participant: CurrentGameParticipant, index: number) => {
-    // riotId contains "GameName#Tag" or Champion Name (if anonymous)
-    // We can display it directly.
     const displayName = participant.riotId || participant.summonerName || 'Unknown';
-    
-    // Check if it's a valid player with a Riot ID (contains #)
     const isClickable = participant.riotId && participant.riotId.includes('#');
 
     const handleClick = () => {
@@ -196,10 +192,9 @@ const LiveGameDisplay: React.FC<LiveGameDisplayProps> = ({ gameData, onPlayerCli
         }
     };
 
-    // Calculate Winrate
     let winrate = 0;
     let totalGames = 0;
-    let winrateColor = 'text-gray-400';
+    let winrateColor = 'text-slate-500 dark:text-slate-400';
 
     if (participant.wins !== undefined && participant.losses !== undefined) {
         totalGames = participant.wins + participant.losses;
@@ -212,7 +207,7 @@ const LiveGameDisplay: React.FC<LiveGameDisplayProps> = ({ gameData, onPlayerCli
     return (
       <div 
         key={participant.puuid || `participant-${index}`} 
-        className={`flex items-center space-x-3 mb-2 bg-gray-800/40 p-2 rounded-md transition-colors ${isClickable ? 'cursor-pointer hover:bg-gray-700/60' : ''}`}
+        className={`flex items-center space-x-3 mb-1.5 bg-white/90 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-800 p-2 rounded-md transition-colors telemetry-nums ${isClickable ? 'cursor-pointer hover:border-sky-400 dark:hover:border-cyan-500/60' : ''}`}
         onClick={handleClick}
       >
         {/* Champion Icon */}
@@ -220,7 +215,7 @@ const LiveGameDisplay: React.FC<LiveGameDisplayProps> = ({ gameData, onPlayerCli
           loading="lazy"
           src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${participant.championId}.png`}
           alt="Champion"
-          className="w-9 h-9 rounded-full border-2 border-gray-600 shrink-0"
+          className="w-9 h-9 rounded-md border border-slate-300 dark:border-slate-700 shrink-0"
           onError={(e) => {
               (e.target as HTMLImageElement).src = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/-1.png';
           }}
@@ -233,30 +228,30 @@ const LiveGameDisplay: React.FC<LiveGameDisplayProps> = ({ gameData, onPlayerCli
                 <SummonerSpellIcon spellId={participant.spell2Id} className="w-4 h-4 rounded" />
             </div>
             <div className="flex flex-col space-y-0.5">
-                <RuneIcon runeId={participant.perks.perkIds[0]} isKeystone={true} className="w-4 h-4 bg-black/50 rounded-full p-0.5" />
-                <RuneIcon runeId={participant.perks.perkSubStyle} className="w-4 h-4 bg-black/50 rounded-full p-0.5" />
+                <RuneIcon runeId={participant.perks.perkIds[0]} isKeystone={true} className="w-4 h-4 bg-slate-900/80 rounded-full p-0.5" />
+                <RuneIcon runeId={participant.perks.perkSubStyle} className="w-4 h-4 bg-slate-900/80 rounded-full p-0.5" />
             </div>
         </div>
         
         {/* Name and Rank */}
         <div className="flex flex-col min-w-0">
-            <div className={`text-sm font-bold truncate ${isClickable ? 'text-cyan-400 hover:text-cyan-300' : 'text-gray-200'}`} title={displayName}>
+            <div className={`text-xs font-bold truncate ${isClickable ? 'text-sky-600 dark:text-cyan-400 hover:underline' : 'text-slate-800 dark:text-slate-200'}`} title={displayName}>
             {displayName}
             </div>
             {participant.tier && (
-                <div className="text-xs text-gray-400 flex items-center space-x-1">
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center space-x-1">
                     <img
                       loading="lazy"
                         src={`${communityDragonUrl}/rcp-fe-lol-shared-components/global/default/images/${participant.tier.toLowerCase()}.png`}
                         alt={participant.tier}
                         className="w-3.5 h-3.5"
                     />
-                    <span>{participant.tier} {participant.rank} ({participant.leaguePoints} LP)</span>
+                    <span className="font-medium">{participant.tier} {participant.rank} ({participant.leaguePoints} LP)</span>
                     {totalGames > 0 && (
                         <span className="hidden md:inline-flex items-center space-x-1">
-                            <span className="text-gray-600 mx-1">|</span>
-                            <span className={winrateColor}>{winrate}% WR</span>
-                            <span className="text-gray-500">({participant.wins}W {participant.losses}L)</span>
+                            <span className="text-slate-300 dark:text-slate-600 mx-1">|</span>
+                            <span className={`font-bold ${winrateColor}`}>{winrate}% WR</span>
+                            <span className="text-slate-400 dark:text-slate-500">({participant.wins}W {participant.losses}L)</span>
                         </span>
                     )}
                 </div>
@@ -267,30 +262,31 @@ const LiveGameDisplay: React.FC<LiveGameDisplayProps> = ({ gameData, onPlayerCli
   };
 
   return (
-    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3.5 mt-4 animate-fade-in">
-        <div className="flex justify-between items-center mb-3 border-b border-gray-700 pb-2">
-            <h3 className="text-base font-bold text-gray-100">
-                Live Game <span className="text-xs font-normal text-gray-400">(Ranked SoloQ)</span>
+    <div className="bg-slate-50 dark:bg-[#0b101d] border border-slate-200 dark:border-slate-800 rounded-lg p-3.5 mt-4 animate-fade-in telemetry-nums">
+        <div className="flex justify-between items-center mb-3 border-b border-slate-200 dark:border-slate-800 pb-2">
+            <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Live Game <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 normal-case">(Ranked SoloQ)</span>
             </h3>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
                 {Math.floor(elapsedTime / 60)}m {elapsedTime % 60}s
             </span>
         </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* Blue Team */}
-        <div className="bg-blue-900/20 p-2.5 rounded border border-blue-900/30">
-          <div className="flex justify-between items-center mb-2.5">
-              <h4 className="text-blue-400 font-bold text-xs uppercase tracking-wide">Blue Team</h4>
+        <div className="bg-sky-50/50 dark:bg-sky-950/20 p-2.5 rounded-lg border border-sky-200/80 dark:border-sky-900/40">
+          <div className="flex justify-between items-center mb-2">
+              <h4 className="text-sky-600 dark:text-sky-400 font-extrabold text-xs uppercase tracking-wider">Blue Team</h4>
               {blueBans.length > 0 && renderBans(blueBans)}
           </div>
           {blueTeam.map(renderParticipant)}
         </div>
 
         {/* Red Team */}
-        <div className="bg-red-900/20 p-2.5 rounded border border-red-900/30">
-          <div className="flex justify-between items-center mb-2.5">
-              <h4 className="text-red-400 font-bold text-xs uppercase tracking-wide">Red Team</h4>
+        <div className="bg-rose-50/50 dark:bg-rose-950/20 p-2.5 rounded-lg border border-rose-200/80 dark:border-rose-900/40">
+          <div className="flex justify-between items-center mb-2">
+              <h4 className="text-rose-600 dark:text-rose-400 font-extrabold text-xs uppercase tracking-wider">Red Team</h4>
               {redBans.length > 0 && renderBans(redBans)}
           </div>
           {redTeam.map(renderParticipant)}

@@ -205,41 +205,41 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
   }
 
   const isWin = playerParticipant.win;
-  const accentClass = isWin ? 'border-green-500/50' : 'border-red-500/50';
+  const accentClass = isWin ? 'border-emerald-500/50' : 'border-rose-500/50';
 
   return (
-    <div className="p-3 sm:p-4 space-y-6">
+    <div className="p-3.5 sm:p-4 space-y-6 telemetry-nums">
 
       {/* ── Build Order ── */}
       <section>
-        <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
-          <span className="text-lg">🛡️</span> Item Build Order
+        <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
+          <span className="text-base">🛡️</span> Item Build Order
         </h3>
         {buildGroups.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">No item purchases found.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">No item purchases found.</p>
         ) : (
           <div className="overflow-x-auto sm:overflow-x-visible pb-2">
             <div className="flex items-center gap-2 min-w-max sm:min-w-0 flex-wrap">
               {buildGroups.map((group, gi) => (
                 <React.Fragment key={gi}>
                   {gi > 0 && (
-                    <span className="text-gray-300 dark:text-gray-600 text-xl select-none">›</span>
+                    <span className="text-slate-300 dark:text-slate-600 text-xl select-none">›</span>
                   )}
                   <div className="flex flex-col items-center gap-1.5">
                     {/* Item icons */}
-                    <div className={`flex gap-1 p-1.5 rounded-xl bg-gray-100 dark:bg-gray-800/60 border ${accentClass}`}>
+                    <div className={`flex gap-1 p-1.5 rounded-lg bg-slate-50 dark:bg-[#0b101d] border ${accentClass}`}>
                       {group.items.map((item, ii) => (
                         <div
                           key={ii}
-                          className="rounded-lg overflow-hidden hover:scale-110 transition-transform shadow-sm"
+                          className="rounded overflow-hidden hover:scale-105 transition-transform"
                           title={`Item ${item.itemId}`}
                         >
-                          <ItemIcon itemId={item.itemId} className="w-8 h-8 rounded-lg" />
+                          <ItemIcon itemId={item.itemId} className="w-8 h-8 rounded" />
                         </div>
                       ))}
                     </div>
                     {/* Minute badge */}
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 tracking-wide">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 tracking-wide">
                       {group.minute}m
                     </span>
                   </div>
@@ -252,19 +252,19 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
 
       {/* ── Skill Order ── */}
       <section>
-        <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
-          <span className="text-lg">⚡</span> Skill Order
+        <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
+          <span className="text-base">⚡</span> Skill Order
         </h3>
         {skillUps.length > 0 ? (
           <div className="space-y-3">
             {/* Max order summary */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-gray-500 dark:text-gray-400">Max Priority:</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">Max Priority:</span>
               {maxOrder.map((slot, i) => (
                 <React.Fragment key={slot}>
-                  {i > 0 && <span className="text-gray-400 dark:text-gray-600">›</span>}
+                  {i > 0 && <span className="text-slate-400 dark:text-slate-600">›</span>}
                   <span
-                    className="w-7 h-7 rounded-md flex items-center justify-center text-sm font-bold text-white shadow"
+                    className="w-7 h-7 rounded-md flex items-center justify-center text-sm font-bold text-white shadow-xs"
                     style={{ backgroundColor: SKILL_COLORS[slot] }}
                   >
                     {SKILL_LABELS[slot]}
@@ -279,7 +279,7 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
                 return (
                   <div
                     key={i}
-                    className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold text-white shadow-sm transition-transform hover:scale-110"
+                    className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold text-white shadow-xs transition-transform hover:scale-105"
                     style={{
                       backgroundColor: isR ? SKILL_MAX_COLORS[4] : SKILL_COLORS[su.skillSlot],
                       border: isR ? '2px solid #f59e0b' : 'none',
@@ -293,35 +293,35 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
             </div>
           </div>
         ) : (
-          <p className="text-sm text-gray-500 dark:text-gray-400">No skill level data found.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">No skill level data found.</p>
         )}
       </section>
 
       {/* ── Event Timeline ── */}
       <section>
-        <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
-          <span className="text-lg">📋</span> Key Events
+        <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
+          <span className="text-base">📋</span> Key Events
         </h3>
         {events.length > 0 ? (
-          <div className="overflow-x-auto overflow-y-auto max-h-96 rounded-lg border border-gray-200 dark:border-gray-800 w-full sm:inline-block sm:w-auto">
+          <div className="overflow-x-auto overflow-y-auto max-h-96 rounded-lg border border-slate-200 dark:border-slate-800 w-full sm:inline-block sm:w-auto">
             <table className="text-sm w-full sm:w-auto">
               <thead>
-                <tr className="bg-gray-100 dark:bg-gray-800/80 text-gray-500 dark:text-gray-400 text-xs uppercase">
+                <tr className="bg-slate-100 dark:bg-[#090d16] text-slate-500 dark:text-slate-400 text-[11px] font-extrabold uppercase tracking-wider">
                   <th className="px-2 sm:px-4 py-2 text-left">Time</th>
                   <th className="px-2 sm:px-4 py-2 text-left">Actor</th>
                   <th className="px-2 sm:px-4 py-2 text-center">Action</th>
                   <th className="px-2 sm:px-4 py-2 text-left">Target</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-200/10">
+              <tbody className="divide-y divide-slate-200/70 dark:divide-slate-800/70">
                 {events.map((ev, i) => {
-                  const rowClass = !ev.isPlayer ? 'bg-white/10 dark:bg-transparent'
-                    : ev.type === 'KILL'      ? 'bg-green-50/30 dark:bg-green-900/10'
-                    : ev.type === 'DEATH'     ? 'bg-red-50/30 dark:bg-red-900/10'
-                    : ev.type === 'ASSIST'    ? 'bg-yellow-50/30 dark:bg-yellow-900/10'
-                    : ev.type === 'PLATE'     ? 'bg-blue-50/20 dark:bg-blue-900/10'
-                    : ev.type === 'OBJECTIVE' ? 'bg-purple-50/20 dark:bg-purple-900/10'
-                    : 'bg-white/20 dark:bg-gray-900/10';
+                  const rowClass = !ev.isPlayer ? 'bg-white/40 dark:bg-transparent'
+                    : ev.type === 'KILL'      ? 'bg-emerald-50/50 dark:bg-emerald-950/20'
+                    : ev.type === 'DEATH'     ? 'bg-rose-50/50 dark:bg-rose-950/20'
+                    : ev.type === 'ASSIST'    ? 'bg-amber-50/50 dark:bg-amber-950/20'
+                    : ev.type === 'PLATE'     ? 'bg-sky-50/50 dark:bg-sky-950/20'
+                    : ev.type === 'OBJECTIVE' ? 'bg-purple-50/50 dark:bg-purple-950/20'
+                    : 'bg-white/40 dark:bg-slate-900/20';
 
                   const actionIcon = {
                     'KILL': '⚔️',
