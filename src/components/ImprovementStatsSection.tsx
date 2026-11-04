@@ -851,10 +851,10 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  <th className="pb-1.5 pr-2">Objective</th>
-                  <th className="pb-1.5 px-2 text-center">Team First Rate</th>
-                  <th className="pb-1.5 px-2 text-center">Team vs Enemy Avg (Total)</th>
-                  <th className="pb-1.5 pl-2 text-right">Personal LH / Takedowns (TD)</th>
+                  <th className="pb-1.5 pr-1 sm:pr-2">Objective</th>
+                  <th className="pb-1.5 px-1 sm:px-2 text-center">Team First Rate</th>
+                  <th className="pb-1.5 px-1 sm:px-2 text-center">Team vs Enemy Avg (Total)</th>
+                  <th className="pb-1.5 pl-1 sm:pl-2 text-right">Personal LH / Takedowns (TD)</th>
                 </tr>
               </thead>
               <tbody>
