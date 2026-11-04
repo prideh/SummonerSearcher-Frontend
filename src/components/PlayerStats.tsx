@@ -54,21 +54,24 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
   const kda = ((kills ?? 0) + (assists ?? 0)) / (deaths === 0 ? 1 : (deaths ?? 1));
   const cs = (totalMinionsKilled ?? 0) + (neutralMinionsKilled ?? 0);
   const laneCsAt10 =
-    isLanerPosition(teamPosition) && typeof challenges?.laneMinionsFirst10Minutes === 'number'
-      ? calculateLaneCsAt10Comparison(challenges.laneMinionsFirst10Minutes, gameVersion)
+    isLanerPosition(teamPosition) &&
+    typeof challenges?.laneMinionsFirst10Minutes === 'number' &&
+    Number.isFinite(challenges.laneMinionsFirst10Minutes) &&
+    challenges.laneMinionsFirst10Minutes >= 0
+      ? calculateLaneCsAt10Comparison(challenges.laneMinionsFirst10Minutes, gameVersion, teamPosition)
       : null;
 
   const laneCsAt10TooltipText = laneCsAt10
-    ? laneCsAt10.spawnedSupply !== null
-      ? `Lane-only CS @ 10:00: ${laneCsAt10.actual} last-hit / ${laneCsAt10.spawnedSupply} theoretical spawned supply (${laneCsAt10.wavesSpawned} waves x6 + ${laneCsAt10.cannonWavesSpawned} cannons; not guaranteed farmable)`
+    ? laneCsAt10.target !== null
+      ? `Lane-only CS @ 10:00: ${laneCsAt10.actual} last-hit / ${laneCsAt10.target} target (${laneCsAt10.targetLabel})`
       : `Lane-only CS @ 10:00: ${laneCsAt10.actual} last-hit`
     : null;
 
   const csTooltipParts = [`Minions: ${totalMinionsKilled ?? 0}`, `Jungle: ${neutralMinionsKilled ?? 0}`];
   if (laneCsAt10) {
     csTooltipParts.push(
-      laneCsAt10.spawnedSupply !== null
-        ? `Lane CS @10: ${laneCsAt10.actual} / ${laneCsAt10.spawnedSupply} theoretical spawned supply (${laneCsAt10.wavesSpawned} waves + ${laneCsAt10.cannonWavesSpawned} cannons; not guaranteed farmable)`
+      laneCsAt10.target !== null
+        ? `Lane CS @10: ${laneCsAt10.actual} / ${laneCsAt10.target} target (${laneCsAt10.targetLabel})`
         : `Lane CS @10: ${laneCsAt10.actual}`
     );
   } else if (teamPosition === 'JUNGLE' && typeof challenges?.jungleCsBefore10Minutes === 'number') {
@@ -147,11 +150,11 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
               data-tooltip-content={laneCsAt10TooltipText}
             >
               CS@10: {laneCsAt10.actual}
-              {laneCsAt10.spawnedSupply !== null && (
+              {laneCsAt10.target !== null && (
                 <>
                   {' '}
                   <span className="text-slate-400 dark:text-slate-500">
-                    / {laneCsAt10.spawnedSupply} spawned*
+                    / {laneCsAt10.target} target
                   </span>
                 </>
               )}
@@ -250,11 +253,11 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
                 data-tooltip-content={laneCsAt10TooltipText}
               >
                 CS@10: {laneCsAt10.actual}
-                {laneCsAt10.spawnedSupply !== null && (
+                {laneCsAt10.target !== null && (
                   <>
                     {' '}
                     <span className="text-slate-400 dark:text-slate-500">
-                      / {laneCsAt10.spawnedSupply} spawned*
+                      / {laneCsAt10.target} target
                     </span>
                   </>
                 )}

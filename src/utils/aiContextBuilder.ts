@@ -166,8 +166,8 @@ export interface MatchDetail {
   // Early laning metrics
   laneCsAt10?: {
     actual: number;
-    spawnedSupply: number | null;
-    supplyLabel: string | null;
+    target: number | null;
+    targetLabel: string | null;
   };
   jungleCsBefore10Minutes?: number;
   timelineAt10?: TimelineCheckpointDiff;
@@ -780,12 +780,13 @@ export function buildAiContext(
         ? (() => {
             const comp = calculateLaneCsAt10Comparison(
               myParticipant.challenges!.laneMinionsFirst10Minutes!,
-              match.info?.gameVersion
+              match.info?.gameVersion,
+              role
             );
             return {
               actual: comp.actual,
-              spawnedSupply: comp.spawnedSupply,
-              supplyLabel: comp.supplyLabel,
+              target: comp.target,
+              targetLabel: comp.targetLabel,
             };
           })()
         : undefined;

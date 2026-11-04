@@ -150,11 +150,11 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ championStats
               </div>
               {overallStats.avgLaneCsAt10 && overallStats.avgLaneCsAt10.matchCount > 0 && (() => {
                 const laneCs10 = overallStats.avgLaneCsAt10;
-                const showCeiling =
-                  laneCs10.avgSpawnedSupply !== null &&
-                  laneCs10.ceilingMatchCount === laneCs10.matchCount;
-                const tooltipText = showCeiling
-                  ? `Average lane-only CS @ 10:00 across ${laneCs10.matchCount} laner ${laneCs10.matchCount === 1 ? 'game' : 'games'}: ${Number(laneCs10.avgActual).toFixed(1)} last-hit / ${laneCs10.avgSpawnedSupply} theoretical spawned supply (${laneCs10.ceilingMatchCount} patch 26.1+ ${laneCs10.ceilingMatchCount === 1 ? 'game' : 'games'}; not guaranteed farmable)`
+                const showTarget =
+                  laneCs10.avgTarget !== null &&
+                  laneCs10.targetMatchCount === laneCs10.matchCount;
+                const tooltipText = showTarget
+                  ? `Average lane-only CS @ 10:00 across ${laneCs10.matchCount} laner ${laneCs10.matchCount === 1 ? 'game' : 'games'}: ${Number(laneCs10.avgActual).toFixed(1)} last-hit / ${laneCs10.avgTarget} target (${laneCs10.targetLabel}; Top/Bot 114, Mid 120)`
                   : `Average lane-only CS @ 10:00 across ${laneCs10.matchCount} laner ${laneCs10.matchCount === 1 ? 'game' : 'games'}: ${Number(laneCs10.avgActual).toFixed(1)} last-hit`;
                 return (
                   <div
@@ -169,9 +169,9 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ championStats
                       <span className="font-semibold text-sky-600 dark:text-cyan-400">
                         {Number(laneCs10.avgActual).toFixed(1)}
                       </span>
-                      {showCeiling && (
+                      {showTarget && (
                         <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                          / {laneCs10.avgSpawnedSupply} spawned*
+                          / {laneCs10.avgTarget} target
                         </span>
                       )}
                     </div>

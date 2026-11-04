@@ -317,36 +317,63 @@ describe('ConsistencyStats', () => {
     expect(season2026Result.cannonWavesSpawned).toBe(6);
     expect(season2026Result.spawnedSupply).toBe(120);
 
-    // Patch guard: pre-26.1 or missing patchVersion is excluded from the post-26.1 120 ceiling
-    const comparisonOlderPatch = calculateLaneCsAt10Comparison(80, '15.24.1');
+    // Patch guard: pre-26.1 or missing patchVersion is excluded from the post-26.1 lane targets
+    const comparisonOlderPatch = calculateLaneCsAt10Comparison(80, '15.24.1', 'MIDDLE');
     expect(comparisonOlderPatch).toEqual({
       actual: 80,
-      spawnedSupply: null,
-      wavesSpawned: null,
-      cannonWavesSpawned: null,
-      supplyLabel: null,
+      target: null,
+      role: 'MIDDLE',
+      targetLabel: null,
     });
 
-    const comparisonMissingPatch = calculateLaneCsAt10Comparison(80, undefined);
+    const comparisonMissingPatch = calculateLaneCsAt10Comparison(80, undefined, 'TOP');
     expect(comparisonMissingPatch).toEqual({
       actual: 80,
-      spawnedSupply: null,
-      wavesSpawned: null,
-      cannonWavesSpawned: null,
-      supplyLabel: null,
+      target: null,
+      role: 'TOP',
+      targetLabel: null,
     });
 
-    const comparisonSeason2026 = calculateLaneCsAt10Comparison(84, '16.5.1');
-    expect(comparisonSeason2026).toEqual({
+    // Verified role cutoffs on patch 26.1+: TOP 114, BOTTOM 114, MIDDLE 120; SUPPORT/UTILITY N/A, JUNGLE & unknown excluded
+    expect(calculateLaneCsAt10Comparison(84, '16.5.1', 'TOP')).toEqual({
       actual: 84,
-      spawnedSupply: 120,
-      wavesSpawned: 19,
-      cannonWavesSpawned: 6,
-      supplyLabel: 'Theoretical spawned supply (not guaranteed farmable)',
+      target: 114,
+      role: 'TOP',
+      targetLabel: 'Top lane target',
+    });
+    expect(calculateLaneCsAt10Comparison(84, '16.5.1', 'BOTTOM')).toEqual({
+      actual: 84,
+      target: 114,
+      role: 'BOTTOM',
+      targetLabel: 'Bot lane target',
+    });
+    expect(calculateLaneCsAt10Comparison(84, '16.5.1', 'MIDDLE')).toEqual({
+      actual: 84,
+      target: 120,
+      role: 'MIDDLE',
+      targetLabel: 'Mid lane target',
+    });
+    expect(calculateLaneCsAt10Comparison(18, '16.5.1', 'UTILITY')).toEqual({
+      actual: 18,
+      target: null,
+      role: null,
+      targetLabel: null,
+    });
+    expect(calculateLaneCsAt10Comparison(14, '16.5.1', 'JUNGLE')).toEqual({
+      actual: 14,
+      target: null,
+      role: null,
+      targetLabel: null,
+    });
+    expect(calculateLaneCsAt10Comparison(84, '16.5.1', undefined)).toEqual({
+      actual: 84,
+      target: null,
+      role: null,
+      targetLabel: null,
     });
   });
 
-  test('renders role-gated CS@10 actual vs 120 theoretical spawned supply on patch 26.1+ and excludes older/unknown-patch games from the ceiling display', () => {
+  test('renders role-gated CS@10 actual vs verified lane targets (TOP 114, BOTTOM 114, MIDDLE 120) on patch 26.1+ and excludes older/unknown-patch games and non-laners', () => {
     useDataDragonStore.setState({
       version: '16.5.1',
       versionReady: true,
@@ -357,7 +384,13 @@ describe('ConsistencyStats', () => {
       championMap: {},
     });
 
-    for (const lanerRole of ['TOP', 'MIDDLE', 'BOTTOM'] as const) {
+    const roleExpectations = [
+      { role: 'TOP', target: 114, label: 'Top lane target' },
+      { role: 'MIDDLE', target: 120, label: 'Mid lane target' },
+      { role: 'BOTTOM', target: 114, label: 'Bot lane target' },
+    ] as const;
+
+    for (const { role: lanerRole, target, label } of roleExpectations) {
       const lanerMatch = createMatch(
         puuid,
         { laneMinionsFirst10Minutes: 84, jungleCsBefore10Minutes: 4 },
@@ -375,9 +408,9 @@ describe('ConsistencyStats', () => {
         />
       );
       const badge = screen.getByTestId('lane-cs-10');
-      expect(badge).toHaveTextContent('CS@10: 84 / 120 spawned*');
+      expect(badge).toHaveTextContent(`CS@10: 84 / ${target} target`);
       expect(badge.getAttribute('title')).toContain(
-        'Lane-only CS @ 10:00: 84 last-hit / 120 theoretical spawned supply (19 waves x6 + 6 cannons; not guaranteed farmable)'
+        `Lane-only CS @ 10:00: 84 last-hit / ${target} target (${label})`
       );
       unmount();
 
@@ -385,14 +418,14 @@ describe('ConsistencyStats', () => {
         <AnalysisTab match={lanerMatch} puuid={puuid} onPlayerClick={() => {}} />
       );
       expect(screen.getAllByText('Lane minions @ 10 min:').length).toBeGreaterThan(0);
-      expect(screen.getByText(/84 \/ 120/)).toHaveTextContent(
-        '84 / 120 (theoretical spawned supply, not guaranteed farmable)'
+      expect(screen.getByText(new RegExp(`84 / ${target}`))).toHaveTextContent(
+        `84 / ${target} (${label})`
       );
       expect(screen.queryByText('Jungle cs @ 10 min:')).not.toBeInTheDocument();
       unmountAnalysisLaner();
     }
 
-    // Older patch (15.24.1) match: must NOT apply the post-26.1 120 ceiling even when store version is 16.5.1
+    // Older patch (15.24.1) match: must NOT apply the post-26.1 lane target even when store version is 16.5.1
     const olderLanerMatch = createMatch(
       puuid,
       { laneMinionsFirst10Minutes: 80 },
@@ -412,7 +445,7 @@ describe('ConsistencyStats', () => {
     const olderBadge = screen.getByTestId('lane-cs-10');
     expect(olderBadge).toHaveTextContent('CS@10: 80');
     expect(olderBadge).not.toHaveTextContent('120');
-    expect(olderBadge).not.toHaveTextContent('spawned');
+    expect(olderBadge).not.toHaveTextContent('target');
     unmountOlderPlayerStats();
 
     const { unmount: unmountOlderAnalysis } = render(
@@ -420,7 +453,7 @@ describe('ConsistencyStats', () => {
     );
     expect(screen.getAllByText('Lane minions @ 10 min:').length).toBeGreaterThan(0);
     expect(screen.getByText('80')).toBeInTheDocument();
-    expect(screen.queryByText(/theoretical spawned supply/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/lane target/i)).not.toBeInTheDocument();
     unmountOlderAnalysis();
 
     const supportMatch = createMatch(

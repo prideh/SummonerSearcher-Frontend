@@ -317,9 +317,10 @@ describe('aiContextBuilder (#14)', () => {
       avgActual: 80, // (86 + 74) / 2; missing EUW1_1004 not counted as 0
       matchCount: 2,
       avgSupportedActual: 86,
-      avgSpawnedSupply: null,
-      ceilingMatchCount: 1,
-      supplyLabel: null,
+      avgTarget: null,
+      targetMatchCount: 1,
+      roleBreakdown: { TOP: 1, MIDDLE: 1, BOTTOM: 0 },
+      targetLabel: null,
     });
 
     const m1 = ctx.recentMatches[0];
@@ -345,8 +346,8 @@ describe('aiContextBuilder (#14)', () => {
     expect(m1.damageSplitPct).toEqual({ physical: 15, magic: 75, true: 10 });
     expect(m1.laneCsAt10).toEqual({
       actual: 86,
-      spawnedSupply: 120,
-      supplyLabel: 'Theoretical spawned supply (not guaranteed farmable)',
+      target: 120,
+      targetLabel: 'Mid lane target',
     });
     expect(m1.jungleCsBefore10Minutes).toBeUndefined();
     expect(m1.controlWardsPlaced).toBe(2);
@@ -368,13 +369,13 @@ describe('aiContextBuilder (#14)', () => {
     expect(m2.laneCsAt10).toBeUndefined();
     expect(m2.jungleCsBefore10Minutes).toBe(58);
 
-    // Match 3: Laner on pre-26.1 patch excludes 120 ceiling
+    // Match 3: Laner on pre-26.1 patch excludes post-26.1 lane target
     const m3 = ctx.recentMatches[2];
     expect(m3.patch).toBe('15.24');
     expect(m3.laneCsAt10).toEqual({
       actual: 74,
-      spawnedSupply: null,
-      supplyLabel: null,
+      target: null,
+      targetLabel: null,
     });
   });
 
@@ -1215,10 +1216,10 @@ describe('aiContextBuilder (#14)', () => {
     ).byteLength;
 
     // Exact measured deterministic UTF-8 payload sizes & upper bounds
-    expect(oneMatchNotAnalyzedBytes).toBe(2238);
-    expect(oneMatchAnalyzedBytes).toBe(3301);
-    expect(notAnalyzedBytes).toBe(23067);
-    expect(analyzedBytes).toBe(36480);
+    expect(oneMatchNotAnalyzedBytes).toBe(2187);
+    expect(oneMatchAnalyzedBytes).toBe(3250);
+    expect(notAnalyzedBytes).toBe(22182);
+    expect(analyzedBytes).toBe(35595);
     expect(notAnalyzedBytes).toBeLessThan(25000);
     expect(analyzedBytes).toBeLessThan(40000);
   });

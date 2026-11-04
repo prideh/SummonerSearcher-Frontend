@@ -90,7 +90,7 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
           const isPercentage = isPercentageChallenge(key);
           const laneCsComparison =
             key === 'laneMinionsFirst10Minutes' && typeof playerValue === 'number'
-              ? calculateLaneCsAt10Comparison(playerValue, patchVersion)
+              ? calculateLaneCsAt10Comparison(playerValue, patchVersion, player.teamPosition)
               : null;
 
           return (
@@ -105,14 +105,14 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
               <span className={`min-w-0 break-words font-medium ${isWinner ? 'text-emerald-700 dark:text-emerald-400 font-semibold' : 'text-slate-600 dark:text-slate-400'}`}>
                 {camelCaseToTitleCase(key)}:
               </span>
-              {laneCsComparison && laneCsComparison.spawnedSupply !== null ? (
+              {laneCsComparison && laneCsComparison.target !== null ? (
                 <span
                   className={`font-bold pl-2 min-w-0 text-right ${isWinner ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
-                  title={`Lane-only CS @ 10:00: ${laneCsComparison.actual} last-hit vs ${laneCsComparison.spawnedSupply} theoretical spawned supply (${laneCsComparison.wavesSpawned} waves x6 + ${laneCsComparison.cannonWavesSpawned} cannons; not guaranteed farmable)`}
+                  title={`Lane-only CS @ 10:00: ${laneCsComparison.actual} last-hit vs ${laneCsComparison.target} target (${laneCsComparison.targetLabel})`}
                 >
-                  {laneCsComparison.actual} / {laneCsComparison.spawnedSupply}{' '}
+                  {laneCsComparison.actual} / {laneCsComparison.target}{' '}
                   <span className="font-normal text-slate-400 dark:text-slate-500">
-                    (theoretical spawned supply, not guaranteed farmable)
+                    ({laneCsComparison.targetLabel})
                   </span>
                 </span>
               ) : typeof playerValue === 'number' ? (

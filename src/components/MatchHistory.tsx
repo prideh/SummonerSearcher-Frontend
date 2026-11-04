@@ -40,15 +40,15 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ puuid, matches, onPlayerCli
     return <p className="text-slate-500 dark:text-slate-400 text-center mt-4 text-sm">No recent matches found.</p>;
   }
 
-  const showAvgLaneCsCeiling = Boolean(
+  const showAvgLaneCsTarget = Boolean(
     avgLaneCsAt10 &&
-      avgLaneCsAt10.avgSpawnedSupply !== null &&
-      avgLaneCsAt10.ceilingMatchCount === avgLaneCsAt10.matchCount
+      avgLaneCsAt10.avgTarget !== null &&
+      avgLaneCsAt10.targetMatchCount === avgLaneCsAt10.matchCount
   );
 
   const avgLaneCsAt10Tooltip = avgLaneCsAt10
-    ? showAvgLaneCsCeiling
-      ? `Average lane-only CS @ 10:00 across ${avgLaneCsAt10.matchCount} laner ${avgLaneCsAt10.matchCount === 1 ? 'game' : 'games'}: ${avgLaneCsAt10.avgActual.toFixed(1)} last-hit / ${avgLaneCsAt10.avgSpawnedSupply} theoretical spawned supply (${avgLaneCsAt10.ceilingMatchCount} patch 26.1+ ${avgLaneCsAt10.ceilingMatchCount === 1 ? 'game' : 'games'}; not guaranteed farmable)`
+    ? showAvgLaneCsTarget
+      ? `Average lane-only CS @ 10:00 across ${avgLaneCsAt10.matchCount} laner ${avgLaneCsAt10.matchCount === 1 ? 'game' : 'games'}: ${avgLaneCsAt10.avgActual.toFixed(1)} last-hit / ${avgLaneCsAt10.avgTarget} target (${avgLaneCsAt10.targetLabel}; Top/Bot 114, Mid 120)`
       : `Average lane-only CS @ 10:00 across ${avgLaneCsAt10.matchCount} laner ${avgLaneCsAt10.matchCount === 1 ? 'game' : 'games'}: ${avgLaneCsAt10.avgActual.toFixed(1)} last-hit`
     : undefined;
   
@@ -67,15 +67,15 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ puuid, matches, onPlayerCli
             <span className="font-extrabold text-slate-900 dark:text-slate-100">
               {avgLaneCsAt10.avgActual.toFixed(1)}
             </span>
-            {showAvgLaneCsCeiling && (
+            {showAvgLaneCsTarget && (
               <span className="text-slate-500 dark:text-slate-400 font-medium">
-                / {avgLaneCsAt10.avgSpawnedSupply} spawned*
+                / {avgLaneCsAt10.avgTarget} target
               </span>
             )}
           </div>
-          {showAvgLaneCsCeiling && (
+          {showAvgLaneCsTarget && (
             <span className="text-[11px] text-slate-400 dark:text-slate-500">
-              *Theoretical spawned supply ({avgLaneCsAt10.ceilingMatchCount} patch 26.1+ {avgLaneCsAt10.ceilingMatchCount === 1 ? 'game' : 'games'}), not guaranteed farmable
+              Lane target ({avgLaneCsAt10.targetLabel}; Top/Bot 114, Mid 120)
             </span>
           )}
         </div>

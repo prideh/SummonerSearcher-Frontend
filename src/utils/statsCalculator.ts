@@ -191,60 +191,93 @@ export const calculateSpawnedLaneMinionsByMinute = (
   };
 };
 
+export type LanerPosition = 'TOP' | 'MIDDLE' | 'BOTTOM';
+
+/**
+ * Verified Patch 26.1+ lane CS @ 10:00 target cutoffs by farming lane role:
+ * - `TOP`: 114
+ * - `BOTTOM`: 114
+ * - `MIDDLE`: 120
+ * - `UTILITY` / `SUPPORT`: N/A (`null`)
+ * - `JUNGLE` and unknown roles: excluded (`null`)
+ */
+export const POST_26_1_LANE_CS_AT_10_TARGETS: Readonly<Record<LanerPosition, number>> = {
+  TOP: 114,
+  MIDDLE: 120,
+  BOTTOM: 114,
+};
+
+export const LANE_CS_AT_10_ROLE_LABELS: Readonly<Record<LanerPosition, string>> = {
+  TOP: 'Top lane target',
+  MIDDLE: 'Mid lane target',
+  BOTTOM: 'Bot lane target',
+};
+
+export const normalizeLanerPosition = (teamPosition?: string): LanerPosition | null => {
+  if (typeof teamPosition !== 'string') return null;
+  const upper = teamPosition.trim().toUpperCase();
+  if (upper === 'TOP' || upper === 'MIDDLE' || upper === 'BOTTOM') {
+    return upper;
+  }
+  return null;
+};
+
+/**
+ * Returns the verified Patch 26.1+ lane CS @ 10:00 target for a farming lane role
+ * (`TOP` -> 114, `BOTTOM` -> 114, `MIDDLE` -> 120), or `null` when the role is
+ * `UTILITY`/`SUPPORT`, `JUNGLE`, missing/unknown, or when `patchVersion` is pre-26.1 / missing.
+ */
+export const getLaneCsAt10TargetForRole = (
+  teamPosition?: string,
+  patchVersion?: string
+): number | null => {
+  const role = normalizeLanerPosition(teamPosition);
+  if (!role || !isPost26_1Patch(patchVersion)) {
+    return null;
+  }
+  return POST_26_1_LANE_CS_AT_10_TARGETS[role];
+};
+
 export interface LaneCsAt10Comparison {
   /** Actual lane-only minions last-hit in the first 10 minutes (`challenges.laneMinionsFirst10Minutes`). */
   actual: number;
-  /** Provisional theoretical spawned supply before 10:00 for post-26.1 matches (120 = 19 waves x6 + 6 cannons), or `null` for older/unknown patches. */
-  spawnedSupply: number | null;
-  /** Number of waves spawned before 10:00 (19 in post-26.1 rules), or `null` for older/unknown patches. */
-  wavesSpawned: number | null;
-  /** Number of cannon waves spawned before 10:00 (6 on waves 3, 6, 9, 12, 15, 18), or `null` for older/unknown patches. */
-  cannonWavesSpawned: number | null;
-  /** Explicit label stating this ceiling is theoretical spawned supply, not guaranteed farmable, or `null` when ceiling is excluded. */
-  supplyLabel: string | null;
+  /** Verified Patch 26.1+ lane target for the participant's role (`TOP` 114, `BOTTOM` 114, `MIDDLE` 120), or `null` for non-laners, unknown roles, or older/unknown patches. */
+  target: number | null;
+  /** Normalized farming lane role (`TOP`, `MIDDLE`, `BOTTOM`), or `null` when excluded. */
+  role: LanerPosition | null;
+  /** Human-readable label for the role's lane target (`Top lane target`, `Mid lane target`, `Bot lane target`), or `null` when excluded. */
+  targetLabel: string | null;
 }
 
-export const SPAWNED_SUPPLY_AT_10_LABEL =
-  'Theoretical spawned supply (not guaranteed farmable)';
-
 /**
- * Builds the provisional comparison between actual lane-only minions last-hit by 10:00
- * (`challenges.laneMinionsFirst10Minutes`) and the post-26.1 theoretical spawned supply
- * (120 = 19 waves x6 + 6 cannons). Older matches (pre-26.1) or matches without a verified
- * 26.1+ `gameVersion` are excluded from the ceiling (`spawnedSupply: null`) rather than
- * silently computed under post-26.1 constants.
+ * Builds the comparison between actual lane-only minions last-hit by 10:00
+ * (`challenges.laneMinionsFirst10Minutes`) and the verified Patch 26.1+ lane target
+ * (`TOP` 114, `BOTTOM` 114, `MIDDLE` 120). Non-laner roles (`JUNGLE`, `UTILITY`/`SUPPORT`),
+ * unknown/missing roles, and pre-26.1 or unknown patches return `target: null`.
  */
 export const calculateLaneCsAt10Comparison = (
   laneMinionsFirst10Minutes: number,
-  patchOrConfig?: string | MinionWaveTimingConfig
+  patchVersion?: string,
+  teamPosition?: string
 ): LaneCsAt10Comparison => {
   const actual = Math.max(0, Math.round(laneMinionsFirst10Minutes));
-  const config =
-    typeof patchOrConfig === 'object' && patchOrConfig !== null
-      ? patchOrConfig
-      : getMinionWaveConfigForPatch(patchOrConfig);
+  const role = normalizeLanerPosition(teamPosition);
+  const target = getLaneCsAt10TargetForRole(teamPosition, patchVersion);
 
-  if (!config) {
+  if (!role || target === null) {
     return {
       actual,
-      spawnedSupply: null,
-      wavesSpawned: null,
-      cannonWavesSpawned: null,
-      supplyLabel: null,
+      target: null,
+      role,
+      targetLabel: null,
     };
   }
 
-  const { spawnedSupply, wavesSpawned, cannonWavesSpawned } = calculateSpawnedLaneMinionsByMinute(
-    10,
-    config
-  );
-
   return {
     actual,
-    spawnedSupply,
-    wavesSpawned,
-    cannonWavesSpawned,
-    supplyLabel: SPAWNED_SUPPLY_AT_10_LABEL,
+    target,
+    role,
+    targetLabel: LANE_CS_AT_10_ROLE_LABELS[role],
   };
 };
 
@@ -297,20 +330,34 @@ export const isEligibleLaneCsAt10Match = (info?: MatchDto['info']): boolean => {
   return true;
 };
 
+const formatRoleBreakdownLabel = (roleBreakdown: {
+  TOP: number;
+  MIDDLE: number;
+  BOTTOM: number;
+}): string => {
+  const parts: string[] = [];
+  if (roleBreakdown.MIDDLE > 0) parts.push(`${roleBreakdown.MIDDLE} Mid`);
+  if (roleBreakdown.TOP > 0) parts.push(`${roleBreakdown.TOP} Top`);
+  if (roleBreakdown.BOTTOM > 0) parts.push(`${roleBreakdown.BOTTOM} Bot`);
+  return parts.join(', ');
+};
+
 /**
- * Computes the average lane-only CS @ 10:00 (`challenges.laneMinionsFirst10Minutes`) across the
- * listed matches for a given player `puuid`.
+ * Computes the average lane-only CS @ 10:00 (`challenges.laneMinionsFirst10Minutes`) and the
+ * weighted average lane target across the SAME eligible listed matches for a given player `puuid`.
  *
  * Rules:
  * - Rejects matches with missing, non-finite, or `< 600`s (`10:00`) `gameDuration`.
  * - Rejects non-Summoner's Rift `gameMode` (`!== 'CLASSIC'`) and unsupported `queueId`s (e.g. ARAM `450`).
- * - Includes LANER games only (`TOP`, `MIDDLE`, `BOTTOM`) and excludes early-surrender remakes.
+ * - Includes known LANER games only (`TOP` -> 114, `MIDDLE` -> 120, `BOTTOM` -> 114); excludes `JUNGLE`,
+ *   `UTILITY`/`SUPPORT`, unknown/missing roles, and early-surrender remakes.
  * - Includes only games where `challenges.laneMinionsFirst10Minutes` is a finite non-negative number (`>= 0`);
  *   missing or negative values are rejected and never counted as `0`.
- * - Suppresses `avgSpawnedSupply` (`null`) whenever the eligible games are a mixed-patch subset
- *   (`ceilingMatchCount < matchCount`), so an all-patch actual average is never displayed alongside
- *   a supported-subset ceiling as if they shared the same denominator. Also exposes `avgSupportedActual`
- *   for the Patch 26.1+ supported subset (`ceilingMatchCount` games).
+ * - Computes `avgTarget` as the exact weighted average over the SAME eligible games as `avgActual`
+ *   (e.g., 12 Mid + 6 Top = `(12*120 + 6*114) / 18 = 118`).
+ * - Suppresses `avgTarget` (`null`) whenever the eligible games are a mixed-patch subset
+ *   (`targetMatchCount < matchCount`), so an all-patch actual average is never displayed alongside
+ *   a subset target denominator.
  * - Returns `null` when no listed games have eligible laner `laneMinionsFirst10Minutes` data.
  */
 export const calculateAverageLaneCsAt10 = (
@@ -324,15 +371,21 @@ export const calculateAverageLaneCsAt10 = (
   let actualSum = 0;
   let matchCount = 0;
   let supportedActualSum = 0;
-  let spawnedSupplySum = 0;
-  let ceilingMatchCount = 0;
+  let targetSum = 0;
+  let targetMatchCount = 0;
+  const roleBreakdown = {
+    TOP: 0,
+    MIDDLE: 0,
+    BOTTOM: 0,
+  };
 
   for (const match of matches) {
     const info = match.info;
     if (!isEligibleLaneCsAt10Match(info)) continue;
 
     const participant = info!.participants.find(p => p.puuid === puuid);
-    if (!participant || participant.gameEndedInEarlySurrender || !isLanerPosition(participant.teamPosition)) {
+    const lanerRole = normalizeLanerPosition(participant?.teamPosition);
+    if (!participant || participant.gameEndedInEarlySurrender || !lanerRole) {
       continue;
     }
 
@@ -341,14 +394,19 @@ export const calculateAverageLaneCsAt10 = (
       continue;
     }
 
-    const comparison = calculateLaneCsAt10Comparison(rawLaneCs10, info!.gameVersion);
+    const comparison = calculateLaneCsAt10Comparison(
+      rawLaneCs10,
+      info!.gameVersion,
+      lanerRole
+    );
     actualSum += comparison.actual;
     matchCount += 1;
+    roleBreakdown[lanerRole] += 1;
 
-    if (comparison.spawnedSupply !== null) {
+    if (comparison.target !== null) {
       supportedActualSum += comparison.actual;
-      spawnedSupplySum += comparison.spawnedSupply;
-      ceilingMatchCount += 1;
+      targetSum += comparison.target;
+      targetMatchCount += 1;
     }
   }
 
@@ -358,23 +416,24 @@ export const calculateAverageLaneCsAt10 = (
 
   const avgActual = Math.round((actualSum / matchCount) * 10) / 10;
   const avgSupportedActual =
-    ceilingMatchCount > 0
-      ? Math.round((supportedActualSum / ceilingMatchCount) * 10) / 10
+    targetMatchCount > 0
+      ? Math.round((supportedActualSum / targetMatchCount) * 10) / 10
       : null;
-  // Never display an all-patch actual average alongside a subset ceiling as if they share the same denominator:
-  // only populate avgSpawnedSupply when ALL eligible games in avgActual are on supported 26.1+ patches.
-  const avgSpawnedSupply =
-    ceilingMatchCount > 0 && ceilingMatchCount === matchCount
-      ? Math.round((spawnedSupplySum / ceilingMatchCount) * 10) / 10
+  // Never display an all-patch actual average alongside a subset target as if they share the same denominator:
+  // only populate avgTarget when ALL eligible games in avgActual are on supported 26.1+ patches.
+  const avgTarget =
+    targetMatchCount > 0 && targetMatchCount === matchCount
+      ? Math.round((targetSum / targetMatchCount) * 10) / 10
       : null;
 
   return {
     avgActual,
     matchCount,
     avgSupportedActual,
-    avgSpawnedSupply,
-    ceilingMatchCount,
-    supplyLabel: avgSpawnedSupply !== null ? SPAWNED_SUPPLY_AT_10_LABEL : null,
+    avgTarget,
+    targetMatchCount,
+    roleBreakdown,
+    targetLabel: avgTarget !== null ? formatRoleBreakdownLabel(roleBreakdown) : null,
   };
 };
 
