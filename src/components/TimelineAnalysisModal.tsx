@@ -6,10 +6,26 @@ import {
 } from 'recharts';
 import type { TimelineAnalysisDto, MatchPowerSpikeDto, PowerSpikePoint } from '../types/timeline';
 
-// Riot minimap image
+// Riot minimap image (Map11 2dlevelminimap, 512x512 edge-to-edge with no border/padding)
 const MINIMAP_URL = 'https://raw.communitydragon.org/latest/game/levels/map11/info/2dlevelminimap.png';
-// Riot map coordinate space is 0..15000 on each axis
-const MAP_COORD_MAX = 15000;
+// Calibrated against Map11 data/maps/shipping/map11/map11.bin MinimapBackground:
+// mOrigin = [0, 0], mSize = [14850, 14850] (container bounds [0, 0]..[14820.525, 14881.497]).
+export const MAP_COORD_ORIGIN_X = 0;
+export const MAP_COORD_ORIGIN_Y = 0;
+export const MAP_COORD_SIZE_X = 14850;
+export const MAP_COORD_SIZE_Y = 14850;
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const projectToMinimapCanvas = (
+  x: number,
+  y: number,
+  canvasW: number,
+  canvasH: number
+) => ({
+  cx: ((x - MAP_COORD_ORIGIN_X) / MAP_COORD_SIZE_X) * canvasW,
+  // Y axis (world Z) is flipped: 0 is bottom-left in Riot world coords, top-left in canvas
+  cy: (1 - (y - MAP_COORD_ORIGIN_Y) / MAP_COORD_SIZE_Y) * canvasH,
+});
 
 interface TimelineAnalysisModalProps {
   isOpen: boolean;
@@ -165,12 +181,12 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
     });
   };
 
-  // Convert Riot map coordinates (0..15000) to canvas pixel coordinates
-  const toCanvas = useCallback((x: number, y: number, canvasW: number, canvasH: number) => ({
-    cx: (x / MAP_COORD_MAX) * canvasW,
-    // Y axis is flipped: 0 is bottom-left in Riot coords, top-left in canvas
-    cy: canvasH - (y / MAP_COORD_MAX) * canvasH,
-  }), []);
+  // Convert Riot map coordinates (0..14850) to canvas pixel coordinates
+  const toCanvas = useCallback(
+    (x: number, y: number, canvasW: number, canvasH: number) =>
+      projectToMinimapCanvas(x, y, canvasW, canvasH),
+    []
+  );
 
   const drawHeatmap = useCallback(() => {
     const canvas = canvasRef.current;
