@@ -542,7 +542,7 @@ describe('aiContextBuilder (#14)', () => {
     expect(ctx.timelineInsights?.missingTimelineMatches).toBe(1);
   });
 
-  it('normalizes production-shaped /timeline/analyze Jackson payload (event.player / event.opponent without isPlayer / isOpponent) so 4 Galio player deaths are accurately extracted', () => {
+  it('normalizes exact old-production /timeline/analyze Jackson payload (Galio vs Ryze: event.player / event.opponent without isPlayer / isOpponent, omitted killer/assistants, and unknown-identity events) so 4 Galio player deaths are counted and Ryze opponent death is excluded', () => {
     const galioMatch = createMatch({
       matchId: 'NA1_5200001',
       gameVersion: '26.1.1',
@@ -553,11 +553,18 @@ describe('aiContextBuilder (#14)', () => {
         deaths: 4,
         assists: 9,
       },
+      opponentOverrides: {
+        championName: 'Ryze',
+        teamPosition: 'MIDDLE',
+      },
     });
 
-    // Production-shaped /riot/timeline/analyze payload serialized by Spring Boot Jackson:
-    // MatchEventEntry getters `boolean isPlayer()` and `boolean isOpponent()` serialize as `"player"` and `"opponent"`.
-    const rawProductionPayload = {
+    // Exact old-production /riot/timeline/analyze payload serialized by Spring Boot Jackson:
+    // - MatchEventEntry getters `boolean isPlayer()` and `boolean isOpponent()` serialize as `"player"` and `"opponent"` (NO `isPlayer` / `isOpponent`).
+    // - No `killer` or `assistants` fields on DEATH events (`actor` = victim, `target` = killer).
+    // - 4 Galio player deaths (`player: true`) + 1 Ryze opponent death (`player: false, opponent: true`) + 1 malformed/unknown-identity DEATH event (neither `isPlayer` nor `player` present).
+    // Under old `ev.isPlayer !== false`, the Ryze opponent death (`isPlayer === undefined`) was wrongly admitted, yielding `totalDeaths: 5`.
+    const rawOldProductionPayload = {
       heatmapPositions: [{ x: 7100, y: 7200, matchId: 'NA1_5200001', minute: 4 }],
       wardPositions: [{ x: 6400, y: 8100, matchId: 'NA1_5200001', minute: 3 }],
       killPositions: [{ x: 7500, y: 7400, matchId: 'NA1_5200001', minute: 7 }],
@@ -572,7 +579,7 @@ describe('aiContextBuilder (#14)', () => {
         {
           matchId: 'NA1_5200001',
           playerChampion: 'Galio',
-          opponentChampion: 'Sylas',
+          opponentChampion: 'Ryze',
           win: true,
           points: [
             {
@@ -610,93 +617,84 @@ describe('aiContextBuilder (#14)', () => {
         {
           matchId: 'NA1_5200001',
           playerChampion: 'Galio',
-          opponentChampion: 'Sylas',
+          opponentChampion: 'Ryze',
           win: true,
           events: [
-            // 4 real Galio deaths (`player: true`) + 2 Sylas opponent deaths (`player: false, opponent: true`)
+            // Galio death #1
             {
               type: 'DEATH' as const,
               minuteMark: 4,
               secondMark: 12,
               actor: 'Galio',
-              target: 'Sylas',
-              killer: 'Sylas',
-              assistants: ['Viego'],
+              target: 'Ryze',
               player: true,
               opponent: true,
-              laneType: 'MID_LANE',
+              laneType: null,
               monsterType: null,
               position: { x: 6900, y: 7000 },
             },
+            // Ryze opponent death (`player: false, opponent: true`) -> MUST BE EXCLUDED!
             {
               type: 'DEATH' as const,
               minuteMark: 6,
               secondMark: 40,
-              actor: 'Sylas',
-              target: 'Galio',
-              killer: 'Galio',
-              assistants: ['LeeSin'],
+              actor: 'Ryze',
+              target: 'LeeSin',
               player: false,
               opponent: true,
-              laneType: 'MID_LANE',
+              laneType: null,
               monsterType: null,
               position: { x: 7500, y: 7400 },
             },
+            // Galio death #2
             {
               type: 'DEATH' as const,
               minuteMark: 9,
               secondMark: 24,
               actor: 'Galio',
               target: 'Viego',
-              killer: 'Viego',
-              assistants: ['Sylas'],
               player: true,
               opponent: false,
               laneType: null,
               monsterType: null,
               position: { x: 5100, y: 10300 },
             },
+            // Galio death #3
             {
               type: 'DEATH' as const,
               minuteMark: 13,
               secondMark: 48,
               actor: 'Galio',
               target: 'Jinx',
-              killer: 'Jinx',
-              assistants: [],
               player: true,
               opponent: false,
               laneType: null,
               monsterType: null,
               position: { x: 9800, y: 4500 },
             },
-            {
-              type: 'DEATH' as const,
-              minuteMark: 18,
-              secondMark: 15,
-              actor: 'Sylas',
-              target: 'Jinx',
-              killer: 'Jinx',
-              assistants: ['Galio'],
-              player: false,
-              opponent: true,
-              laneType: null,
-              monsterType: null,
-              position: { x: 8000, y: 8000 },
-            },
+            // Galio death #4
             {
               type: 'DEATH' as const,
               minuteMark: 21,
               secondMark: 5,
               actor: 'Galio',
-              target: 'Sylas',
-              killer: 'Sylas',
-              assistants: [],
+              target: 'Ryze',
               player: true,
               opponent: true,
-              laneType: 'MID_LANE',
+              laneType: null,
               monsterType: null,
               position: { x: 8500, y: 8600 },
+            },
+            // Unknown-identity event (both `isPlayer` and `player` omitted) -> MUST NOT count!
+            {
+              type: 'DEATH' as const,
+              minuteMark: 11,
+              secondMark: 10,
+              actor: 'Ryze',
+              target: 'Galio',
+              laneType: null,
+              monsterType: null,
+              position: { x: 7200, y: 7200 },
             },
           ],
         },
@@ -723,27 +721,28 @@ describe('aiContextBuilder (#14)', () => {
       null,
       BASE_CHAMPION_STATS,
       BASE_OVERALL_STATS,
-      rawProductionPayload
+      rawOldProductionPayload
     );
 
     const m = ctxRaw.recentMatches[0];
     expect(m.champion).toBe('Galio');
     expect(m.deathContext).toBeDefined();
-    expect(m.deathContext?.totalDeaths).toBe(4);
+    expect(m.deathContext?.totalDeaths).toBe(4); // 4 Galio deaths ONLY (Ryze death & unknown-identity event excluded)
     expect(m.deathContext?.firstDeathMinute).toBe(4.2);
     expect(m.deathContext?.deathsBefore10).toBe(2);
-    expect(m.deathContext?.assistedDeaths).toBe(2);
-    expect(m.deathContext?.unassistedDeaths).toBe(2);
-    expect(m.deathContext?.unknownAssistDeaths).toBe(0);
-    expect(m.deathContext?.earlyDeaths).toHaveLength(3); // 3 pre-15m Galio deaths (4:12, 9:24, 13:48)
+    expect(m.deathContext?.assistedDeaths).toBeNull(); // Omitted assistants -> null (unknown)
+    expect(m.deathContext?.unassistedDeaths).toBeNull(); // Omitted assistants -> null (unknown)
+    expect(m.deathContext?.unknownAssistDeaths).toBe(4);
+    expect(m.deathContext?.earlyDeaths).toHaveLength(3); // 3 pre-15m Galio deaths (04:12, 09:24, 13:48)
     expect(m.deathContext?.earlyDeaths.map(d => d.time)).toEqual(['04:12', '09:24', '13:48']);
-    expect(m.deathContext?.earlyDeaths.map(d => d.killer)).toEqual(['Sylas', 'Viego', 'Jinx']);
+    expect(m.deathContext?.earlyDeaths.map(d => d.killer)).toEqual(['Ryze', 'Viego', 'Jinx']);
 
-    const normalizedPayload = normalizeTimelineAnalysisDto(rawProductionPayload);
+    const normalizedPayload = normalizeTimelineAnalysisDto(rawOldProductionPayload);
     expect(normalizedPayload.eventTimelines[0].events[0].isPlayer).toBe(true);
     expect(normalizedPayload.eventTimelines[0].events[0].isOpponent).toBe(true);
     expect(normalizedPayload.eventTimelines[0].events[1].isPlayer).toBe(false);
     expect(normalizedPayload.eventTimelines[0].events[1].isOpponent).toBe(true);
+    expect(normalizedPayload.eventTimelines[0].events[5].isPlayer).toBe(false);
     expect(normalizedPayload.powerSpikeTimelines[0].points[0].events[0].isPlayer).toBe(true);
     expect(normalizedPayload.powerSpikeTimelines[0].points[0].events[0].isOpponent).toBe(false);
 
