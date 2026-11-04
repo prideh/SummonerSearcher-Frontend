@@ -6,6 +6,7 @@ import { useDataDragonStore } from '../store/dataDragonStore';
 import {
   CLASSIC_MINION_WAVE_CONFIG,
   SEASON_2026_MINION_WAVE_CONFIG,
+  isPost26_1Patch,
   calculateSpawnedLaneMinionsByMinute,
   calculateLaneCsAt10Comparison,
 } from '../utils/statsCalculator';
@@ -293,26 +294,46 @@ describe('ConsistencyStats', () => {
     expect(screen.queryByText('Lane minions @ 10 min')).not.toBeInTheDocument();
   });
 
-  test('computes provisional theoretical spawned supply by 10:00 (120 = 19 waves x6 + 6 cannons post-26.1) from patch-parameterized spawn rules', () => {
-    // Classic 1:05 first spawn -> 18 waves spawn strictly before 10:00 (01:05 .. 09:35, 6 cannon waves on 3,6,9,12,15,18) = 114 theoretical spawned supply
+  test('computes provisional theoretical spawned supply by 10:00 (120 = 19 waves x6 + 6 cannons post-26.1) and guards against pre-26.1 or unknown patches', () => {
+    expect(isPost26_1Patch('16.1.648.1234')).toBe(true);
+    expect(isPost26_1Patch('16.5.1')).toBe(true);
+    expect(isPost26_1Patch('16.22.1')).toBe(true);
+    expect(isPost26_1Patch('26.1')).toBe(true);
+    expect(isPost26_1Patch('26.22')).toBe(true);
+    expect(isPost26_1Patch('15.24.1')).toBe(false);
+    expect(isPost26_1Patch('14.10.1')).toBe(false);
+    expect(isPost26_1Patch(undefined)).toBe(false);
+    expect(isPost26_1Patch('')).toBe(false);
+
+    // Classic 1:05 first spawn config when explicitly passed -> 18 waves (01:05 .. 09:35, 6 cannon waves) = 114
     const classicResult = calculateSpawnedLaneMinionsByMinute(10, CLASSIC_MINION_WAVE_CONFIG);
     expect(classicResult.wavesSpawned).toBe(18);
     expect(classicResult.cannonWavesSpawned).toBe(6);
     expect(classicResult.spawnedSupply).toBe(114);
 
-    // Season 2026 (Patch 26.1 / DDragon 16.x) 0:30 first spawn -> 19 waves spawn strictly before 10:00 (00:30 .. 09:30, 6 cannon waves on 3,6,9,12,15,18) = 120 theoretical spawned supply
+    // Season 2026 (Patch 26.1 / DDragon 16.x) 0:30 first spawn -> 19 waves (00:30 .. 09:30, 6 cannon waves on 3,6,9,12,15,18) = 120
     const season2026Result = calculateSpawnedLaneMinionsByMinute(10, SEASON_2026_MINION_WAVE_CONFIG);
     expect(season2026Result.wavesSpawned).toBe(19);
     expect(season2026Result.cannonWavesSpawned).toBe(6);
     expect(season2026Result.spawnedSupply).toBe(120);
 
-    const comparisonClassic = calculateLaneCsAt10Comparison(80, '15.24.1');
-    expect(comparisonClassic).toEqual({
+    // Patch guard: pre-26.1 or missing patchVersion is excluded from the post-26.1 120 ceiling
+    const comparisonOlderPatch = calculateLaneCsAt10Comparison(80, '15.24.1');
+    expect(comparisonOlderPatch).toEqual({
       actual: 80,
-      spawnedSupply: 114,
-      wavesSpawned: 18,
-      cannonWavesSpawned: 6,
-      supplyLabel: 'Theoretical spawned supply (not guaranteed farmable)',
+      spawnedSupply: null,
+      wavesSpawned: null,
+      cannonWavesSpawned: null,
+      supplyLabel: null,
+    });
+
+    const comparisonMissingPatch = calculateLaneCsAt10Comparison(80, undefined);
+    expect(comparisonMissingPatch).toEqual({
+      actual: 80,
+      spawnedSupply: null,
+      wavesSpawned: null,
+      cannonWavesSpawned: null,
+      supplyLabel: null,
     });
 
     const comparisonSeason2026 = calculateLaneCsAt10Comparison(84, '16.5.1');
@@ -325,7 +346,7 @@ describe('ConsistencyStats', () => {
     });
   });
 
-  test('renders role-gated CS@10 actual vs 120 theoretical spawned supply (not guaranteed farmable) across all laners with no role-specific cutoffs', () => {
+  test('renders role-gated CS@10 actual vs 120 theoretical spawned supply on patch 26.1+ and excludes older/unknown-patch games from the ceiling display', () => {
     useDataDragonStore.setState({
       version: '16.5.1',
       versionReady: true,
@@ -347,7 +368,11 @@ describe('ConsistencyStats', () => {
       const lanerParticipant = lanerMatch.info!.participants[0];
 
       const { unmount } = render(
-        <PlayerStats participant={lanerParticipant} teamParticipants={lanerMatch.info!.participants} />
+        <PlayerStats
+          participant={lanerParticipant}
+          teamParticipants={lanerMatch.info!.participants}
+          gameVersion={lanerMatch.info!.gameVersion}
+        />
       );
       const badge = screen.getByTestId('lane-cs-10');
       expect(badge).toHaveTextContent('CS@10: 84 / 120 spawned*');
@@ -367,15 +392,51 @@ describe('ConsistencyStats', () => {
       unmountAnalysisLaner();
     }
 
+    // Older patch (15.24.1) match: must NOT apply the post-26.1 120 ceiling even when store version is 16.5.1
+    const olderLanerMatch = createMatch(
+      puuid,
+      { laneMinionsFirst10Minutes: 80 },
+      { laneMinionsFirst10Minutes: 68 },
+      'MIDDLE'
+    );
+    olderLanerMatch.info!.gameVersion = '15.24.1';
+    const olderParticipant = olderLanerMatch.info!.participants[0];
+
+    const { unmount: unmountOlderPlayerStats } = render(
+      <PlayerStats
+        participant={olderParticipant}
+        teamParticipants={olderLanerMatch.info!.participants}
+        gameVersion={olderLanerMatch.info!.gameVersion}
+      />
+    );
+    const olderBadge = screen.getByTestId('lane-cs-10');
+    expect(olderBadge).toHaveTextContent('CS@10: 80');
+    expect(olderBadge).not.toHaveTextContent('120');
+    expect(olderBadge).not.toHaveTextContent('spawned');
+    unmountOlderPlayerStats();
+
+    const { unmount: unmountOlderAnalysis } = render(
+      <AnalysisTab match={olderLanerMatch} puuid={puuid} onPlayerClick={() => {}} />
+    );
+    expect(screen.getAllByText('Lane minions @ 10 min:').length).toBeGreaterThan(0);
+    expect(screen.getByText('80')).toBeInTheDocument();
+    expect(screen.queryByText(/theoretical spawned supply/i)).not.toBeInTheDocument();
+    unmountOlderAnalysis();
+
     const supportMatch = createMatch(
       puuid,
       { laneMinionsFirst10Minutes: 18 },
       { laneMinionsFirst10Minutes: 12 },
       'UTILITY'
     );
+    supportMatch.info!.gameVersion = '16.5.1';
     const supportParticipant = supportMatch.info!.participants[0];
     const { unmount: unmountSupport } = render(
-      <PlayerStats participant={supportParticipant} teamParticipants={supportMatch.info!.participants} />
+      <PlayerStats
+        participant={supportParticipant}
+        teamParticipants={supportMatch.info!.participants}
+        gameVersion={supportMatch.info!.gameVersion}
+      />
     );
     expect(screen.queryByTestId('lane-cs-10')).not.toBeInTheDocument();
     unmountSupport();

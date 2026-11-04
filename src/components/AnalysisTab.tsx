@@ -29,9 +29,8 @@ interface AnalysisTabProps {
  * and their lane opponent's performance metrics (challenges) from the match.
  */
 const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
-  const storeVersion = useDataDragonStore(state => state.version);
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
-  const patchVersion = match.info?.gameVersion || storeVersion;
+  const patchVersion = match.info?.gameVersion;
   const participants = match.info?.participants;
   const mainPlayer = participants?.find(p => p.puuid === puuid);
 
@@ -106,7 +105,7 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
               <span className={`min-w-0 break-words font-medium ${isWinner ? 'text-emerald-700 dark:text-emerald-400 font-semibold' : 'text-slate-600 dark:text-slate-400'}`}>
                 {camelCaseToTitleCase(key)}:
               </span>
-              {laneCsComparison ? (
+              {laneCsComparison && laneCsComparison.spawnedSupply !== null ? (
                 <span
                   className={`font-bold pl-2 min-w-0 text-right ${isWinner ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
                   title={`Lane-only CS @ 10:00: ${laneCsComparison.actual} last-hit vs ${laneCsComparison.spawnedSupply} theoretical spawned supply (${laneCsComparison.wavesSpawned} waves x6 + ${laneCsComparison.cannonWavesSpawned} cannons; not guaranteed farmable)`}

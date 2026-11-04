@@ -179,6 +179,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
             <PlayerStats
               participant={player}
               teamParticipants={participants.filter(p => p.teamId === player.teamId)}
+              gameVersion={match.info.gameVersion}
             />
           )}
 
@@ -202,6 +203,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
                   teamParticipants={participants.filter(p => p.teamId === opponent.teamId)}
                   onPlayerClick={onPlayerClick}
                   isOpponent={true}
+                  gameVersion={match.info.gameVersion}
                 />
               )}
             </div>

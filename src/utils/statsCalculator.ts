@@ -113,18 +113,37 @@ export const SEASON_2026_MINION_WAVE_CONFIG: MinionWaveTimingConfig = {
 };
 
 /**
- * Resolves the minion wave spawn configuration for a given Data Dragon or match patch version.
- * Season 2026 (Patch 26.1 / Data Dragon 16.x+, the current live patch) spawns Wave 1 at 0:30;
- * pre-Season 2026 patches (major version <= 15) spawned Wave 1 at 1:05.
+ * Checks whether a match's `gameVersion` / patch string corresponds to Season 2026 Patch 26.1+
+ * (Riot Match-V5 `16.1+` internal versioning or `26.1+` display versioning), where first wave
+ * spawns at 0:30 and cannons spawn from wave 3 every 3rd wave.
+ * Returns `false` for pre-26.1 patches (major <= 15) and for missing/unparseable versions.
  */
-export const getMinionWaveConfigForPatch = (patchVersion?: string): MinionWaveTimingConfig => {
+export const isPost26_1Patch = (patchVersion?: string): boolean => {
   if (!patchVersion || !patchVersion.trim()) {
-    return SEASON_2026_MINION_WAVE_CONFIG;
+    return false;
   }
-  const majorStr = patchVersion.trim().split('.')[0];
-  const major = Number.parseInt(majorStr, 10);
-  if (!Number.isNaN(major) && major <= 15) {
-    return CLASSIC_MINION_WAVE_CONFIG;
+  const parts = patchVersion.trim().split('.');
+  const major = Number.parseInt(parts[0], 10);
+  if (Number.isNaN(major) || major < 16) {
+    return false;
+  }
+  if (parts.length > 1) {
+    const minor = Number.parseInt(parts[1], 10);
+    if (!Number.isNaN(minor) && minor < 1) {
+      return false;
+    }
+  }
+  return true;
+};
+
+/**
+ * Resolves the post-26.1 minion wave spawn configuration only when `patchVersion` is verified
+ * to be Patch 26.1+ (`16.1+` / `26.1+`). Returns `null` for older patches or missing patch strings
+ * so older matches are never silently computed under post-26.1 constants.
+ */
+export const getMinionWaveConfigForPatch = (patchVersion?: string): MinionWaveTimingConfig | null => {
+  if (!isPost26_1Patch(patchVersion)) {
+    return null;
   }
   return SEASON_2026_MINION_WAVE_CONFIG;
 };
@@ -175,35 +194,47 @@ export const calculateSpawnedLaneMinionsByMinute = (
 export interface LaneCsAt10Comparison {
   /** Actual lane-only minions last-hit in the first 10 minutes (`challenges.laneMinionsFirst10Minutes`). */
   actual: number;
-  /** Provisional theoretical spawned supply before 10:00 for the patch (120 = 19 waves x6 + 6 cannons post-26.1). */
-  spawnedSupply: number;
-  /** Number of waves spawned before 10:00 (19 in post-26.1 rules). */
-  wavesSpawned: number;
-  /** Number of cannon waves spawned before 10:00 (6 on waves 3, 6, 9, 12, 15, 18). */
-  cannonWavesSpawned: number;
-  /** Explicit label stating this ceiling is theoretical spawned supply, not guaranteed farmable. */
-  supplyLabel: string;
+  /** Provisional theoretical spawned supply before 10:00 for post-26.1 matches (120 = 19 waves x6 + 6 cannons), or `null` for older/unknown patches. */
+  spawnedSupply: number | null;
+  /** Number of waves spawned before 10:00 (19 in post-26.1 rules), or `null` for older/unknown patches. */
+  wavesSpawned: number | null;
+  /** Number of cannon waves spawned before 10:00 (6 on waves 3, 6, 9, 12, 15, 18), or `null` for older/unknown patches. */
+  cannonWavesSpawned: number | null;
+  /** Explicit label stating this ceiling is theoretical spawned supply, not guaranteed farmable, or `null` when ceiling is excluded. */
+  supplyLabel: string | null;
 }
 
 /**
  * Builds the provisional comparison between actual lane-only minions last-hit by 10:00
- * (`challenges.laneMinionsFirst10Minutes`) and the patch-computed theoretical spawned supply
- * (120 under post-26.1 rules: 19 waves x6 + 6 cannons), explicitly labelled as theoretical
- * spawned supply and not guaranteed farmable.
+ * (`challenges.laneMinionsFirst10Minutes`) and the post-26.1 theoretical spawned supply
+ * (120 = 19 waves x6 + 6 cannons). Older matches (pre-26.1) or matches without a verified
+ * 26.1+ `gameVersion` are excluded from the ceiling (`spawnedSupply: null`) rather than
+ * silently computed under post-26.1 constants.
  */
 export const calculateLaneCsAt10Comparison = (
   laneMinionsFirst10Minutes: number,
   patchOrConfig?: string | MinionWaveTimingConfig
 ): LaneCsAt10Comparison => {
+  const actual = Math.max(0, Math.round(laneMinionsFirst10Minutes));
   const config =
     typeof patchOrConfig === 'object' && patchOrConfig !== null
       ? patchOrConfig
       : getMinionWaveConfigForPatch(patchOrConfig);
+
+  if (!config) {
+    return {
+      actual,
+      spawnedSupply: null,
+      wavesSpawned: null,
+      cannonWavesSpawned: null,
+      supplyLabel: null,
+    };
+  }
+
   const { spawnedSupply, wavesSpawned, cannonWavesSpawned } = calculateSpawnedLaneMinionsByMinute(
     10,
     config
   );
-  const actual = Math.max(0, Math.round(laneMinionsFirst10Minutes));
 
   return {
     actual,

@@ -22,6 +22,8 @@ interface PlayerStatsProps {
   teamParticipants: ParticipantDto[];
   /** Flag to show condensed view (hide KDA stats) when true. */
   condensed?: boolean;
+  /** The match's gameVersion string (e.g. "16.5.1"), used to guard post-26.1 CS@10 ceiling display. */
+  gameVersion?: string;
 }
 
 /**
@@ -29,9 +31,8 @@ interface PlayerStatsProps {
  * This includes champion, spells, runes, KDA, CS, and kill participation.
  * It has a different layout when displaying an opponent versus the main player.
  */
-const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, isOpponent = false, teamParticipants, condensed = false }) => {
+const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, isOpponent = false, teamParticipants, condensed = false, gameVersion }) => {
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
-  const patchVersion = useDataDragonStore(state => state.version);
 
   const {
     championName,
@@ -54,13 +55,21 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
   const cs = (totalMinionsKilled ?? 0) + (neutralMinionsKilled ?? 0);
   const laneCsAt10 =
     isLanerPosition(teamPosition) && typeof challenges?.laneMinionsFirst10Minutes === 'number'
-      ? calculateLaneCsAt10Comparison(challenges.laneMinionsFirst10Minutes, patchVersion)
+      ? calculateLaneCsAt10Comparison(challenges.laneMinionsFirst10Minutes, gameVersion)
       : null;
+
+  const laneCsAt10TooltipText = laneCsAt10
+    ? laneCsAt10.spawnedSupply !== null
+      ? `Lane-only CS @ 10:00: ${laneCsAt10.actual} last-hit / ${laneCsAt10.spawnedSupply} theoretical spawned supply (${laneCsAt10.wavesSpawned} waves x6 + ${laneCsAt10.cannonWavesSpawned} cannons; not guaranteed farmable)`
+      : `Lane-only CS @ 10:00: ${laneCsAt10.actual} last-hit`
+    : null;
 
   const csTooltipParts = [`Minions: ${totalMinionsKilled ?? 0}`, `Jungle: ${neutralMinionsKilled ?? 0}`];
   if (laneCsAt10) {
     csTooltipParts.push(
-      `Lane CS @10: ${laneCsAt10.actual} / ${laneCsAt10.spawnedSupply} theoretical spawned supply (${laneCsAt10.wavesSpawned} waves + ${laneCsAt10.cannonWavesSpawned} cannons; not guaranteed farmable)`
+      laneCsAt10.spawnedSupply !== null
+        ? `Lane CS @10: ${laneCsAt10.actual} / ${laneCsAt10.spawnedSupply} theoretical spawned supply (${laneCsAt10.wavesSpawned} waves + ${laneCsAt10.cannonWavesSpawned} cannons; not guaranteed farmable)`
+        : `Lane CS @10: ${laneCsAt10.actual}`
     );
   } else if (teamPosition === 'JUNGLE' && typeof challenges?.jungleCsBefore10Minutes === 'number') {
     csTooltipParts.push(`Jungle CS @10: ${Math.round(challenges.jungleCsBefore10Minutes)}`);
@@ -129,18 +138,23 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
           >
             CS: {cs}
           </p>
-          {laneCsAt10 && (
+          {laneCsAt10 && laneCsAt10TooltipText && (
             <p
               className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5 whitespace-nowrap"
               data-testid="lane-cs-10"
-              title={`Lane-only CS @ 10:00: ${laneCsAt10.actual} last-hit / ${laneCsAt10.spawnedSupply} theoretical spawned supply (${laneCsAt10.wavesSpawned} waves x6 + ${laneCsAt10.cannonWavesSpawned} cannons; not guaranteed farmable)`}
+              title={laneCsAt10TooltipText}
               data-tooltip-id="player-name-tooltip"
-              data-tooltip-content={`Lane-only CS @ 10:00: ${laneCsAt10.actual} last-hit / ${laneCsAt10.spawnedSupply} theoretical spawned supply (${laneCsAt10.wavesSpawned} waves x6 + ${laneCsAt10.cannonWavesSpawned} cannons; not guaranteed farmable)`}
+              data-tooltip-content={laneCsAt10TooltipText}
             >
-              CS@10: {laneCsAt10.actual}{' '}
-              <span className="text-slate-400 dark:text-slate-500">
-                / {laneCsAt10.spawnedSupply} spawned*
-              </span>
+              CS@10: {laneCsAt10.actual}
+              {laneCsAt10.spawnedSupply !== null && (
+                <>
+                  {' '}
+                  <span className="text-slate-400 dark:text-slate-500">
+                    / {laneCsAt10.spawnedSupply} spawned*
+                  </span>
+                </>
+              )}
             </p>
           )}
           <p className="text-xs font-bold text-rose-600 dark:text-rose-400 mt-0.5">KP: {killParticipation.toFixed(0)}%</p>
@@ -227,18 +241,23 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
             >
               CS: {cs}
             </p>
-            {laneCsAt10 && (
+            {laneCsAt10 && laneCsAt10TooltipText && (
               <p
                 className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5 whitespace-nowrap"
                 data-testid="lane-cs-10"
-                title={`Lane-only CS @ 10:00: ${laneCsAt10.actual} last-hit / ${laneCsAt10.spawnedSupply} theoretical spawned supply (${laneCsAt10.wavesSpawned} waves x6 + ${laneCsAt10.cannonWavesSpawned} cannons; not guaranteed farmable)`}
+                title={laneCsAt10TooltipText}
                 data-tooltip-id="player-name-tooltip"
-                data-tooltip-content={`Lane-only CS @ 10:00: ${laneCsAt10.actual} last-hit / ${laneCsAt10.spawnedSupply} theoretical spawned supply (${laneCsAt10.wavesSpawned} waves x6 + ${laneCsAt10.cannonWavesSpawned} cannons; not guaranteed farmable)`}
+                data-tooltip-content={laneCsAt10TooltipText}
               >
-                CS@10: {laneCsAt10.actual}{' '}
-                <span className="text-slate-400 dark:text-slate-500">
-                  / {laneCsAt10.spawnedSupply} spawned*
-                </span>
+                CS@10: {laneCsAt10.actual}
+                {laneCsAt10.spawnedSupply !== null && (
+                  <>
+                    {' '}
+                    <span className="text-slate-400 dark:text-slate-500">
+                      / {laneCsAt10.spawnedSupply} spawned*
+                    </span>
+                  </>
+                )}
               </p>
             )}
             <p className="text-xs font-bold text-rose-600 dark:text-rose-400 mt-0.5">KP: {killParticipation.toFixed(0)}%</p>
