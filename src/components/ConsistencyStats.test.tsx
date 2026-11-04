@@ -6,8 +6,8 @@ import { useDataDragonStore } from '../store/dataDragonStore';
 import {
   CLASSIC_MINION_WAVE_CONFIG,
   SEASON_2026_MINION_WAVE_CONFIG,
-  calculateSpawnedLaneMinionsByMinute,
-  calculateLaneCsAt10Comparison,
+  calculateAvailableLaneMinionsByMinute,
+  calculateLaneCsMissedAt10,
 } from '../utils/statsCalculator';
 import type { MatchDto } from '../types/match';
 
@@ -293,41 +293,37 @@ describe('ConsistencyStats', () => {
     expect(screen.queryByText('Lane minions @ 10 min')).not.toBeInTheDocument();
   });
 
-  test('computes spawned lane minion ceiling by 10:00 from patch-parameterized spawn rules with explicit timing uncertainty', () => {
-    // Classic 1:05 first spawn -> 18 waves spawn strictly before 10:00 (01:05 .. 09:35, 6 cannon waves on 3,6,9,12,15,18) = 114 minions spawned
-    const classicResult = calculateSpawnedLaneMinionsByMinute(10, CLASSIC_MINION_WAVE_CONFIG);
-    expect(classicResult.wavesSpawned).toBe(18);
-    expect(classicResult.cannonWavesSpawned).toBe(6);
-    expect(classicResult.spawnedMinions).toBe(114);
+  test('computes available lane minions by 10:00 and CS missed from wave spawn/arrival timings', () => {
+    // Classic 1:05 first spawn -> 17 waves arrive in lane before 10:00 (5 cannon waves) = 107 minions
+    const classicResult = calculateAvailableLaneMinionsByMinute(10, CLASSIC_MINION_WAVE_CONFIG);
+    expect(classicResult.wavesArrived).toBe(17);
+    expect(classicResult.cannonWavesArrived).toBe(5);
+    expect(classicResult.availableMinions).toBe(107);
 
-    // Season 2026 (Patch 26.1 / DDragon 16.x) 0:30 first spawn -> 20 waves spawn strictly before 10:00 (00:30 .. 09:30, 6 cannon waves on 3,6,9,12,15,18) = 126 minions spawned
-    const season2026Result = calculateSpawnedLaneMinionsByMinute(10, SEASON_2026_MINION_WAVE_CONFIG);
-    expect(season2026Result.wavesSpawned).toBe(20);
-    expect(season2026Result.cannonWavesSpawned).toBe(6);
-    expect(season2026Result.spawnedMinions).toBe(126);
+    // Season 2026 (Patch 26.1 / DDragon 16.x) 0:30 first spawn -> 18 waves arrive before 10:00 (6 cannon waves) = 114 minions
+    const season2026Result = calculateAvailableLaneMinionsByMinute(10, SEASON_2026_MINION_WAVE_CONFIG);
+    expect(season2026Result.wavesArrived).toBe(18);
+    expect(season2026Result.cannonWavesArrived).toBe(6);
+    expect(season2026Result.availableMinions).toBe(114);
 
-    const comparisonClassic = calculateLaneCsAt10Comparison(80, '15.24.1');
-    expect(comparisonClassic).toEqual({
-      actual: 80,
-      spawnedCeiling: 114,
-      wavesSpawned: 18,
-      cannonWavesSpawned: 6,
-      uncertaintyNote: 'Final 1–2 spawned waves may still be in transit at 10:00 (arrival timing unverified)',
+    const breakdownClassic = calculateLaneCsMissedAt10(80, '15.24.1');
+    expect(breakdownClassic).toEqual({
+      hit: 80,
+      available: 107,
+      missed: 27,
+      wavesArrived: 17,
     });
-    expect('missed' in (comparisonClassic as unknown as Record<string, unknown>)).toBe(false);
 
-    const comparisonSeason2026 = calculateLaneCsAt10Comparison(84, '16.5.1');
-    expect(comparisonSeason2026).toEqual({
-      actual: 84,
-      spawnedCeiling: 126,
-      wavesSpawned: 20,
-      cannonWavesSpawned: 6,
-      uncertaintyNote: 'Final 1–2 spawned waves may still be in transit at 10:00 (arrival timing unverified)',
+    const breakdownSeason2026 = calculateLaneCsMissedAt10(84, '16.5.1');
+    expect(breakdownSeason2026).toEqual({
+      hit: 84,
+      available: 114,
+      missed: 30,
+      wavesArrived: 18,
     });
-    expect('missed' in (comparisonSeason2026 as unknown as Record<string, unknown>)).toBe(false);
   });
 
-  test('renders role-gated CS@10 actual vs spawned ceiling with timing uncertainty in PlayerStats and AnalysisTab only for laners', () => {
+  test('renders role-gated CS@10 and missed CS in PlayerStats and AnalysisTab only for laners', () => {
     useDataDragonStore.setState({
       version: '16.5.1',
       versionReady: true,
@@ -350,10 +346,7 @@ describe('ConsistencyStats', () => {
     const { unmount } = render(
       <PlayerStats participant={lanerParticipant} teamParticipants={lanerMatch.info!.participants} />
     );
-    const badge = screen.getByTestId('lane-cs-10');
-    expect(badge).toHaveTextContent('CS@10: 84 (≤126 spawned*)');
-    expect(badge.getAttribute('title')).toContain('Spawned ceiling: 126 (20 waves; Final 1–2 spawned waves may still be in transit at 10:00 (arrival timing unverified))');
-    expect(badge.textContent).not.toMatch(/missed/i);
+    expect(screen.getByTestId('lane-cs-10')).toHaveTextContent('CS@10: 84 (-30)');
     unmount();
 
     const supportMatch = createMatch(
@@ -373,8 +366,7 @@ describe('ConsistencyStats', () => {
       <AnalysisTab match={lanerMatch} puuid={puuid} onPlayerClick={() => {}} />
     );
     expect(screen.getAllByText('Lane minions @ 10 min:').length).toBeGreaterThan(0);
-    expect(screen.getByText(/84 last-hit/)).toHaveTextContent('84 last-hit (≤126 spawned, ±1–2 waves in transit)');
-    expect(screen.queryByText(/missed/i)).not.toBeInTheDocument();
+    expect(screen.getByText('84 / 114 (30 missed)')).toBeInTheDocument();
     // Jungle CS @ 10 min should be filtered out for TOP laners
     expect(screen.queryByText('Jungle cs @ 10 min:')).not.toBeInTheDocument();
     unmountAnalysisLaner();
