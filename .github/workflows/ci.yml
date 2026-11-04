@@ -18,9 +18,7 @@ jobs:
         cache: 'npm'
     - name: Install dependencies
       run: npm ci
-    - name: Run build (Type Check)
-      run: npm run build
-    - name: Run tests
-      run: npm test -- --run
-    - name: Run linter
-      run: npm run lint
+    - name: Grant execute permission for preflight script
+      run: chmod +x scripts/preflight.sh
+    - name: Run shared preflight (tsc -b + vitest + lint + build)
+      run: ./scripts/preflight.sh

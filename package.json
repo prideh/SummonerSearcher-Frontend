@@ -9,6 +9,7 @@
     "prebuild": "npm run update-tags",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "preflight": "bash scripts/preflight.sh",
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "update-tags": "node scripts/updateChampionTags.js"
