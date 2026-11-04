@@ -1,8 +1,13 @@
-import { render, screen, fireEvent, within } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, within, act } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import ImprovementStatsSection from './ImprovementStatsSection';
+import { useDataDragonStore } from '../store/dataDragonStore';
 import type { ImprovementStatsDto } from '../types/improvementStats';
-import { resolveImprovementStats } from '../utils/improvementStatsHelper';
+import {
+  resolveImprovementStats,
+  formatTemporalEventDescription,
+  formatPurchaseItemLabel,
+} from '../utils/improvementStatsHelper';
 import type { MatchDto } from '../types/match';
 import type { TimelineAnalysisDto } from '../types/timeline';
 import { isPlayerTimelineEvent, isOpponentTimelineEvent } from '../types/timeline';
@@ -186,10 +191,10 @@ describe('ImprovementStatsSection', () => {
     expect(leadCard).toHaveTextContent('+150.0g');
     expect(leadCard).toHaveTextContent('50% (1/2G)');
     expect(screen.getByTestId('lead-retention-temporal-events')).toHaveTextContent(
-      'Ahri 14:30 ALLY_TEAM FIRE_DRAGON (team-only)'
+      'Ahri 14:30 Ally Infernal Drake (team-only)'
     );
     expect(screen.getByTestId('lead-retention-temporal-events')).toHaveTextContent(
-      'Ahri 16:00 ENEMY_TEAM OUTER_TURRET (team-only)'
+      'Ahri 16:00 Enemy Outer Turret (team-only)'
     );
 
     // 3. Death Cost
@@ -201,7 +206,7 @@ describe('ImprovementStatsSection', () => {
     expect(deathCard).toHaveTextContent('600g + 150g');
     expect(deathCard).toHaveTextContent('750g');
 
-    // 4. Unspent Gold
+    // 4. Unspent Gold (when itemMap is not loaded yet, falls back honestly to Item #3157)
     const unspentCard = screen.getByTestId('card-unspent-gold');
     expect(unspentCard).toHaveTextContent('3G · 11 snapshots');
     expect(unspentCard).toHaveTextContent('800.0g');
@@ -209,7 +214,7 @@ describe('ImprovementStatsSection', () => {
     expect(unspentCard).toHaveTextContent('1,600g');
     expect(unspentCard).toHaveTextContent('2 / 11 frames');
     expect(unspentCard).toHaveTextContent('1 frames');
-    expect(unspentCard).toHaveTextContent('Ahri @10m (1600g → item #3157)');
+    expect(unspentCard).toHaveTextContent('Ahri @10m (1600g → Item #3157)');
 
     // 5. Team Objectives
     const hordeRow = screen.getByTestId('objective-row-horde');
@@ -246,6 +251,69 @@ describe('ImprovementStatsSection', () => {
       '3 Games Considered'
     );
     expect(screen.getByTestId('card-lead-retention')).toHaveTextContent('100% (1/1G)');
+  });
+
+  afterEach(() => {
+    act(() => {
+      useDataDragonStore.setState({ itemMap: null });
+    });
+  });
+
+  it('replaces raw event enums (including ALLY_TEAM_TURRET_PLATE) with human text and resolves item names from itemMap with honest fallback for unknown IDs', () => {
+    expect(
+      formatTemporalEventDescription({
+        securingTeam: 'ALLY_TEAM',
+        objectiveType: 'ALLY_TEAM_TURRET_PLATE',
+      })
+    ).toBe('Ally Turret Plate');
+    expect(
+      formatTemporalEventDescription({
+        securingTeam: 'ENEMY_TEAM',
+        objectiveType: 'ENEMY_TEAM_TURRET_PLATE',
+      })
+    ).toBe('Enemy Turret Plate');
+    expect(
+      formatTemporalEventDescription({
+        securingTeam: 'ALLY_TEAM',
+        objectiveType: 'TURRET_PLATE',
+      })
+    ).toBe('Ally Turret Plate');
+    expect(
+      formatTemporalEventDescription({
+        securingTeam: 'ALLY_TEAM',
+        objectiveType: 'HORDE',
+      })
+    ).toBe('Ally Void Grubs');
+
+    const mockItemMap = {
+      '3152': {
+        name: 'Hextech Rocketbelt',
+        description: '',
+        plaintext: '',
+        gold: { base: 600, total: 2600, sell: 1820, purchasable: true },
+      },
+      '3157': {
+        name: "Zhonya's Hourglass",
+        description: '',
+        plaintext: '',
+        gold: { base: 650, total: 3250, sell: 2275, purchasable: true },
+      },
+    };
+
+    expect(formatPurchaseItemLabel(3152, mockItemMap)).toBe('Hextech Rocketbelt');
+    expect(formatPurchaseItemLabel(3157, mockItemMap)).toBe("Zhonya's Hourglass");
+    expect(formatPurchaseItemLabel(999999, mockItemMap)).toBe('Item #999999');
+
+    useDataDragonStore.setState({ itemMap: mockItemMap });
+    render(
+      <ImprovementStatsSection
+        stats={BACKEND_18_ANALYZED_FIXTURE}
+        hasTimelineAnalysis={true}
+      />
+    );
+    expect(screen.getByTestId('card-unspent-gold')).toHaveTextContent(
+      "Ahri @10m (1600g → Zhonya's Hourglass)"
+    );
   });
 
   it('deserializes a production-shaped TimelineAnalysisDto wire JSON with Jackson player/opponent booleans and improvementStats', () => {

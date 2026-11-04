@@ -1,4 +1,9 @@
 import React, { useMemo, useState } from 'react';
+import { useDataDragonStore, type ItemMap } from '../store/dataDragonStore';
+import {
+  formatPurchaseItemLabel,
+  formatTemporalEventDescription,
+} from '../utils/improvementStatsHelper';
 import type {
   ImprovementStatsBreakdownDto,
   ImprovementStatsDto,
@@ -69,6 +74,17 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
   compact = false,
 }) => {
   const [selection, setSelection] = useState<FilterSelection>({ type: 'ALL' });
+  const selectorItemMap = useDataDragonStore(state => state?.itemMap);
+  const storeStateItemMap =
+    typeof useDataDragonStore.getState === 'function'
+      ? useDataDragonStore.getState()?.itemMap
+      : null;
+  const itemMap: ItemMap | null =
+    selectorItemMap && typeof selectorItemMap === 'object'
+      ? selectorItemMap
+      : storeStateItemMap && typeof storeStateItemMap === 'object'
+      ? storeStateItemMap
+      : null;
 
   const roleEntries = useMemo(
     () =>
@@ -595,7 +611,7 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
                         <span key={`${ev.matchId}-${ev.minuteMark}-${ev.secondMark}-${idx}`}>
                           {idx > 0 && ' · '}
                           {ev.championName} {ev.minuteMark}:{String(ev.secondMark).padStart(2, '0')}{' '}
-                          {ev.securingTeam} {ev.monsterSubType ?? ev.towerType ?? ev.objectiveType}
+                          {formatTemporalEventDescription(ev)}
                           {ev.playerPersonallyInvolved ? ' (involved)' : ' (team-only)'}
                         </span>
                       ))}
@@ -794,13 +810,16 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
                       <span className="font-semibold text-slate-700 dark:text-slate-300">
                         Pre-purchase windows:{' '}
                       </span>
-                      {unspentGold.highBalanceBeforePurchaseSamples.slice(0, 3).map((s, idx) => (
-                        <span key={`${s.matchId}-${s.sampledMinute}-${idx}`}>
-                          {idx > 0 && ' · '}
-                          {s.championName} @{s.sampledMinute}m ({s.currentGoldAtSample}g
-                          {s.nextPurchaseItemId ? ` → item #${s.nextPurchaseItemId}` : ''})
-                        </span>
-                      ))}
+                      {unspentGold.highBalanceBeforePurchaseSamples.slice(0, 3).map((s, idx) => {
+                        const itemLabel = formatPurchaseItemLabel(s.nextPurchaseItemId, itemMap);
+                        return (
+                          <span key={`${s.matchId}-${s.sampledMinute}-${idx}`}>
+                            {idx > 0 && ' · '}
+                            {s.championName} @{s.sampledMinute}m ({s.currentGoldAtSample}g
+                            {itemLabel ? ` → ${itemLabel}` : ''})
+                          </span>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

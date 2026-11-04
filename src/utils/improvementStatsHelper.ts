@@ -526,3 +526,82 @@ export const resolveImprovementStats = (
     hasTimelineAnalysis: false,
   };
 };
+
+const OBJECTIVE_EVENT_LABELS: Record<string, string> = {
+  TURRET_PLATE: 'Turret Plate',
+  TURRET_PLATE_DESTROYED: 'Turret Plate',
+  OUTER_TURRET: 'Outer Turret',
+  INNER_TURRET: 'Inner Turret',
+  BASE_TURRET: 'Base Turret',
+  NEXUS_TURRET: 'Nexus Turret',
+  UNDEFINED_TURRET: 'Turret',
+  TOWER_BUILDING: 'Turret',
+  TOWER: 'Turret',
+  INHIBITOR_BUILDING: 'Inhibitor',
+  INHIBITOR: 'Inhibitor',
+  FIRE_DRAGON: 'Infernal Drake',
+  WATER_DRAGON: 'Ocean Drake',
+  EARTH_DRAGON: 'Mountain Drake',
+  AIR_DRAGON: 'Cloud Drake',
+  HEXTECH_DRAGON: 'Hextech Drake',
+  CHEMTECH_DRAGON: 'Chemtech Drake',
+  ELDER_DRAGON: 'Elder Dragon',
+  DRAGON: 'Dragon',
+  HORDE: 'Void Grubs',
+  VOID_GRUB: 'Void Grubs',
+  VOID_GRUBS: 'Void Grubs',
+  RIFTHERALD: 'Rift Herald',
+  RIFT_HERALD: 'Rift Herald',
+  BARON_NASHOR: 'Baron Nashor',
+  BARON: 'Baron Nashor',
+  ATAKHAN: 'Atakhan',
+};
+
+const humanizeEnumToken = (raw: string): string =>
+  raw
+    .trim()
+    .split(/_+/)
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+
+export const formatTemporalEventDescription = (ev: {
+  securingTeam?: string | null;
+  objectiveType?: string | null;
+  monsterSubType?: string | null;
+  towerType?: string | null;
+}): string => {
+  const rawTeam = (ev.securingTeam ?? '').trim().toUpperCase();
+  let teamPrefix =
+    rawTeam === 'ALLY_TEAM'
+      ? 'Ally'
+      : rawTeam === 'ENEMY_TEAM'
+      ? 'Enemy'
+      : rawTeam === 'UNKNOWN_TEAM' || !rawTeam
+      ? ''
+      : humanizeEnumToken(rawTeam.replace(/_TEAM$/, ''));
+
+  let rawTarget = (ev.monsterSubType ?? ev.towerType ?? ev.objectiveType ?? '').trim().toUpperCase();
+  if (rawTarget.startsWith('ALLY_TEAM_')) {
+    if (!teamPrefix) teamPrefix = 'Ally';
+    rawTarget = rawTarget.slice('ALLY_TEAM_'.length);
+  } else if (rawTarget.startsWith('ENEMY_TEAM_')) {
+    if (!teamPrefix) teamPrefix = 'Enemy';
+    rawTarget = rawTarget.slice('ENEMY_TEAM_'.length);
+  }
+
+  const targetLabel =
+    OBJECTIVE_EVENT_LABELS[rawTarget] ?? (rawTarget ? humanizeEnumToken(rawTarget) : 'Objective');
+
+  return teamPrefix ? `${teamPrefix} ${targetLabel}` : targetLabel;
+};
+
+export const formatPurchaseItemLabel = (
+  itemId: number | null | undefined,
+  itemMap: Record<string, { name?: string }> | null | undefined
+): string => {
+  if (itemId === null || itemId === undefined || itemId <= 0) return '';
+  const name = itemMap?.[String(itemId)]?.name?.trim();
+  return name && name.length > 0 ? name : `Item #${itemId}`;
+};
+
