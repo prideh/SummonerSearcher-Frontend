@@ -159,6 +159,8 @@ export interface MatchEventTimelineDto {
   events: MatchEventEntry[];
 }
 
+import type { ImprovementStatsDto } from './improvementStats';
+
 export interface TimelineAggregateSummary {
   avgFirstDeathMinute: number;
   mostDangerousZone: string;
@@ -169,6 +171,10 @@ export interface TimelineAggregateSummary {
   killsTotal: number;
   assistsTotal: number;
   gamesAnalyzed: number;
+  deathsBefore10?: number | null;
+  assistedDeaths?: number | null;
+  unassistedDeaths?: number | null;
+  deathsNearObjectiveWindows?: number | null;
 }
 
 export interface TimelineAnalysisDto {
@@ -182,6 +188,7 @@ export interface TimelineAnalysisDto {
   skillOrders: SkillOrderDto[];
   eventTimelines: MatchEventTimelineDto[];
   aggregateSummary: TimelineAggregateSummary;
+  improvementStats?: ImprovementStatsDto | null;
 }
 
 // Raw timeline types (for the Details tab single-match view)
@@ -197,6 +204,7 @@ export interface ParticipantFrameDto {
   xp: number;
   currentGold: number;
   minionsKilled: number;
+  jungleMinionsKilled?: number | null;
   position: TimelinePositionDto;
 }
 
@@ -214,11 +222,16 @@ export interface TimelineEventDto {
   wardType?: string;
   buildingType?: string;
   laneType?: string;
+  towerType?: string;
   monsterType?: string;
   monsterSubType?: string;
   teamId?: number;
+  killerTeamId?: number;
   creatorId?: number;
   position?: TimelinePositionDto;
+  bounty?: number | null;
+  shutdownBounty?: number | null;
+  goldGain?: number | null;
 }
 
 export interface TimelineFrameDto {

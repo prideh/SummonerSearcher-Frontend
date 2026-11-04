@@ -14,6 +14,7 @@ import {
   type MatchEventEntry,
 } from '../types/timeline';
 import ItemIcon from './ItemIcon';
+import ImprovementStatsSection from './ImprovementStatsSection';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import { getCorrectChampionName } from '../utils/championNameHelper';
 import { COMMITTED_DDRAGON_VERSION } from '../utils/championTags';
@@ -783,6 +784,14 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
                 )}
               </section>
             </div>
+
+            {analysis.improvementStats && (
+              <ImprovementStatsSection
+                stats={analysis.improvementStats}
+                hasTimelineAnalysis={true}
+                compact={true}
+              />
+            )}
 
             {/* ── AI Coach Section ── */}
             <section className="bg-gradient-to-r from-violet-50 dark:from-violet-950/50 to-indigo-50 dark:to-indigo-950/50 border border-violet-200 dark:border-violet-900/50 rounded-xl p-5">

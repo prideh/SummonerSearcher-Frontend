@@ -20,8 +20,11 @@ export interface ChallengesDto {
   threeWardsOneSweeperCount?: number;
   visionScoreAdvantageLaneOpponent?: number;
   turretPlatesTaken?: number;
+  turretTakedowns?: number | null;
+  baronTakedowns?: number | null;
+  riftHeraldTakedowns?: number | null;
   InfernalScalePickup?: number;
-  voidMonsterKill?: number;
+  voidMonsterKill?: number | null;
   abilityUses?: number;
   acesBefore15Minutes?: number;
   alliedJungleMonsterKills?: number;
@@ -32,7 +35,7 @@ export interface ChallengesDto {
   damagePerMinute?: number;
   damageTakenOnTeamPercentage?: number;
   dodgeSkillShotsSmallWindow?: number;
-  dragonTakedowns?: number;
+  dragonTakedowns?: number | null;
   legendaryItemUsed?: number[];
   effectiveHealAndShielding?: number;
   enemyChampionImmobilizations?: number;
@@ -53,6 +56,8 @@ export interface ChallengesDto {
 
 export interface ParticipantDto {
   assists?: number;
+  baronKills?: number | null;
+  bountyLevel?: number;
   champLevel?: number;
   championId?: number;
   championName?: string;
@@ -60,15 +65,17 @@ export interface ParticipantDto {
   damageDealtToObjectives?: number;
   damageDealtToTurrets?: number;
   damageSelfMitigated?: number;
-  deaths?: number;
+  deaths?: number | null;
   detectorWardsPlaced?: number;
   doubleKills?: number;
-  dragonKills?: number;
+  dragonKills?: number | null;
   firstBloodAssist?: boolean;
   firstBloodKill?: boolean;
   firstTowerAssist?: boolean;
   firstTowerKill?: boolean;
   goldEarned?: number;
+  goldSpent?: number;
+  individualPosition?: string;
   item0?: number;
   item1?: number;
   item2?: number;
@@ -118,10 +125,12 @@ export interface ParticipantDto {
   totalHealsOnTeammates?: number;
   totalMinionsKilled?: number;
   totalTimeCCDealt?: number;
+  totalTimeSpentDead?: number | null;
   tripleKills?: number;
   trueDamageDealtToChampions?: number;
   trueDamageTaken?: number;
-  turretKills?: number;
+  turretKills?: number | null;
+  turretTakedowns?: number | null;
   visionScore?: number;
   visionWardsBoughtInGame?: number;
   wardsKilled?: number;
@@ -153,6 +162,35 @@ export interface PerkStyleSelectionDto {
   perk: number; // Rune ID
 }
 
+export interface ObjectiveStatsDto {
+  first?: boolean | null;
+  kills?: number | null;
+}
+
+export interface TeamObjectivesDto {
+  baron?: ObjectiveStatsDto | null;
+  champion?: ObjectiveStatsDto | null;
+  dragon?: ObjectiveStatsDto | null;
+  horde?: ObjectiveStatsDto | null;
+  grubs?: ObjectiveStatsDto | null;
+  inhibitor?: ObjectiveStatsDto | null;
+  riftHerald?: ObjectiveStatsDto | null;
+  herald?: ObjectiveStatsDto | null;
+  tower?: ObjectiveStatsDto | null;
+}
+
+export interface TeamBanDto {
+  championId?: number | null;
+  pickTurn?: number | null;
+}
+
+export interface TeamDto {
+  teamId?: number | null;
+  win?: boolean | null;
+  bans?: TeamBanDto[] | null;
+  objectives?: TeamObjectivesDto | null;
+}
+
 export interface MatchInfo {
   gameId: number;
   gameCreation?: number;
@@ -162,6 +200,7 @@ export interface MatchInfo {
   gameVersion?: string;
   queueId?: number;
   participants: ParticipantDto[];
+  teams?: TeamDto[] | null;
 }
 
 export interface MatchDto {

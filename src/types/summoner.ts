@@ -1,4 +1,5 @@
 import type { MatchDto } from './match';
+import type { ImprovementStatsDto } from './improvementStats';
 
 export interface LeagueEntryDto {
   leagueId: string;
@@ -85,6 +86,7 @@ export interface SummonerData {
   recentMatches: MatchDto[];
   championStats: ChampionStats[];
   overallStats: OverallStats | null;
+  improvementStats?: ImprovementStatsDto | null;
 
   totalMatches: number;
   region: string;

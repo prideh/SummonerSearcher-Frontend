@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { SummonerData } from '../types/summoner';
 import type { MatchDto } from '../types/match';
 import RankedInfo from './RankedInfo';
@@ -11,6 +11,8 @@ import { buildAiContext } from '../utils/aiContextBuilder';
 import { analyzeTimelines } from '../api/timeline';
 import TimelineAnalysisModal from './TimelineAnalysisModal';
 import type { TimelineAnalysisDto } from '../types/timeline';
+import ImprovementStatsSection from './ImprovementStatsSection';
+import { resolveImprovementStats } from '../utils/improvementStatsHelper';
 
 /**
  * Props for the SummonerInfo component.
@@ -66,6 +68,17 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
     summonerData.championStats,
     summonerData.overallStats,
     timelineAnalysis
+  );
+
+  const resolvedImprovement = useMemo(
+    () =>
+      resolveImprovementStats(
+        summonerData.improvementStats,
+        timelineAnalysis,
+        visibleMatches,
+        summonerData.puuid
+      ),
+    [summonerData.improvementStats, timelineAnalysis, visibleMatches, summonerData.puuid]
   );
 
   const handleAnalyzeTimeline = async () => {
@@ -246,6 +259,13 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
       ) : (
         <p className="text-center text-slate-500 dark:text-slate-400 mt-4 text-sm">No ranked data available for this summoner.</p>
       )}
+
+      <ImprovementStatsSection
+        stats={resolvedImprovement.stats}
+        hasTimelineAnalysis={resolvedImprovement.hasTimelineAnalysis}
+        onAnalyzeTimeline={handleAnalyzeTimeline}
+        loadingTimeline={loadingTimeline}
+      />
       
       <AiAnalysisModal 
         isOpen={showAiModal}
