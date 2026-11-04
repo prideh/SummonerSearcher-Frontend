@@ -63,7 +63,10 @@ export interface MatchEventEntry {
   actor: string | null;
   target: string | null;
   killer?: string | null;
-  assistants?: string[];
+  assistants?: string[] | null;
+  participants?: string[] | null;
+  zone?: string | null;
+  wardType?: string | null;
   isPlayer: boolean;
   isOpponent: boolean;
   laneType: string | null;

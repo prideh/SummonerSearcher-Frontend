@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   buildAiContext,
+  classifyRiftApproxZone,
+  formatEventTimestamp,
   formatPatchMajorMinor,
   MAX_EARLY_DEATHS_PER_GAME,
   MAX_ITEM_SPIKES_PER_GAME,
@@ -134,7 +136,7 @@ function createMatch(overrides: {
   const opponent = createParticipant({
     puuid: 'opp-puuid',
     riotIdGameName: 'RivalMid',
-    championName: 'Syndndra',
+    championName: 'Syndra',
     teamId: enemyTeamId,
     teamPosition: role,
     kills: 2,
@@ -223,14 +225,26 @@ describe('aiContextBuilder (#14)', () => {
     });
   });
 
-  it('formats major.minor patch strings cleanly', () => {
+  it('formats major.minor patch strings, event timestamps, and approximate Rift zones cleanly', () => {
     expect(formatPatchMajorMinor('16.22.612.4910')).toBe('16.22');
     expect(formatPatchMajorMinor('15.24.1')).toBe('15.24');
     expect(formatPatchMajorMinor(undefined)).toBeUndefined();
     expect(formatPatchMajorMinor('')).toBeUndefined();
+
+    expect(formatEventTimestamp(3, 5)).toBe('03:05');
+    expect(formatEventTimestamp(14, 30)).toBe('14:30');
+
+    expect(classifyRiftApproxZone({ x: 7200, y: 7200 }, null, null)).toBe('Mid River');
+    expect(classifyRiftApproxZone({ x: 5200, y: 5100 }, null, null)).toBe('Mid Lane');
+    expect(classifyRiftApproxZone({ x: 5007, y: 10471 }, null, null)).toBe('Baron / Top River');
+    expect(classifyRiftApproxZone({ x: 9866, y: 4414 }, null, null)).toBe('Dragon / Bot River');
+    expect(classifyRiftApproxZone({ x: 1800, y: 11200 }, null, null)).toBe('Top Lane');
+    expect(classifyRiftApproxZone({ x: 12200, y: 2100 }, null, null)).toBe('Bot Lane');
+    expect(classifyRiftApproxZone(null, 'MID_LANE', null)).toBe('Mid Lane');
+    expect(classifyRiftApproxZone(null, null, null)).toBeNull();
   });
 
-  it('builds match context with loadout, draft, early CS, vision/objective counts, and NOT_ANALYZED status when timeline was not run', () => {
+  it('builds match context with loadout, draft, early CS (preserving missing counts), vision/objective counts, and NOT_ANALYZED status when timeline was not run', () => {
     const post26Match = createMatch({
       matchId: 'EUW1_1001',
       gameVersion: '16.22.1',
@@ -265,8 +279,20 @@ describe('aiContextBuilder (#14)', () => {
         teamId: 100,
         teamPosition: 'TOP',
         challenges: {
-          laneMinionsFirst10Minutes: 79,
+          laneMinionsFirst10Minutes: 74,
           turretPlatesTaken: 1,
+          controlWardsPlaced: 1,
+        },
+      },
+    });
+    const missingCsLaneMatch = createMatch({
+      matchId: 'EUW1_1004',
+      gameVersion: '16.22.1',
+      playerOverrides: {
+        teamId: 100,
+        teamPosition: 'BOTTOM',
+        challenges: {
+          turretPlatesTaken: 2,
           controlWardsPlaced: 1,
         },
       },
@@ -275,7 +301,7 @@ describe('aiContextBuilder (#14)', () => {
     const ctx = buildAiContext(
       'Faker',
       'KR1',
-      [post26Match, pre26JungleMatch, pre26LaneMatch],
+      [post26Match, pre26JungleMatch, pre26LaneMatch, missingCsLaneMatch],
       'player-puuid',
       { tier: 'DIAMOND', rank: 'I', leaguePoints: 75, wins: 40, losses: 30 },
       BASE_CHAMPION_STATS,
@@ -286,6 +312,14 @@ describe('aiContextBuilder (#14)', () => {
     expect(ctx.timelineStatus).toBe('NOT_ANALYZED');
     expect(ctx.visionDataPrecision).toBe(VISION_DATA_PRECISION_NOTE);
     expect(ctx.timelineInsights).toBeUndefined();
+    expect(ctx.missingLaneCsAt10Matches).toBe(1);
+    expect(ctx.avgLaneCsAt10).toEqual({
+      avgActual: 80, // (86 + 74) / 2; missing EUW1_1004 not counted as 0
+      matchCount: 2,
+      avgSpawnedSupply: 120,
+      ceilingMatchCount: 1,
+      supplyLabel: 'Theoretical spawned supply (not guaranteed farmable)',
+    });
 
     const m1 = ctx.recentMatches[0];
     expect(m1.patch).toBe('16.22');
@@ -305,7 +339,7 @@ describe('aiContextBuilder (#14)', () => {
     expect(m1.opponent?.items).toEqual(["Liandry's Torment", "Zhonya's Hourglass", 'Farsight Alteration']);
     expect(m1.draft).toEqual({
       allies: ['Jax', 'LeeSin', 'Jinx', 'Thresh'],
-      enemies: ['Syndndra', 'Renekton', 'Viego', 'KaiSa', 'Nautilus'],
+      enemies: ['Syndra', 'Renekton', 'Viego', 'KaiSa', 'Nautilus'],
     });
     expect(m1.damageSplitPct).toEqual({ physical: 15, magic: 75, true: 10 });
     expect(m1.laneCsAt10).toEqual({
@@ -337,13 +371,163 @@ describe('aiContextBuilder (#14)', () => {
     const m3 = ctx.recentMatches[2];
     expect(m3.patch).toBe('15.24');
     expect(m3.laneCsAt10).toEqual({
-      actual: 79,
+      actual: 74,
       spawnedSupply: null,
       supplyLabel: null,
     });
   });
 
-  it('enriches matches with timeline diffs, death context (labelled assisted, never gank), capped item spikes, and skillMaxOrder when timelineAnalysis is provided', () => {
+  it('handles current real backend contract: omitted assistants/wards produce null (unknown, never solo/zero) and matchId-only lookup never attaches another game timeline by index', () => {
+    // Match 0 (EUW1_1001) has NO timeline entry in timelineAnalysis.
+    // Match 1 (EUW1_1002) HAS a timeline entry at index 0 of timelineAnalysis arrays.
+    // Positional fallback would have wrongly attached EUW1_1002's timeline to EUW1_1001!
+    const match1 = createMatch({ matchId: 'EUW1_1001', gameVersion: '16.22.1' });
+    const match2 = createMatch({ matchId: 'EUW1_1002', gameVersion: '16.22.1' });
+
+    const realBackendTimeline: TimelineAnalysisDto = {
+      heatmapPositions: [{ x: 7000, y: 7200, matchId: 'EUW1_1002', minute: 5 }],
+      wardPositions: [{ x: 6400, y: 8100, matchId: 'EUW1_1002', minute: 4 }],
+      killPositions: [],
+      deathPositions: [{ x: 5200, y: 5100, matchId: 'EUW1_1002', minute: 3 }],
+      assistPositions: [],
+      powerSpikeTimelines: [
+        {
+          matchId: 'EUW1_1002',
+          playerChampion: 'Ahri',
+          opponentChampion: 'Syndra',
+          win: true,
+          points: [
+            {
+              minute: 10,
+              playerGold: 3400,
+              opponentGold: 3600,
+              playerGoldLead: -200,
+              playerXp: 4400,
+              opponentXp: 4550,
+              playerCs: 78,
+              opponentCs: 84,
+              playerItems: [],
+              opponentItems: [],
+              events: [],
+            },
+          ],
+        },
+      ],
+      buildOrders: [],
+      skillOrders: [],
+      eventTimelines: [
+        {
+          matchId: 'EUW1_1002',
+          playerChampion: 'Ahri',
+          opponentChampion: 'Syndra',
+          win: true,
+          events: [
+            // Real backend DEATH event today: actor = player ("Ahri"), target = killer ("Syndra"),
+            // NO `killer` field, NO `assistants` field, NO `WARD_PLACED` events in eventTimelines.
+            {
+              minuteMark: 3,
+              secondMark: 30,
+              type: 'DEATH',
+              actor: 'Ahri',
+              target: 'Syndra',
+              isPlayer: true,
+              isOpponent: true,
+              laneType: null,
+              monsterType: null,
+              position: { x: 5200, y: 5100 }, // Mid Lane
+            },
+            {
+              minuteMark: 8,
+              secondMark: 5,
+              type: 'DEATH',
+              actor: 'Ahri',
+              target: 'Viego',
+              isPlayer: true,
+              isOpponent: false,
+              laneType: null,
+              monsterType: null,
+              position: null, // Missing position
+            },
+          ],
+        },
+      ],
+      aggregateSummary: {
+        avgFirstDeathMinute: 3.5,
+        mostDangerousZone: 'Mid Lane',
+        avgGoldLeadAt10: -200,
+        avgGoldLeadAt15: -100,
+        wardsPlacedTotal: 9,
+        deathsTotal: 2,
+        killsTotal: 4,
+        assistsTotal: 6,
+        gamesAnalyzed: 1,
+      },
+    };
+
+    const ctx = buildAiContext(
+      'Faker',
+      'KR1',
+      [match1, match2],
+      'player-puuid',
+      null,
+      BASE_CHAMPION_STATS,
+      BASE_OVERALL_STATS,
+      realBackendTimeline
+    );
+
+    // Match 1 (EUW1_1001) must NOT receive EUW1_1002's timeline via index 0 fallback
+    expect(ctx.recentMatches[0].matchId).toBe('EUW1_1001');
+    expect(ctx.recentMatches[0].timelineAt10).toBeUndefined();
+    expect(ctx.recentMatches[0].deathContext).toBeUndefined();
+
+    // Match 2 (EUW1_1002) receives its matched timeline
+    const m2 = ctx.recentMatches[1];
+    expect(m2.matchId).toBe('EUW1_1002');
+    expect(m2.timelineAt10).toEqual({ goldDiff: -200, xpDiff: -150, csDiff: -6 });
+    expect(m2.deathContext).toEqual({
+      totalDeaths: 2,
+      firstDeathMinute: 3.5,
+      deathsBefore10: 2,
+      assistedDeaths: null, // Unknown, NEVER 0
+      unassistedDeaths: null, // Unknown, NEVER 2 (solo)
+      unknownAssistDeaths: 2,
+      missingPositionDeaths: 1,
+      deathsNearObjectiveWindows: 0,
+      earlyDeaths: [
+        {
+          time: '03:30',
+          minute: 3.5,
+          approxZone: 'Mid Lane',
+          killer: 'Syndra',
+          participants: ['Ahri', 'Syndra'],
+          assistants: null,
+          assisted: null,
+          assistantsCount: null,
+        },
+        {
+          time: '08:05',
+          minute: 8.1,
+          approxZone: null,
+          killer: 'Viego',
+          participants: ['Ahri', 'Viego'],
+          assistants: null,
+          assisted: null,
+          assistantsCount: null,
+        },
+      ],
+    });
+
+    // Aggregate timelineInsights preserves null for unknown assistants/wards and missingTimelineMatches = 1
+    expect(ctx.timelineInsights).toBeDefined();
+    expect(ctx.timelineInsights?.assistedDeaths).toBeNull();
+    expect(ctx.timelineInsights?.unassistedDeaths).toBeNull();
+    expect(ctx.timelineInsights?.unknownAssistDeaths).toBe(2);
+    expect(ctx.timelineInsights?.missingPositionDeaths).toBe(1);
+    expect(ctx.timelineInsights?.wardsByTimeBucket).toBeNull();
+    expect(ctx.timelineInsights?.missingTimelineMatches).toBe(1);
+  });
+
+  it('enriches matches with timeline diffs, death context (labelled assisted, never gank), capped item spikes, and skillMaxOrder when backend provides assistants and WARD_PLACED events', () => {
     const match = createMatch({ matchId: 'EUW1_1001', gameVersion: '16.22.1' });
 
     const timelineAnalysis: TimelineAnalysisDto = {
@@ -429,15 +613,15 @@ describe('aiContextBuilder (#14)', () => {
               minuteMark: 3,
               secondMark: 30,
               type: 'DEATH',
-              actor: 'LeeSin',
-              target: 'Ahri',
+              actor: 'Ahri',
+              target: 'LeeSin',
               killer: 'LeeSin',
               assistants: ['Syndra'],
               isPlayer: true,
               isOpponent: false,
               laneType: null,
               monsterType: null,
-              position: { x: 6800, y: 6900 },
+              position: { x: 7200, y: 7200 },
             },
             {
               minuteMark: 6,
@@ -455,50 +639,50 @@ describe('aiContextBuilder (#14)', () => {
               minuteMark: 6,
               secondMark: 30,
               type: 'DEATH',
-              actor: 'Syndra',
-              target: 'Ahri',
+              actor: 'Ahri',
+              target: 'Syndra',
               killer: 'Syndra',
               assistants: [],
               isPlayer: true,
               isOpponent: true,
               laneType: null,
               monsterType: null,
-              position: { x: 7000, y: 7100 },
+              position: { x: 9866, y: 4414 },
             },
             {
               minuteMark: 9,
               secondMark: 0,
               type: 'DEATH',
-              actor: 'Syndra',
-              target: 'Ahri',
+              actor: 'Ahri',
+              target: 'Syndra',
               killer: 'Syndra',
               assistants: ['LeeSin', 'Nautilus'],
               isPlayer: true,
               isOpponent: true,
               laneType: null,
               monsterType: null,
-              position: { x: 7200, y: 7200 },
+              position: { x: 5200, y: 5100 },
             },
             {
               minuteMark: 13,
               secondMark: 0,
               type: 'DEATH',
-              actor: 'Renekton',
-              target: 'Ahri',
+              actor: 'Ahri',
+              target: 'Renekton',
               killer: 'Renekton',
               assistants: [],
               isPlayer: true,
               isOpponent: false,
               laneType: null,
               monsterType: null,
-              position: { x: 6500, y: 6500 },
+              position: { x: 5007, y: 10471 },
             },
             {
               minuteMark: 20,
               secondMark: 0,
               type: 'DEATH',
-              actor: 'KaiSa',
-              target: 'Ahri',
+              actor: 'Ahri',
+              target: 'KaiSa',
               killer: 'KaiSa',
               assistants: ['Nautilus'],
               isPlayer: true,
@@ -575,7 +759,10 @@ describe('aiContextBuilder (#14)', () => {
     expect(ctx.timelineInsights?.deathsBefore10).toBe(3);
     expect(ctx.timelineInsights?.assistedDeaths).toBe(3);
     expect(ctx.timelineInsights?.unassistedDeaths).toBe(2);
+    expect(ctx.timelineInsights?.unknownAssistDeaths).toBe(0);
+    expect(ctx.timelineInsights?.missingPositionDeaths).toBe(0);
     expect(ctx.timelineInsights?.deathsNearObjectiveWindows).toBe(1);
+    expect(ctx.timelineInsights?.missingTimelineMatches).toBe(0);
     expect(ctx.timelineInsights?.wardsByTimeBucket).toEqual({
       pre10: 1,
       min10To20: 1,
@@ -587,17 +774,34 @@ describe('aiContextBuilder (#14)', () => {
     expect(m.timelineAt15).toEqual({ goldDiff: 600, xpDiff: 500, csDiff: 14 });
 
     expect(m.deathContext).toBeDefined();
+    expect(m.deathContext?.totalDeaths).toBe(5);
     expect(m.deathContext?.firstDeathMinute).toBe(3.5);
     expect(m.deathContext?.deathsBefore10).toBe(3);
     expect(m.deathContext?.assistedDeaths).toBe(3);
     expect(m.deathContext?.unassistedDeaths).toBe(2);
+    expect(m.deathContext?.unknownAssistDeaths).toBe(0);
+    expect(m.deathContext?.missingPositionDeaths).toBe(0);
     expect(m.deathContext?.deathsNearObjectiveWindows).toBe(1);
     expect(m.deathContext?.earlyDeaths).toHaveLength(MAX_EARLY_DEATHS_PER_GAME);
     expect(m.deathContext?.earlyDeaths[0]).toEqual({
+      time: '03:30',
       minute: 3.5,
+      approxZone: 'Mid River',
       killer: 'LeeSin',
+      participants: ['Ahri', 'LeeSin', 'Syndra'],
+      assistants: ['Syndra'],
       assisted: true,
       assistantsCount: 1,
+    });
+    expect(m.deathContext?.earlyDeaths[1]).toEqual({
+      time: '06:30',
+      minute: 6.5,
+      approxZone: 'Dragon / Bot River',
+      killer: 'Syndra',
+      participants: ['Ahri', 'Syndra'],
+      assistants: [],
+      assisted: false,
+      assistantsCount: 0,
     });
 
     expect(m.itemSpikes).toHaveLength(MAX_ITEM_SPIKES_PER_GAME);
@@ -620,25 +824,170 @@ describe('aiContextBuilder (#14)', () => {
     expect(serialized).not.toContain('levelUps');
   });
 
-  it('caps recentMatches deterministically at MAX_RECENT_MATCHES (20)', () => {
+  it('caps recentMatches deterministically at MAX_RECENT_MATCHES (20) and stays within bounded JSON byte size', () => {
     const matches = Array.from({ length: 25 }, (_, idx) =>
       createMatch({ matchId: `EUW1_${2000 + idx}`, gameVersion: '16.22.1' })
     );
 
-    const ctx = buildAiContext(
+    const ctxNotAnalyzed = buildAiContext(
       'Faker',
       'KR1',
       matches,
       'player-puuid',
-      null,
+      { tier: 'CHALLENGER', rank: 'I', leaguePoints: 1250, wins: 120, losses: 90 },
       BASE_CHAMPION_STATS,
       BASE_OVERALL_STATS,
       null
     );
 
-    expect(ctx.totalGamesAnalyzed).toBe(25);
-    expect(ctx.recentMatches).toHaveLength(MAX_RECENT_MATCHES);
-    expect(ctx.recentMatches[0].matchId).toBe('EUW1_2000');
-    expect(ctx.recentMatches[19].matchId).toBe('EUW1_2019');
+    expect(ctxNotAnalyzed.totalGamesAnalyzed).toBe(25);
+    expect(ctxNotAnalyzed.recentMatches).toHaveLength(MAX_RECENT_MATCHES);
+    expect(ctxNotAnalyzed.recentMatches[0].matchId).toBe('EUW1_2000');
+    expect(ctxNotAnalyzed.recentMatches[19].matchId).toBe('EUW1_2019');
+
+    const timelineFor20Matches: TimelineAnalysisDto = {
+      heatmapPositions: Array.from({ length: 400 }, (_, i) => ({
+        x: 5000 + i,
+        y: 5000 + i,
+        matchId: `EUW1_${2000 + (i % 20)}`,
+        minute: i % 25,
+      })),
+      wardPositions: [],
+      killPositions: [],
+      deathPositions: [],
+      assistPositions: [],
+      powerSpikeTimelines: Array.from({ length: 20 }, (_, idx) => ({
+        matchId: `EUW1_${2000 + idx}`,
+        playerChampion: 'Ahri',
+        opponentChampion: 'Syndra',
+        win: idx % 2 === 0,
+        points: [
+          {
+            minute: 10,
+            playerGold: 3600,
+            opponentGold: 3300,
+            playerGoldLead: 300,
+            playerXp: 4500,
+            opponentXp: 4300,
+            playerCs: 86,
+            opponentCs: 78,
+            playerItems: [],
+            opponentItems: [],
+            events: [],
+          },
+          {
+            minute: 15,
+            playerGold: 5800,
+            opponentGold: 5300,
+            playerGoldLead: 500,
+            playerXp: 7300,
+            opponentXp: 6900,
+            playerCs: 132,
+            opponentCs: 120,
+            playerItems: [],
+            opponentItems: [],
+            events: [],
+          },
+        ],
+      })),
+      buildOrders: Array.from({ length: 20 }, (_, idx) => ({
+        matchId: `EUW1_${2000 + idx}`,
+        playerChampion: 'Ahri',
+        win: idx % 2 === 0,
+        items: [
+          { itemId: 6655, minuteMark: 11, timestamp: 660000 },
+          { itemId: 4645, minuteMark: 18, timestamp: 1080000 },
+          { itemId: 3089, minuteMark: 24, timestamp: 1440000 },
+        ],
+      })),
+      skillOrders: Array.from({ length: 20 }, (_, idx) => ({
+        matchId: `EUW1_${2000 + idx}`,
+        playerChampion: 'Ahri',
+        win: idx % 2 === 0,
+        levelUps: [{ skillSlot: 1, level: 1, minuteMark: 1 }],
+        maxOrder: [1, 2, 3],
+      })),
+      eventTimelines: Array.from({ length: 20 }, (_, idx) => ({
+        matchId: `EUW1_${2000 + idx}`,
+        playerChampion: 'Ahri',
+        opponentChampion: 'Syndra',
+        win: idx % 2 === 0,
+        events: [
+          {
+            minuteMark: 4,
+            secondMark: 15,
+            type: 'DEATH',
+            actor: 'Ahri',
+            target: 'Syndra',
+            isPlayer: true,
+            isOpponent: true,
+            laneType: null,
+            monsterType: null,
+            position: { x: 5200, y: 5100 },
+          },
+        ],
+      })),
+      aggregateSummary: {
+        avgFirstDeathMinute: 4.3,
+        mostDangerousZone: 'Mid Lane',
+        avgGoldLeadAt10: 300,
+        avgGoldLeadAt15: 500,
+        wardsPlacedTotal: 160,
+        deathsTotal: 20,
+        killsTotal: 120,
+        assistsTotal: 100,
+        gamesAnalyzed: 20,
+      },
+    };
+
+    const ctxAnalyzed = buildAiContext(
+      'Faker',
+      'KR1',
+      matches,
+      'player-puuid',
+      { tier: 'CHALLENGER', rank: 'I', leaguePoints: 1250, wins: 120, losses: 90 },
+      BASE_CHAMPION_STATS,
+      BASE_OVERALL_STATS,
+      timelineFor20Matches
+    );
+
+    const notAnalyzedBytes = new TextEncoder().encode(JSON.stringify(ctxNotAnalyzed)).byteLength;
+    const analyzedBytes = new TextEncoder().encode(JSON.stringify(ctxAnalyzed)).byteLength;
+    const oneMatchNotAnalyzedBytes = new TextEncoder().encode(
+      JSON.stringify(
+        buildAiContext(
+          'Faker',
+          'KR1',
+          [matches[0]],
+          'player-puuid',
+          { tier: 'CHALLENGER', rank: 'I', leaguePoints: 1250, wins: 120, losses: 90 },
+          BASE_CHAMPION_STATS,
+          BASE_OVERALL_STATS,
+          null
+        )
+      )
+    ).byteLength;
+    const oneMatchAnalyzedBytes = new TextEncoder().encode(
+      JSON.stringify(
+        buildAiContext(
+          'Faker',
+          'KR1',
+          [matches[0]],
+          'player-puuid',
+          { tier: 'CHALLENGER', rank: 'I', leaguePoints: 1250, wins: 120, losses: 90 },
+          BASE_CHAMPION_STATS,
+          BASE_OVERALL_STATS,
+          timelineFor20Matches
+        )
+      )
+    ).byteLength;
+
+    // Exact measured deterministic UTF-8 payload sizes & upper bounds
+    expect(oneMatchNotAnalyzedBytes).toBe(2214);
+    expect(oneMatchAnalyzedBytes).toBe(3277);
+    expect(notAnalyzedBytes).toBe(23043);
+    expect(analyzedBytes).toBe(36456);
+    expect(notAnalyzedBytes).toBeLessThan(25000);
+    expect(analyzedBytes).toBeLessThan(40000);
   });
 });

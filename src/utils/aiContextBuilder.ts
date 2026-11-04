@@ -10,10 +10,12 @@ import type {
 } from '../types/timeline';
 import { useDataDragonStore, type ItemMap, type RuneMap, type SummonerSpellMap } from '../store/dataDragonStore';
 import {
+  calculateAverageLaneCsAt10,
   calculateConsistency,
   calculateLaneCsAt10Comparison,
   isLanerPosition,
   STAT_ROLE_MAPPING,
+  type AverageLaneCsAt10Summary,
 } from './statsCalculator';
 import { camelCaseToTitleCase } from './formatters';
 
@@ -71,18 +73,36 @@ const SKILL_SLOT_LABELS: Record<number, string> = {
 };
 
 export interface EarlyDeathEntry {
+  /** Formatted timestamp MM:SS (e.g. "03:30"). */
+  time: string;
+  /** Decimal minute mark (e.g. 3.5). */
   minute: number;
+  /** Approximate Summoner's Rift zone derived from death position/laneType/zone, or null if position is missing. */
+  approxZone: string | null;
+  /** Champion who scored the kill, or null if unknown. */
   killer: string | null;
-  /** True when >=1 enemy assistant contributed (lane 2v2, roam, skirmish, or teamfight — never labelled "gank"). */
-  assisted: boolean;
-  assistantsCount: number;
+  /** Known champions involved in the death (victim, killer, and any known assistants). */
+  participants: string[];
+  /** Enemy assistants array when provided by backend, or null when omitted/unknown. */
+  assistants: string[] | null;
+  /** True when >=1 enemy assistant contributed, false when explicitly 0 assistants (`[]`), or null when backend omitted `assistants`. Never labelled "gank". */
+  assisted: boolean | null;
+  /** Number of enemy assistants when provided by backend, or null when omitted/unknown (never 0 when unknown). */
+  assistantsCount: number | null;
 }
 
 export interface MatchDeathContext {
+  totalDeaths: number;
   firstDeathMinute: number | null;
   deathsBefore10: number;
-  assistedDeaths: number;
-  unassistedDeaths: number;
+  /** Count of deaths with >=1 assistant, or null when backend omitted `assistants` on all deaths in this game. */
+  assistedDeaths: number | null;
+  /** Count of deaths with 0 assistants (`assistants: []`), or null when backend omitted `assistants` on all deaths in this game. */
+  unassistedDeaths: number | null;
+  /** Count of deaths where `assistants` was null or omitted (unknown whether assisted or solo). */
+  unknownAssistDeaths: number;
+  /** Count of deaths where position/zone was null or omitted. */
+  missingPositionDeaths: number;
   deathsNearObjectiveWindows: number;
   earlyDeaths: EarlyDeathEntry[];
 }
@@ -152,7 +172,7 @@ export interface MatchDetail {
   timelineAt10?: TimelineCheckpointDiff;
   timelineAt15?: TimelineCheckpointDiff;
 
-  // Timeline-derived death, spike, and skill context (present only when timeline analysis was run)
+  // Timeline-derived death, spike, and skill context (present only when timeline analysis was run and matchId matched)
   deathContext?: MatchDeathContext;
   itemSpikes?: ItemSpikeEntry[];
   skillMaxOrder?: string;
@@ -171,14 +191,85 @@ export interface MatchDetail {
 
 export interface EnrichedTimelineInsights extends TimelineAggregateSummary {
   deathsBefore10: number;
-  assistedDeaths: number;
-  unassistedDeaths: number;
+  /** Count of deaths with >=1 assistant across analyzed games, or null when backend omitted `assistants` on all analyzed deaths. */
+  assistedDeaths: number | null;
+  /** Count of deaths with 0 assistants (`assistants: []`) across analyzed games, or null when backend omitted `assistants` on all analyzed deaths. */
+  unassistedDeaths: number | null;
+  /** Count of deaths across analyzed games where `assistants` was null or omitted. */
+  unknownAssistDeaths: number;
+  /** Count of deaths across analyzed games where position/zone was null or omitted. */
+  missingPositionDeaths: number;
   deathsNearObjectiveWindows: number;
+  /** Ward counts by time bucket when `WARD_PLACED` events are present in `eventTimelines`, or null when omitted by backend (never `{0,0,0}` when unknown). */
   wardsByTimeBucket: {
     pre10: number;
     min10To20: number;
     post20: number;
-  };
+  } | null;
+  /** Number of recentMatches that did not have a matching `matchId` in `timelineAnalysis`. */
+  missingTimelineMatches: number;
+}
+
+export function formatEventTimestamp(minuteMark: number, secondMark: number = 0): string {
+  const mins = Math.max(0, Math.floor(minuteMark));
+  const secs = Math.max(0, Math.min(59, Math.round(secondMark)));
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+/**
+ * Classifies a Summoner's Rift world coordinate (`0..14850` x `0..14850`) or `laneType` / explicit `zone`
+ * into a compact approximate map zone string without leaking raw `[x, y]` coordinate arrays.
+ * Returns `null` when position, laneType, and zone are all null/missing.
+ */
+export function classifyRiftApproxZone(
+  position?: { x: number; y: number } | null,
+  laneType?: string | null,
+  explicitZone?: string | null
+): string | null {
+  if (explicitZone && explicitZone.trim()) {
+    return explicitZone.trim();
+  }
+
+  if (
+    position &&
+    typeof position.x === 'number' &&
+    typeof position.y === 'number' &&
+    Number.isFinite(position.x) &&
+    Number.isFinite(position.y)
+  ) {
+    const { x, y } = position;
+    if (x < 3500 && y < 3500) return 'Blue Base';
+    if (x > 11350 && y > 11350) return 'Red Base';
+    if (Math.hypot(x - 5007, y - 10471) <= 1600) return 'Baron / Top River';
+    if (Math.hypot(x - 9866, y - 4414) <= 1600) return 'Dragon / Bot River';
+
+    const distToMidDiag = Math.abs(x - y);
+    const distToRiverDiag = Math.abs(x + y - 14850);
+
+    if ((x < 3200 && y > 5500) || (y > 11650 && x < 9350) || y - x > 8500) {
+      return 'Top Lane';
+    }
+    if ((y < 3200 && x > 5500) || (x > 11650 && y < 9350) || x - y > 8500) {
+      return 'Bot Lane';
+    }
+    if (distToMidDiag <= 2000 && x >= 3000 && x <= 11850) {
+      return distToRiverDiag <= 2000 ? 'Mid River' : 'Mid Lane';
+    }
+    if (distToRiverDiag <= 1800) {
+      return y > x ? 'Top River' : 'Bot River';
+    }
+    return y > x ? 'Top Side Jungle' : 'Bot Side Jungle';
+  }
+
+  if (laneType && laneType.trim()) {
+    const normalized = laneType.trim().toUpperCase();
+    if (normalized === 'MID_LANE' || normalized === 'MIDDLE') return 'Mid Lane';
+    if (normalized === 'TOP_LANE' || normalized === 'TOP') return 'Top Lane';
+    if (normalized === 'BOT_LANE' || normalized === 'BOTTOM') return 'Bot Lane';
+    return laneType.trim();
+  }
+
+  return null;
 }
 
 /**
@@ -299,25 +390,35 @@ function extractCheckpointDiff(
   };
 }
 
-function extractMatchDeathContext(eventTimeline: MatchEventTimelineDto | undefined): MatchDeathContext | undefined {
+function extractMatchDeathContext(
+  eventTimeline: MatchEventTimelineDto | undefined,
+  fallbackPlayerChampion?: string
+): MatchDeathContext | undefined {
   if (!eventTimeline || !Array.isArray(eventTimeline.events)) return undefined;
   const events = eventTimeline.events;
+  const victimChamp =
+    eventTimeline.playerChampion?.trim() || fallbackPlayerChampion?.trim() || null;
+
   const objectiveMinutes = events
     .filter(ev => ev.type === 'OBJECTIVE')
     .map(ev => ev.minuteMark + (ev.secondMark ?? 0) / 60);
 
   const playerDeaths = events
-    .filter(ev => ev.type === 'DEATH' && ev.isPlayer)
+    .filter(ev => ev.type === 'DEATH' && ev.isPlayer !== false)
     .sort((a, b) => a.minuteMark * 60 + (a.secondMark ?? 0) - (b.minuteMark * 60 + (b.secondMark ?? 0)));
 
   let firstDeathMinute: number | null = null;
   let deathsBefore10 = 0;
-  let assistedDeaths = 0;
-  let unassistedDeaths = 0;
+  let knownAssistedDeaths = 0;
+  let knownUnassistedDeaths = 0;
+  let knownAssistEventsCount = 0;
+  let unknownAssistDeaths = 0;
+  let missingPositionDeaths = 0;
   let deathsNearObjectiveWindows = 0;
   const earlyDeaths: EarlyDeathEntry[] = [];
 
   for (const death of playerDeaths) {
+    const time = formatEventTimestamp(death.minuteMark, death.secondMark ?? 0);
     const exactMinute = Number((death.minuteMark + (death.secondMark ?? 0) / 60).toFixed(1));
     if (firstDeathMinute === null || exactMinute < firstDeathMinute) {
       firstDeathMinute = exactMinute;
@@ -325,13 +426,57 @@ function extractMatchDeathContext(eventTimeline: MatchEventTimelineDto | undefin
     if (death.minuteMark < 10) {
       deathsBefore10 += 1;
     }
-    const assistantsCount = Array.isArray(death.assistants) ? death.assistants.length : 0;
-    const assisted = assistantsCount > 0;
-    if (assisted) {
-      assistedDeaths += 1;
+
+    // Resolve killer across both explicit `killer` and backend DEATH format (`actor` died to `target`)
+    let resolvedKiller: string | null = null;
+    if (death.killer && death.killer.trim()) {
+      resolvedKiller = death.killer.trim();
+    } else if (death.target && death.target.trim() && death.target.trim() !== victimChamp) {
+      resolvedKiller = death.target.trim();
+    } else if (death.actor && death.actor.trim() && death.actor.trim() !== victimChamp) {
+      resolvedKiller = death.actor.trim();
     } else {
-      unassistedDeaths += 1;
+      resolvedKiller = death.target?.trim() || death.actor?.trim() || null;
     }
+
+    // null or missing assistants MUST mean unknown (null), never solo/0
+    const hasAssistantsArray = Array.isArray(death.assistants);
+    const cleanedAssistants = hasAssistantsArray
+      ? death
+          .assistants!.filter((a): a is string => typeof a === 'string' && a.trim().length > 0)
+          .map(a => a.trim())
+      : null;
+    const assistantsCount: number | null =
+      cleanedAssistants !== null ? cleanedAssistants.length : null;
+    const assisted: boolean | null =
+      assistantsCount !== null ? assistantsCount > 0 : null;
+
+    if (assisted === true) {
+      knownAssistedDeaths += 1;
+      knownAssistEventsCount += 1;
+    } else if (assisted === false) {
+      knownUnassistedDeaths += 1;
+      knownAssistEventsCount += 1;
+    } else {
+      unknownAssistDeaths += 1;
+    }
+
+    const approxZone = classifyRiftApproxZone(death.position, death.laneType, death.zone);
+    if (approxZone === null) {
+      missingPositionDeaths += 1;
+    }
+
+    const rawParticipants =
+      Array.isArray(death.participants) && death.participants.length > 0
+        ? death.participants
+        : [victimChamp, resolvedKiller, ...(cleanedAssistants ?? [])];
+    const participants = Array.from(
+      new Set(
+        rawParticipants
+          .filter((p): p is string => typeof p === 'string' && p.trim().length > 0)
+          .map(p => p.trim())
+      )
+    );
 
     const nearObjective = objectiveMinutes.some(objMin => Math.abs(objMin - exactMinute) <= 1.0);
     if (nearObjective) {
@@ -340,19 +485,32 @@ function extractMatchDeathContext(eventTimeline: MatchEventTimelineDto | undefin
 
     if (death.minuteMark < 15 && earlyDeaths.length < MAX_EARLY_DEATHS_PER_GAME) {
       earlyDeaths.push({
+        time,
         minute: exactMinute,
-        killer: death.killer ?? death.actor ?? null,
+        approxZone,
+        killer: resolvedKiller,
+        participants,
+        assistants: cleanedAssistants,
         assisted,
         assistantsCount,
       });
     }
   }
 
+  const totalDeaths = playerDeaths.length;
+  const assistedDeaths: number | null =
+    totalDeaths === 0 ? 0 : knownAssistEventsCount > 0 ? knownAssistedDeaths : null;
+  const unassistedDeaths: number | null =
+    totalDeaths === 0 ? 0 : knownAssistEventsCount > 0 ? knownUnassistedDeaths : null;
+
   return {
+    totalDeaths,
     firstDeathMinute,
     deathsBefore10,
     assistedDeaths,
     unassistedDeaths,
+    unknownAssistDeaths,
+    missingPositionDeaths,
     deathsNearObjectiveWindows,
     earlyDeaths,
   };
@@ -397,6 +555,8 @@ export function buildAiContext(
   totalGamesAnalyzed: number;
   timelineStatus: 'ANALYZED' | 'NOT_ANALYZED';
   visionDataPrecision: string;
+  avgLaneCsAt10: AverageLaneCsAt10Summary | null;
+  missingLaneCsAt10Matches: number;
   timelineInsights?: EnrichedTimelineInsights;
   winRate: string;
   kda: string;
@@ -442,6 +602,8 @@ export function buildAiContext(
       totalGamesAnalyzed: 0,
       timelineStatus,
       visionDataPrecision: VISION_DATA_PRECISION_NOTE,
+      avgLaneCsAt10: null,
+      missingLaneCsAt10Matches: 0,
       winRate: '0.0',
       kda: '0.00',
       avgKills: '0.0',
@@ -470,7 +632,7 @@ export function buildAiContext(
     };
   }
 
-  // Index optional timeline per-match DTOs by matchId (with positional fallback)
+  // Index optional timeline per-match DTOs strictly by matchId (NEVER use positional index fallback across match IDs)
   const spikeByMatchId = new Map<string, MatchPowerSpikeDto>();
   const buildByMatchId = new Map<string, BuildOrderDto>();
   const skillByMatchId = new Map<string, SkillOrderDto>();
@@ -494,6 +656,8 @@ export function buildAiContext(
   const matchDetails: MatchDetail[] = [];
   let primaryRole = '';
   const roleCount: Record<string, number> = {};
+  let missingLaneCsAt10Matches = 0;
+  let missingTimelineMatches = 0;
 
   for (let matchIdx = 0; matchIdx < allMatches.length; matchIdx++) {
     const match = allMatches[matchIdx];
@@ -602,9 +766,16 @@ export function buildAiContext(
     const totalDamageShieldedOnTeammates = myParticipant.totalDamageShieldedOnTeammates;
     const totalHealsOnTeammates = myParticipant.totalHealsOnTeammates;
 
-    // Early laning CS @10 (role-gated)
+    // Early laning CS @10 (role-gated; missing values preserved in missingLaneCsAt10Matches, never counted as 0)
+    const hasValidLaneCsAt10 =
+      typeof myParticipant.challenges?.laneMinionsFirst10Minutes === 'number' &&
+      Number.isFinite(myParticipant.challenges.laneMinionsFirst10Minutes);
+    if (isLanerPosition(role) && !hasValidLaneCsAt10) {
+      missingLaneCsAt10Matches += 1;
+    }
+
     const laneCsAt10 =
-      isLanerPosition(role) && typeof myParticipant.challenges?.laneMinionsFirst10Minutes === 'number'
+      isLanerPosition(role) && hasValidLaneCsAt10
         ? (() => {
             const comp = calculateLaneCsAt10Comparison(
               myParticipant.challenges!.laneMinionsFirst10Minutes!,
@@ -619,7 +790,9 @@ export function buildAiContext(
         : undefined;
 
     const jungleCsBefore10Minutes =
-      role === 'JUNGLE' && typeof myParticipant.challenges?.jungleCsBefore10Minutes === 'number'
+      role === 'JUNGLE' &&
+      typeof myParticipant.challenges?.jungleCsBefore10Minutes === 'number' &&
+      Number.isFinite(myParticipant.challenges.jungleCsBefore10Minutes)
         ? Math.round(myParticipant.challenges.jungleCsBefore10Minutes)
         : undefined;
 
@@ -635,7 +808,7 @@ export function buildAiContext(
     const damageDealtToTurrets =
       myParticipant.damageDealtToTurrets ?? myParticipant.damageDealtToBuildings ?? 0;
 
-    // Optional timeline enrichment (only when user ran timeline analysis)
+    // Optional timeline enrichment (strictly by matchId — never fall back to array index)
     let timelineAt10: TimelineCheckpointDiff | undefined;
     let timelineAt15: TimelineCheckpointDiff | undefined;
     let deathContext: MatchDeathContext | undefined;
@@ -643,22 +816,18 @@ export function buildAiContext(
     let skillMaxOrder: string | undefined;
 
     if (timelineAnalysis) {
-      const spikeDto =
-        (matchId ? spikeByMatchId.get(matchId) : undefined) ??
-        timelineAnalysis.powerSpikeTimelines?.[matchDetails.length];
-      const buildDto =
-        (matchId ? buildByMatchId.get(matchId) : undefined) ??
-        timelineAnalysis.buildOrders?.[matchDetails.length];
-      const skillDto =
-        (matchId ? skillByMatchId.get(matchId) : undefined) ??
-        timelineAnalysis.skillOrders?.[matchDetails.length];
-      const eventDto =
-        (matchId ? eventsByMatchId.get(matchId) : undefined) ??
-        timelineAnalysis.eventTimelines?.[matchDetails.length];
+      const spikeDto = matchId ? spikeByMatchId.get(matchId) : undefined;
+      const buildDto = matchId ? buildByMatchId.get(matchId) : undefined;
+      const skillDto = matchId ? skillByMatchId.get(matchId) : undefined;
+      const eventDto = matchId ? eventsByMatchId.get(matchId) : undefined;
+
+      if (!spikeDto && !buildDto && !skillDto && !eventDto) {
+        missingTimelineMatches += 1;
+      }
 
       timelineAt10 = extractCheckpointDiff(spikeDto, 10);
       timelineAt15 = extractCheckpointDiff(spikeDto, 15);
-      deathContext = extractMatchDeathContext(eventDto);
+      deathContext = extractMatchDeathContext(eventDto, myParticipant.championName);
       itemSpikes = extractItemSpikes(buildDto, itemMap);
       skillMaxOrder = extractSkillMaxOrder(skillDto);
     }
@@ -724,40 +893,63 @@ export function buildAiContext(
 
   // Cap recentMatches deterministically at MAX_RECENT_MATCHES (20)
   const primaryRoleMatches = matchDetails.slice(0, MAX_RECENT_MATCHES);
+  const avgLaneCsAt10 = calculateAverageLaneCsAt10(allMatches.slice(0, MAX_RECENT_MATCHES), puuid);
 
   // Build enriched timelineInsights summary (without any raw [x, y] coordinate arrays)
   let timelineInsights: EnrichedTimelineInsights | undefined;
   if (timelineAnalysis?.aggregateSummary) {
+    let totalDeathsCount = 0;
     let totalDeathsBefore10 = 0;
-    let totalAssistedDeaths = 0;
-    let totalUnassistedDeaths = 0;
+    let totalKnownAssistedDeaths = 0;
+    let totalKnownUnassistedDeaths = 0;
+    let totalKnownAssistDeathsCount = 0;
+    let totalUnknownAssistDeaths = 0;
+    let totalMissingPositionDeaths = 0;
     let totalDeathsNearObjectives = 0;
-    const wardsByTimeBucket = { pre10: 0, min10To20: 0, post20: 0 };
+    let wardEventsCount = 0;
+    const wardBuckets = { pre10: 0, min10To20: 0, post20: 0 };
 
     for (const evTimeline of timelineAnalysis.eventTimelines || []) {
       const ctx = extractMatchDeathContext(evTimeline);
       if (ctx) {
+        totalDeathsCount += ctx.totalDeaths;
         totalDeathsBefore10 += ctx.deathsBefore10;
-        totalAssistedDeaths += ctx.assistedDeaths;
-        totalUnassistedDeaths += ctx.unassistedDeaths;
+        if (ctx.assistedDeaths !== null && ctx.unassistedDeaths !== null) {
+          totalKnownAssistedDeaths += ctx.assistedDeaths;
+          totalKnownUnassistedDeaths += ctx.unassistedDeaths;
+          totalKnownAssistDeathsCount += ctx.assistedDeaths + ctx.unassistedDeaths;
+        }
+        totalUnknownAssistDeaths += ctx.unknownAssistDeaths;
+        totalMissingPositionDeaths += ctx.missingPositionDeaths;
         totalDeathsNearObjectives += ctx.deathsNearObjectiveWindows;
       }
       for (const ev of evTimeline.events || []) {
-        if (ev.type === 'WARD_PLACED' && ev.isPlayer) {
-          if (ev.minuteMark < 10) wardsByTimeBucket.pre10 += 1;
-          else if (ev.minuteMark < 20) wardsByTimeBucket.min10To20 += 1;
-          else wardsByTimeBucket.post20 += 1;
+        if (ev.type === 'WARD_PLACED' && ev.isPlayer !== false) {
+          wardEventsCount += 1;
+          if (ev.minuteMark < 10) wardBuckets.pre10 += 1;
+          else if (ev.minuteMark < 20) wardBuckets.min10To20 += 1;
+          else wardBuckets.post20 += 1;
         }
       }
     }
 
+    const assistedDeaths: number | null =
+      totalDeathsCount === 0 ? 0 : totalKnownAssistDeathsCount > 0 ? totalKnownAssistedDeaths : null;
+    const unassistedDeaths: number | null =
+      totalDeathsCount === 0 ? 0 : totalKnownAssistDeathsCount > 0 ? totalKnownUnassistedDeaths : null;
+    // null or missing ward events in eventTimelines MUST mean unknown (null), not {0,0,0}
+    const wardsByTimeBucket = wardEventsCount > 0 ? wardBuckets : null;
+
     timelineInsights = {
       ...timelineAnalysis.aggregateSummary,
       deathsBefore10: totalDeathsBefore10,
-      assistedDeaths: totalAssistedDeaths,
-      unassistedDeaths: totalUnassistedDeaths,
+      assistedDeaths,
+      unassistedDeaths,
+      unknownAssistDeaths: totalUnknownAssistDeaths,
+      missingPositionDeaths: totalMissingPositionDeaths,
       deathsNearObjectiveWindows: totalDeathsNearObjectives,
       wardsByTimeBucket,
+      missingTimelineMatches,
     };
   }
 
@@ -770,6 +962,8 @@ export function buildAiContext(
     totalGamesAnalyzed: allMatches.length,
     timelineStatus,
     visionDataPrecision: VISION_DATA_PRECISION_NOTE,
+    avgLaneCsAt10,
+    missingLaneCsAt10Matches,
     ...(timelineInsights ? { timelineInsights } : {}),
     // Aggregate stats
     winRate: Number(overallStats.winRate).toFixed(1),
