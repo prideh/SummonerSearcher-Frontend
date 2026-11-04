@@ -235,7 +235,56 @@ describe('ImprovementStatsSection', () => {
     expect(hordeRow).toHaveTextContent('Personal LH / TD');
     expect(hordeRow).toHaveTextContent('TD: 6');
 
-    // Switch to Champion slice: LeeSin (1G, exact 20m game with missing totalTimeSpentDead, missing info.teams, and null personal objective counters)
+    // Compact 5-stat summary is rendered by default while full numbers/explanations are collapsed under Details
+    const compactSummary = screen.getByTestId('improvement-stats-compact-summary');
+    expect(compactSummary).toBeInTheDocument();
+    expect(screen.getByTestId('summary-phase-farming')).toHaveTextContent('9.15/m (2G)');
+    expect(screen.getByTestId('summary-phase-farming')).toHaveTextContent('9.20/m (1G)');
+    expect(screen.getByTestId('summary-lead-retention')).toHaveTextContent('3G vs 2G');
+    expect(screen.getByTestId('summary-lead-retention')).toHaveTextContent('+216.7g / +150.0g');
+    expect(screen.getByTestId('summary-lead-retention')).toHaveTextContent('50% (1/2G)');
+    expect(screen.getByTestId('summary-death-cost')).toHaveTextContent('34.0s (2.33%)');
+    expect(screen.getByTestId('summary-death-cost')).toHaveTextContent('750g (3D)');
+    expect(screen.getByTestId('summary-unspent-gold')).toHaveTextContent('800.0g / 854.5g');
+    expect(screen.getByTestId('summary-unspent-gold')).toHaveTextContent('≥1300g (neutral):');
+    expect(screen.getByTestId('summary-unspent-gold')).toHaveTextContent('2/11');
+    expect(screen.getByTestId('summary-team-objectives')).toHaveTextContent('5.67 vs 3.50');
+    expect(screen.getByTestId('summary-team-objectives')).toHaveTextContent('2.00 vs 1.50');
+
+    const detailsEl = screen.getByTestId('improvement-stats-details');
+    expect(detailsEl).not.toHaveAttribute('open');
+    expect(screen.getByTestId('improvement-stats-details-toggle')).toHaveTextContent(
+      'Details (Full Numbers & Explanations)'
+    );
+
+    // Plain wording check: zero raw API / DTO field names anywhere in the rendered section
+    const sectionText = screen.getByTestId('improvement-stats-section').textContent ?? '';
+    for (const forbiddenApiName of [
+      'info.teams',
+      'MatchDto',
+      'minionsKilled',
+      'jungleMinionsKilled',
+      'baseKillBountyGold',
+      'shutdownBountyGold',
+      'combinedBountyGold',
+      'event.bounty',
+      'event.shutdownBounty',
+      'participantFrame',
+      'currentGold',
+    ]) {
+      expect(sectionText).not.toContain(forbiddenApiName);
+    }
+
+    // Unmatched 10m vs 20m leads and neutral 1300g snapshot semantics are explicitly preserved
+    expect(screen.getByTestId('card-lead-retention')).toHaveTextContent(
+      '@10m: 3G · @20m: 2G (unmatched)'
+    );
+    expect(screen.getByTestId('card-unspent-gold')).toHaveTextContent(
+      'Snapshots ≥ 1300g (neutral):'
+    );
+    expect(screen.getByTestId('card-unspent-gold')).toHaveTextContent('not a mistake score');
+
+    // Switch to Champion slice: LeeSin (1G, exact 20m game with missing totalTimeSpentDead, missing team objective data, and null personal objective counters)
     fireEvent.click(screen.getByTestId('filter-champ-LeeSin'));
     expect(screen.getByTestId('improvement-stats-sample-badge')).toHaveTextContent(
       '1 Game Considered'
@@ -248,10 +297,10 @@ describe('ImprovementStatsSection', () => {
 
     // LeeSin time spent dead was null -> must show Unavailable, never 0
     expect(screen.getByTestId('card-death-cost')).toHaveTextContent(
-      'Unavailable (1G missing field)'
+      'Unavailable (1G missing time-dead data)'
     );
 
-    // LeeSin team objectives had missing info.teams and null personal counters -> all 3 columns show Unavailable
+    // LeeSin team objectives had missing team data and null personal counters -> all 3 columns show Unavailable
     const leeTowerRow = screen.getByTestId('objective-row-tower');
     expect(within(leeTowerRow).getAllByText('Unavailable').length).toBe(3);
 
