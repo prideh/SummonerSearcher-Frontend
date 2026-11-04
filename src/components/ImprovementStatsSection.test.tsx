@@ -216,13 +216,23 @@ describe('ImprovementStatsSection', () => {
     expect(unspentCard).toHaveTextContent('1 frames');
     expect(unspentCard).toHaveTextContent('Ahri @10m (1600g → Item #3157)');
 
-    // 5. Team Objectives
+    // 5. Team Objectives (stacked per-objective on mobile <sm, 4-column table on desktop sm+)
+    const teamObjectivesCard = screen.getByTestId('card-team-objectives');
+    const objectivesTable = teamObjectivesCard.querySelector('table');
+    const objectivesThead = teamObjectivesCard.querySelector('thead');
+    expect(objectivesTable?.className).toContain('block sm:table');
+    expect(objectivesThead?.className).toContain('hidden sm:table-header-group');
+
     const hordeRow = screen.getByTestId('objective-row-horde');
+    expect(hordeRow.className).toContain('block sm:table-row');
     expect(hordeRow).toHaveTextContent('Void Grubs');
     expect(hordeRow).toHaveTextContent('(2G)');
+    expect(hordeRow).toHaveTextContent('First Rate');
     expect(hordeRow).toHaveTextContent('50% (1/2)');
+    expect(hordeRow).toHaveTextContent('Team vs Enemy');
     expect(hordeRow).toHaveTextContent('4.00');
     expect(hordeRow).toHaveTextContent('1.00');
+    expect(hordeRow).toHaveTextContent('Personal LH / TD');
     expect(hordeRow).toHaveTextContent('TD: 6');
 
     // Switch to Champion slice: LeeSin (1G, exact 20m game with missing totalTimeSpentDead, missing info.teams, and null personal objective counters)

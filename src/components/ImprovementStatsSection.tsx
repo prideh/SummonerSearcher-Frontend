@@ -268,15 +268,18 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
       <tr
         key={meta.key}
         data-testid={`objective-row-${meta.key}`}
-        className="border-t border-slate-200/70 dark:border-slate-800/80 text-xs telemetry-nums"
+        className="block sm:table-row py-2 sm:py-0 border-t border-slate-200/70 dark:border-slate-800/80 first:border-t-0 sm:first:border-t text-xs telemetry-nums"
       >
-        <td className="py-1.5 pr-2 font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+        <td className="block sm:table-cell pb-1 sm:py-1.5 sm:pr-2 font-bold text-slate-800 dark:text-slate-200 sm:whitespace-nowrap">
           <span>{meta.label}</span>
           <span className="ml-1 text-[10px] font-normal text-slate-400 dark:text-slate-500">
             ({summary.eligibleGamesWithKills}G)
           </span>
         </td>
-        <td className="py-1.5 px-2 text-center whitespace-nowrap">
+        <td className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 py-0.5 sm:table-cell sm:py-1.5 sm:px-2 sm:text-center sm:whitespace-nowrap">
+          <span className="sm:hidden text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            First Rate
+          </span>
           {hasFirstRate ? (
             <span className="font-semibold text-sky-600 dark:text-cyan-400">
               {formatRatePct(summary.teamFirstRate)}{' '}
@@ -288,7 +291,10 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
             <span className="text-slate-400 dark:text-slate-500">Unavailable</span>
           )}
         </td>
-        <td className="py-1.5 px-2 text-center whitespace-nowrap">
+        <td className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 py-0.5 sm:table-cell sm:py-1.5 sm:px-2 sm:text-center sm:whitespace-nowrap">
+          <span className="sm:hidden text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Team vs Enemy
+          </span>
           {hasTeamKills ? (
             <span>
               <span className="font-bold text-emerald-600 dark:text-emerald-400">
@@ -306,9 +312,12 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
             <span className="text-slate-400 dark:text-slate-500">Unavailable</span>
           )}
         </td>
-        <td className="py-1.5 pl-2 text-right whitespace-nowrap">
+        <td className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 pt-0.5 sm:table-cell sm:py-1.5 sm:pl-2 sm:text-right sm:whitespace-nowrap">
+          <span className="sm:hidden text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Personal LH / TD
+          </span>
           {hasPersonalLh || hasPersonalTd ? (
-            <span className="text-slate-700 dark:text-slate-300">
+            <span className="text-slate-700 dark:text-slate-300 text-right">
               {hasPersonalLh && (
                 <span>
                   <span className="text-[10px] text-slate-400 dark:text-slate-500">LH: </span>
@@ -847,17 +856,17 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
             </span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
+          <div className="sm:overflow-x-auto">
+            <table className="block sm:table w-full text-left border-collapse">
+              <thead className="hidden sm:table-header-group">
                 <tr className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  <th className="pb-1.5 pr-1 sm:pr-2">Objective</th>
-                  <th className="pb-1.5 px-1 sm:px-2 text-center">Team First Rate</th>
-                  <th className="pb-1.5 px-1 sm:px-2 text-center">Team vs Enemy Avg (Total)</th>
-                  <th className="pb-1.5 pl-1 sm:pl-2 text-right">Personal LH / Takedowns (TD)</th>
+                  <th className="pb-1.5 pr-2">Objective</th>
+                  <th className="pb-1.5 px-2 text-center">Team First Rate</th>
+                  <th className="pb-1.5 px-2 text-center">Team vs Enemy Avg (Total)</th>
+                  <th className="pb-1.5 pl-2 text-right">Personal LH / Takedowns (TD)</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="block sm:table-row-group">
                 {OBJECTIVES_META.map(meta =>
                   renderObjectiveRow(meta, teamObjectives[meta.key])
                 )}
