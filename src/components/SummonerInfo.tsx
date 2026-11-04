@@ -55,20 +55,18 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
   const [aiInitialMessage, setAiInitialMessage] = useState<string | undefined>(undefined);
 
   // Build comprehensive AI context from all loaded matches.
-  // If timeline has been analyzed, merge its aggregate summary under 'timelineInsights'
-  // so the backend's buildTimelineInsightsSection() can inject it into the AI prompt.
-  const baseAiContext = buildAiContext(
+  // If timeline has been analyzed by the user, buildAiContext merges its aggregate summary
+  // and per-match timeline diffs, death context, item spikes, and skill max order.
+  const aiContext = buildAiContext(
     summonerData.gameName,
     summonerData.tagLine,
     visibleMatches,
     summonerData.puuid,
     summonerData.soloQueueRank,
     summonerData.championStats,
-    summonerData.overallStats
+    summonerData.overallStats,
+    timelineAnalysis
   );
-  const aiContext = timelineAnalysis
-    ? { ...baseAiContext, timelineInsights: timelineAnalysis.aggregateSummary }
-    : baseAiContext;
 
   const handleAnalyzeTimeline = async () => {
     if (timelineAnalysis) {
