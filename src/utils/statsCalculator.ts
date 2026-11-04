@@ -10,7 +10,9 @@ export interface StatConsistency {
   lossConsistency: number;
 }
 
-export const STAT_ROLE_MAPPING: Record<string, 'ALL' | 'JUNGLE' | 'SUPPORT'> = {
+export type StatRole = 'ALL' | 'JUNGLE' | 'SUPPORT' | 'LANER';
+
+export const STAT_ROLE_MAPPING: Record<string, StatRole> = {
   kda: 'ALL',
   killParticipation: 'ALL',
   damagePerMinute: 'ALL',
@@ -19,6 +21,7 @@ export const STAT_ROLE_MAPPING: Record<string, 'ALL' | 'JUNGLE' | 'SUPPORT'> = {
   visionScorePerMinute: 'ALL',
   soloKills: 'ALL',
   turretPlatesTaken: 'ALL',
+  laneMinionsFirst10Minutes: 'LANER',
   controlWardsPlaced: 'SUPPORT',
   wardTakedowns: 'SUPPORT',
   effectiveHealAndShielding: 'SUPPORT',
@@ -38,6 +41,178 @@ export const STAT_ROLE_MAPPING: Record<string, 'ALL' | 'JUNGLE' | 'SUPPORT'> = {
   epicMonsterSteals: 'JUNGLE',
   epicMonsterStolenWithoutSmite: 'JUNGLE',
   epicMonsterKillsWithin30SecondsOfSpawn: 'JUNGLE',
+};
+
+/**
+ * Returns true when the given Riot teamPosition represents a farming lane role
+ * (TOP, MIDDLE, or BOTTOM), excluding JUNGLE and UTILITY (support).
+ */
+export const isLanerPosition = (teamPosition?: string): boolean => {
+  return teamPosition === 'TOP' || teamPosition === 'MIDDLE' || teamPosition === 'BOTTOM';
+};
+
+/**
+ * Checks whether a challenge stat key is applicable to a participant's assigned role.
+ */
+export const isStatAllowedForPosition = (statKey: string, teamPosition?: string): boolean => {
+  const requiredRole = STAT_ROLE_MAPPING[statKey];
+  if (requiredRole === 'JUNGLE') return teamPosition === 'JUNGLE';
+  if (requiredRole === 'SUPPORT') return teamPosition === 'UTILITY';
+  if (requiredRole === 'LANER') return isLanerPosition(teamPosition);
+  return true;
+};
+
+/**
+ * Parameters defining Summoner's Rift minion wave spawn and lane arrival rules
+ * during the early laning phase (first 10 minutes).
+ *
+ * Sources:
+ * - League of Legends Wiki ("Minion (League of Legends)" / "Farming"):
+ *   - Pre-Season 2026 (through Patch 15.x): Wave 1 spawns at 1:05 (65s), subsequent waves
+ *     spawn every 30s. Each wave has 3 melee + 3 caster minions, plus 1 siege (cannon)
+ *     minion every 3rd wave starting on Wave 3 (waves 3, 6, 9, 12, 15, ...).
+ *   - Since Patch 13.10, side-lane minions receive bonus movement speed before 14:00 so
+ *     that Top, Mid, and Bot waves all reach the lane clash point ~28s after spawning
+ *     (clashing at ~1:33-1:35 for a 1:05 spawn), requiring ~5s to be last-hit.
+ * - Riot Official Patch 26.1 Notes (Season 2026 / Data Dragon 16.x):
+ *   - Minion first spawn shifted 35s earlier from 1:05 (65s) to 0:30 (30s).
+ *   - Pre-14:00 wave interval remains 30s; cannon cadence every 3 waves starting Wave 3.
+ */
+export interface MinionWaveTimingConfig {
+  /** Game clock (in seconds) when Wave 1 spawns at the Nexus. */
+  firstWaveSpawnSeconds: number;
+  /** Interval (in seconds) between consecutive wave spawns during the first 10 minutes. */
+  waveIntervalSeconds: number;
+  /** Travel time (in seconds) from Nexus spawn to the lane center clash point. */
+  travelToClashSeconds: number;
+  /** Minimum window (in seconds) after waves clash for all minions in the wave to be last-hittable. */
+  clearBufferSeconds: number;
+  /** Number of melee minions per wave. */
+  meleePerWave: number;
+  /** Number of caster minions per wave. */
+  casterPerWave: number;
+  /** 1-indexed wave number of the first cannon (siege) wave. */
+  firstCannonWave: number;
+  /** Number of waves between cannon waves during the first 10 minutes. */
+  cannonWaveInterval: number;
+}
+
+export const CLASSIC_MINION_WAVE_CONFIG: MinionWaveTimingConfig = {
+  firstWaveSpawnSeconds: 65, // 1:05
+  waveIntervalSeconds: 30,
+  travelToClashSeconds: 28,
+  clearBufferSeconds: 5,
+  meleePerWave: 3,
+  casterPerWave: 3,
+  firstCannonWave: 3,
+  cannonWaveInterval: 3,
+};
+
+export const SEASON_2026_MINION_WAVE_CONFIG: MinionWaveTimingConfig = {
+  firstWaveSpawnSeconds: 30, // 0:30 (Patch 26.1 / DDragon 16.x+)
+  waveIntervalSeconds: 30,
+  travelToClashSeconds: 28,
+  clearBufferSeconds: 5,
+  meleePerWave: 3,
+  casterPerWave: 3,
+  firstCannonWave: 3,
+  cannonWaveInterval: 3,
+};
+
+/**
+ * Resolves the minion wave timing configuration for a given Data Dragon or match patch version.
+ * Season 2026 (Patch 26.1 / Data Dragon 16.x+, the current live patch) spawns Wave 1 at 0:30;
+ * pre-Season 2026 patches (major version <= 15) spawned Wave 1 at 1:05.
+ */
+export const getMinionWaveConfigForPatch = (patchVersion?: string): MinionWaveTimingConfig => {
+  if (!patchVersion || !patchVersion.trim()) {
+    return SEASON_2026_MINION_WAVE_CONFIG;
+  }
+  const majorStr = patchVersion.trim().split('.')[0];
+  const major = Number.parseInt(majorStr, 10);
+  if (!Number.isNaN(major) && major <= 15) {
+    return CLASSIC_MINION_WAVE_CONFIG;
+  }
+  return SEASON_2026_MINION_WAVE_CONFIG;
+};
+
+export interface AvailableLaneMinionsResult {
+  wavesArrived: number;
+  cannonWavesArrived: number;
+  availableMinions: number;
+}
+
+/**
+ * Computes from wave spawn and arrival timings how many single-lane minions have spawned,
+ * reached the lane clash point, and become available to last-hit by `minute` (default 10:00).
+ */
+export const calculateAvailableLaneMinionsByMinute = (
+  minute: number = 10,
+  config: MinionWaveTimingConfig = SEASON_2026_MINION_WAVE_CONFIG
+): AvailableLaneMinionsResult => {
+  const cutoffSeconds = minute * 60;
+  const arrivalAndClearOffset = config.travelToClashSeconds + config.clearBufferSeconds;
+
+  let wavesArrived = 0;
+  let cannonWavesArrived = 0;
+  let availableMinions = 0;
+
+  for (
+    let spawnSeconds = config.firstWaveSpawnSeconds, waveIndex = 1;
+    spawnSeconds + arrivalAndClearOffset <= cutoffSeconds;
+    spawnSeconds += config.waveIntervalSeconds, waveIndex += 1
+  ) {
+    wavesArrived += 1;
+    const isCannonWave =
+      waveIndex >= config.firstCannonWave &&
+      (waveIndex - config.firstCannonWave) % config.cannonWaveInterval === 0;
+    if (isCannonWave) {
+      cannonWavesArrived += 1;
+    }
+    availableMinions += config.meleePerWave + config.casterPerWave + (isCannonWave ? 1 : 0);
+  }
+
+  return {
+    wavesArrived,
+    cannonWavesArrived,
+    availableMinions,
+  };
+};
+
+export interface LaneCsAt10Breakdown {
+  /** Actual lane minions last-hit in the first 10 minutes (`challenges.laneMinionsFirst10Minutes`). */
+  hit: number;
+  /** Theoretical maximum single-lane minions available to last-hit by 10:00 for the patch. */
+  available: number;
+  /** Perfect possible lane CS minus actual lane minions last-hit (`Math.max(0, available - hit)`). */
+  missed: number;
+  /** Number of waves that arrived in lane by 10:00. */
+  wavesArrived: number;
+}
+
+/**
+ * Calculates the player's Lane CS @10 breakdown (hit, available baseline, and missed CS)
+ * using `challenges.laneMinionsFirst10Minutes` (which strictly counts lane minions and
+ * excludes jungle monsters).
+ */
+export const calculateLaneCsMissedAt10 = (
+  laneMinionsFirst10Minutes: number,
+  patchOrConfig?: string | MinionWaveTimingConfig
+): LaneCsAt10Breakdown => {
+  const config =
+    typeof patchOrConfig === 'object' && patchOrConfig !== null
+      ? patchOrConfig
+      : getMinionWaveConfigForPatch(patchOrConfig);
+  const { availableMinions, wavesArrived } = calculateAvailableLaneMinionsByMinute(10, config);
+  const hit = Math.max(0, Math.round(laneMinionsFirst10Minutes));
+  const missed = Math.max(0, availableMinions - hit);
+
+  return {
+    hit,
+    available: availableMinions,
+    missed,
+    wavesArrived,
+  };
 };
 
 export const calculateConsistency = (matches: MatchDto[], puuid: string) => {
@@ -106,10 +281,7 @@ export const calculateConsistency = (matches: MatchDto[], puuid: string) => {
             key === 'bountyGold' ||
             key === 'getTakedownsInAllLanesEarlyJungleAsLaner') return;
 
-        const requiredRole = STAT_ROLE_MAPPING[key];
-        
-        if (requiredRole === 'JUNGLE' && player.teamPosition !== 'JUNGLE') return;
-        if (requiredRole === 'SUPPORT' && player.teamPosition !== 'UTILITY') return;
+        if (!isStatAllowedForPosition(key, player.teamPosition)) return;
 
         const champName = player.championName || '';
 

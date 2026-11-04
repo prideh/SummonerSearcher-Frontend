@@ -8,6 +8,8 @@ import {
   isPercentageChallenge,
   formatNumber
 } from '../utils/formatters';
+import { useDataDragonStore } from '../store/dataDragonStore';
+import { calculateLaneCsMissedAt10, isStatAllowedForPosition } from '../utils/statsCalculator';
 
 /**
  * Props for the AnalysisTab component.
@@ -26,6 +28,8 @@ interface AnalysisTabProps {
  * and their lane opponent's performance metrics (challenges) from the match.
  */
 const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
+  const storeVersion = useDataDragonStore(state => state.version);
+  const patchVersion = match.info?.gameVersion || storeVersion;
   const participants = match.info?.participants;
   const mainPlayer = participants?.find(p => p.puuid === puuid);
 
@@ -53,9 +57,9 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
     const playerChallenges = Object.fromEntries(Object.entries(player.challenges || {}).filter(([, v]) => v != null && v > 0));
     const opponentChallenges = opponentData ? Object.fromEntries(Object.entries(opponentData.challenges || {}).filter(([, v]) => v != null && v > 0)) : {};
 
-    // Combine all unique challenge keys from both players and sort them alphabetically.
+    // Combine all unique challenge keys from both players, filter by role applicability, and sort alphabetically.
     const allChallengeKeys = [...new Set([...Object.keys(playerChallenges), ...Object.keys(opponentChallenges)])]
-        .filter(key => key !== 'legendaryItemUsed')
+        .filter(key => key !== 'legendaryItemUsed' && isStatAllowedForPosition(key, player.teamPosition))
         .sort();
 
     if (allChallengeKeys.length === 0) {
@@ -83,11 +87,19 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
 
           const isTime = isTimeChallenge(key);
           const isPercentage = isPercentageChallenge(key);
+          const laneCsBreakdown =
+            key === 'laneMinionsFirst10Minutes' && typeof playerValue === 'number'
+              ? calculateLaneCsMissedAt10(playerValue, patchVersion)
+              : null;
 
           return (
             <li key={key} className={`flex justify-between break-all p-1.5 rounded-md transition-colors ${isWinner ? 'bg-green-500/10 dark:bg-green-500/10' : 'bg-transparent'}`}>
               <span className={`${isWinner ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>{camelCaseToTitleCase(key)}:</span>
-              {typeof playerValue === 'number' ? (
+              {laneCsBreakdown ? (
+                <span className={`font-semibold pl-2 ${isWinner ? 'text-gray-800 dark:text-gray-200' : 'text-gray-500 dark:text-gray-500'}`}>
+                  {laneCsBreakdown.hit} / {laneCsBreakdown.available} ({laneCsBreakdown.missed} missed)
+                </span>
+              ) : typeof playerValue === 'number' ? (
                 <span className={`font-semibold pl-2 ${isWinner ? 'text-gray-800 dark:text-gray-200' : 'text-gray-500 dark:text-gray-500'}`}>
                     {isTime ? formatDuration(playerValue) : isPercentage ? formatPercentage(playerValue) : formatNumber(playerValue)}
                 </span>

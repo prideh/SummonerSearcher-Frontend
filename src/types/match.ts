@@ -46,6 +46,8 @@ export interface ChallengesDto {
   flawlessAces?: number;
   fullTeamTakedown?: number;
   getTakedownsInAllLanesEarlyJungleAsLaner?: number;
+  jungleCsBefore10Minutes?: number;
+  laneMinionsFirst10Minutes?: number;
   soloKills?: number;
 }
 
@@ -157,6 +159,7 @@ export interface MatchInfo {
   gameEndTimestamp?: number;
   gameDuration?: number;
   gameMode?: string;
+  gameVersion?: string;
   queueId?: number;
   participants: ParticipantDto[];
 }

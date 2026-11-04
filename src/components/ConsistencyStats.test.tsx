@@ -1,5 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import ConsistencyStats from './ConsistencyStats';
+import PlayerStats from './PlayerStats';
+import AnalysisTab from './AnalysisTab';
+import { useDataDragonStore } from '../store/dataDragonStore';
+import {
+  CLASSIC_MINION_WAVE_CONFIG,
+  SEASON_2026_MINION_WAVE_CONFIG,
+  calculateAvailableLaneMinionsByMinute,
+  calculateLaneCsMissedAt10,
+} from '../utils/statsCalculator';
 import type { MatchDto } from '../types/match';
 
 // Mock match data helper
@@ -253,5 +262,116 @@ describe('ConsistencyStats', () => {
     
     const strengthSection = screen.getByText('Top Strengths').closest('div');
     expect(strengthSection).toHaveTextContent('Damage per minute');
+  });
+
+  test('includes laneMinionsFirst10Minutes for laners (TOP, MIDDLE, BOTTOM) and excludes it for JUNGLE and UTILITY', () => {
+    const midMatches = [
+      createMatch(puuid, { laneMinionsFirst10Minutes: 85 }, { laneMinionsFirst10Minutes: 65 }, 'MIDDLE'),
+      createMatch(puuid, { laneMinionsFirst10Minutes: 88 }, { laneMinionsFirst10Minutes: 70 }, 'MIDDLE'),
+      createMatch(puuid, { laneMinionsFirst10Minutes: 90 }, { laneMinionsFirst10Minutes: 72 }, 'MIDDLE'),
+    ];
+
+    const { unmount } = render(<ConsistencyStats matches={midMatches} puuid={puuid} />);
+    expect(screen.getByText('Top Strengths').closest('div')).toHaveTextContent('Lane minions @ 10 min');
+    unmount();
+
+    const supportMatches = [
+      createMatch(puuid, { laneMinionsFirst10Minutes: 30 }, { laneMinionsFirst10Minutes: 15 }, 'UTILITY'),
+      createMatch(puuid, { laneMinionsFirst10Minutes: 28 }, { laneMinionsFirst10Minutes: 12 }, 'UTILITY'),
+      createMatch(puuid, { laneMinionsFirst10Minutes: 35 }, { laneMinionsFirst10Minutes: 10 }, 'UTILITY'),
+    ];
+    const { unmount: unmountSupport } = render(<ConsistencyStats matches={supportMatches} puuid={puuid} />);
+    expect(screen.queryByText('Lane minions @ 10 min')).not.toBeInTheDocument();
+    unmountSupport();
+
+    const jungleMatches = [
+      createMatch(puuid, { laneMinionsFirst10Minutes: 20 }, { laneMinionsFirst10Minutes: 5 }, 'JUNGLE'),
+      createMatch(puuid, { laneMinionsFirst10Minutes: 22 }, { laneMinionsFirst10Minutes: 8 }, 'JUNGLE'),
+      createMatch(puuid, { laneMinionsFirst10Minutes: 18 }, { laneMinionsFirst10Minutes: 4 }, 'JUNGLE'),
+    ];
+    render(<ConsistencyStats matches={jungleMatches} puuid={puuid} />);
+    expect(screen.queryByText('Lane minions @ 10 min')).not.toBeInTheDocument();
+  });
+
+  test('computes available lane minions by 10:00 and CS missed from wave spawn/arrival timings', () => {
+    // Classic 1:05 first spawn -> 17 waves arrive in lane before 10:00 (5 cannon waves) = 107 minions
+    const classicResult = calculateAvailableLaneMinionsByMinute(10, CLASSIC_MINION_WAVE_CONFIG);
+    expect(classicResult.wavesArrived).toBe(17);
+    expect(classicResult.cannonWavesArrived).toBe(5);
+    expect(classicResult.availableMinions).toBe(107);
+
+    // Season 2026 (Patch 26.1 / DDragon 16.x) 0:30 first spawn -> 18 waves arrive before 10:00 (6 cannon waves) = 114 minions
+    const season2026Result = calculateAvailableLaneMinionsByMinute(10, SEASON_2026_MINION_WAVE_CONFIG);
+    expect(season2026Result.wavesArrived).toBe(18);
+    expect(season2026Result.cannonWavesArrived).toBe(6);
+    expect(season2026Result.availableMinions).toBe(114);
+
+    const breakdownClassic = calculateLaneCsMissedAt10(80, '15.24.1');
+    expect(breakdownClassic).toEqual({
+      hit: 80,
+      available: 107,
+      missed: 27,
+      wavesArrived: 17,
+    });
+
+    const breakdownSeason2026 = calculateLaneCsMissedAt10(84, '16.5.1');
+    expect(breakdownSeason2026).toEqual({
+      hit: 84,
+      available: 114,
+      missed: 30,
+      wavesArrived: 18,
+    });
+  });
+
+  test('renders role-gated CS@10 and missed CS in PlayerStats and AnalysisTab only for laners', () => {
+    useDataDragonStore.setState({
+      version: '16.5.1',
+      versionReady: true,
+      cdnUrl: 'https://ddragon.leagueoflegends.com/cdn/16.5.1',
+      itemMap: {},
+      summonerSpellMap: {},
+      runeMap: {},
+      championMap: {},
+    });
+
+    const lanerMatch = createMatch(
+      puuid,
+      { laneMinionsFirst10Minutes: 84, jungleCsBefore10Minutes: 4 },
+      { laneMinionsFirst10Minutes: 70, jungleCsBefore10Minutes: 8 },
+      'TOP'
+    );
+    lanerMatch.info!.gameVersion = '16.5.1';
+    const lanerParticipant = lanerMatch.info!.participants[0];
+
+    const { unmount } = render(
+      <PlayerStats participant={lanerParticipant} teamParticipants={lanerMatch.info!.participants} />
+    );
+    expect(screen.getByTestId('lane-cs-10')).toHaveTextContent('CS@10: 84 (-30)');
+    unmount();
+
+    const supportMatch = createMatch(
+      puuid,
+      { laneMinionsFirst10Minutes: 18 },
+      { laneMinionsFirst10Minutes: 12 },
+      'UTILITY'
+    );
+    const supportParticipant = supportMatch.info!.participants[0];
+    const { unmount: unmountSupport } = render(
+      <PlayerStats participant={supportParticipant} teamParticipants={supportMatch.info!.participants} />
+    );
+    expect(screen.queryByTestId('lane-cs-10')).not.toBeInTheDocument();
+    unmountSupport();
+
+    const { unmount: unmountAnalysisLaner } = render(
+      <AnalysisTab match={lanerMatch} puuid={puuid} onPlayerClick={() => {}} />
+    );
+    expect(screen.getAllByText('Lane minions @ 10 min:').length).toBeGreaterThan(0);
+    expect(screen.getByText('84 / 114 (30 missed)')).toBeInTheDocument();
+    // Jungle CS @ 10 min should be filtered out for TOP laners
+    expect(screen.queryByText('Jungle cs @ 10 min:')).not.toBeInTheDocument();
+    unmountAnalysisLaner();
+
+    render(<AnalysisTab match={supportMatch} puuid={puuid} onPlayerClick={() => {}} />);
+    expect(screen.queryByText('Lane minions @ 10 min:')).not.toBeInTheDocument();
   });
 });

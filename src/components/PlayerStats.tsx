@@ -6,6 +6,7 @@ import RuneIcon from './RuneIcon';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import { getCorrectChampionName } from '../utils/championNameHelper';
 import { getKdaColorClass } from '../utils/colorUtils';
+import { calculateLaneCsMissedAt10, isLanerPosition } from '../utils/statsCalculator';
 
 /**
  * Props for the PlayerStats component.
@@ -30,6 +31,7 @@ interface PlayerStatsProps {
  */
 const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, isOpponent = false, teamParticipants, condensed = false }) => {
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
+  const patchVersion = useDataDragonStore(state => state.version);
 
   const {
     championName,
@@ -50,6 +52,20 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
   // Calculate derived stats like KDA, total CS, and Kill Participation.
   const kda = ((kills ?? 0) + (assists ?? 0)) / (deaths === 0 ? 1 : (deaths ?? 1));
   const cs = (totalMinionsKilled ?? 0) + (neutralMinionsKilled ?? 0);
+  const laneCsAt10Breakdown =
+    isLanerPosition(teamPosition) && typeof challenges?.laneMinionsFirst10Minutes === 'number'
+      ? calculateLaneCsMissedAt10(challenges.laneMinionsFirst10Minutes, patchVersion)
+      : null;
+
+  const csTooltipParts = [`Minions: ${totalMinionsKilled ?? 0}`, `Jungle: ${neutralMinionsKilled ?? 0}`];
+  if (laneCsAt10Breakdown) {
+    csTooltipParts.push(
+      `Lane CS @10: ${laneCsAt10Breakdown.hit}/${laneCsAt10Breakdown.available} (${laneCsAt10Breakdown.missed} missed)`
+    );
+  } else if (teamPosition === 'JUNGLE' && typeof challenges?.jungleCsBefore10Minutes === 'number') {
+    csTooltipParts.push(`Jungle CS @10: ${Math.round(challenges.jungleCsBefore10Minutes)}`);
+  }
+  const csTooltipContent = csTooltipParts.join(' | ');
 
   const playerStyles = perks?.styles || [];
   const primaryRune = playerStyles[0]?.selections?.[0]?.perk;
@@ -105,10 +121,20 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
           <p
             className="text-xs text-gray-600 dark:text-gray-300 mt-1"
             data-tooltip-id="player-name-tooltip"
-            data-tooltip-content={`Minions: ${totalMinionsKilled} | Jungle: ${neutralMinionsKilled}`}
+            data-tooltip-content={csTooltipContent}
           >
             CS: {cs}
           </p>
+          {laneCsAt10Breakdown && (
+            <p
+              className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 whitespace-nowrap"
+              data-testid="lane-cs-10"
+              data-tooltip-id="player-name-tooltip"
+              data-tooltip-content={`Lane minions @ 10:00: ${laneCsAt10Breakdown.hit}/${laneCsAt10Breakdown.available} (${laneCsAt10Breakdown.missed} missed)`}
+            >
+              CS@10: {laneCsAt10Breakdown.hit} <span className="text-gray-400 dark:text-gray-500">(-{laneCsAt10Breakdown.missed})</span>
+            </p>
+          )}
           <p className="text-xs text-red-600 dark:text-red-300 mt-1">KP: {killParticipation.toFixed(0)}%</p>
           <div className="h-6 mt-1">
             {(challenges?.soloKills ?? 0) > 0 && (
@@ -182,7 +208,23 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
             ) : (
               <p className={`text-xs font-bold ${getKdaColorClass(kda)} mt-1`}>{kda.toFixed(2)} KDA</p>
             )}
-            <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">CS: {cs}</p>
+            <p
+              className="text-xs text-gray-600 dark:text-gray-300 mt-1"
+              data-tooltip-id="player-name-tooltip"
+              data-tooltip-content={csTooltipContent}
+            >
+              CS: {cs}
+            </p>
+            {laneCsAt10Breakdown && (
+              <p
+                className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 whitespace-nowrap"
+                data-testid="lane-cs-10"
+                data-tooltip-id="player-name-tooltip"
+                data-tooltip-content={`Lane minions @ 10:00: ${laneCsAt10Breakdown.hit}/${laneCsAt10Breakdown.available} (${laneCsAt10Breakdown.missed} missed)`}
+              >
+                CS@10: {laneCsAt10Breakdown.hit} <span className="text-gray-400 dark:text-gray-500">(-{laneCsAt10Breakdown.missed})</span>
+              </p>
+            )}
             <p className="text-xs text-red-600 dark:text-red-300 mt-1">KP: {killParticipation.toFixed(0)}%</p>
             <div className="h-6 mt-1">
               {(challenges?.soloKills ?? 0) > 0 && (
