@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, beforeEach } from 'vitest';
-import {
+import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import TimelineAnalysisModal, {
   MAP_COORD_ORIGIN_X,
   MAP_COORD_ORIGIN_Y,
   MAP_COORD_SIZE_X,
@@ -8,9 +8,12 @@ import {
   projectToMinimapCanvas,
   PowerSpikeTooltip,
   EventDot,
+  findHoveredHeatmapEvents,
+  formatHeatmapEventTime,
+  type HeatmapLayer,
 } from './TimelineAnalysisModal';
 import { useDataDragonStore } from '../store/dataDragonStore';
-import type { PowerSpikePoint } from '../types/timeline';
+import type { PowerSpikePoint, TimelineAnalysisDto, MatchEventEntry } from '../types/timeline';
 
 describe('TimelineAnalysisModal minimap projection', () => {
   const CANVAS_SIZE = 512;
@@ -165,3 +168,160 @@ describe('PowerSpikeTooltip and EventDot (#4)', () => {
     expect(container.textContent).toContain('🏰');
   });
 });
+
+describe('Heatmap hover tooltips (#7)', () => {
+  const sampleEvents: MatchEventEntry[] = [
+    {
+      type: 'KILL',
+      minuteMark: 8,
+      secondMark: 42,
+      actor: 'Ahri',
+      target: 'Zed',
+      isPlayer: true,
+      isOpponent: false,
+      laneType: 'MID_LANE',
+      monsterType: null,
+      position: { x: 7425, y: 7425 }, // exact center of 14850x14850 -> (256, 256) on 512x512
+    },
+    {
+      type: 'WARD_PLACED',
+      minuteMark: 12,
+      secondMark: 5,
+      actor: 'Ahri',
+      target: null,
+      isPlayer: true,
+      isOpponent: false,
+      laneType: null,
+      monsterType: null,
+      position: { x: 3712.5, y: 11137.5 }, // (128, 128) on 512x512
+    },
+  ];
+
+  it('formats event timestamps as MM:SS and hit-tests events within radius', () => {
+    expect(formatHeatmapEventTime(8, 42)).toBe('08:42');
+    expect(formatHeatmapEventTime(12, 5)).toBe('12:05');
+
+    const allLayers = new Set<HeatmapLayer>(['positions', 'kills', 'deaths', 'assists', 'wards']);
+    const hitKill = findHoveredHeatmapEvents(sampleEvents, 260, 252, 512, 512, allLayers, 15);
+    expect(hitKill).toHaveLength(1);
+    expect(hitKill[0].actor).toBe('Ahri');
+    expect(hitKill[0].target).toBe('Zed');
+
+    // Out of radius
+    const miss = findHoveredHeatmapEvents(sampleEvents, 10, 10, 512, 512, allLayers, 15);
+    expect(miss).toHaveLength(0);
+
+    // Filtered out when timelineMinute is before the event
+    const beforeEvent = findHoveredHeatmapEvents(sampleEvents, 256, 256, 512, 512, allLayers, 5);
+    expect(beforeEvent).toHaveLength(0);
+
+    // Filtered out when layer is toggled off
+    const noKillLayer = new Set<HeatmapLayer>(['positions', 'deaths', 'assists', 'wards']);
+    const layerOff = findHoveredHeatmapEvents(sampleEvents, 256, 256, 512, 512, noKillLayer, 15);
+    expect(layerOff).toHaveLength(0);
+  });
+
+  it('displays floating tooltip with timestamp, actor/target, and champion icons on canvas hover', () => {
+    const analysis: TimelineAnalysisDto = {
+      heatmapPositions: [],
+      killPositions: [{ x: 7425, y: 7425, matchId: 'NA1_1', minute: 8 }],
+      deathPositions: [],
+      assistPositions: [],
+      wardPositions: [{ x: 3712.5, y: 11137.5, matchId: 'NA1_1', minute: 12 }],
+      buildOrders: [],
+      skillOrders: [],
+      powerSpikeTimelines: [
+        {
+          matchId: 'NA1_1',
+          playerChampion: 'Ahri',
+          opponentChampion: 'Zed',
+          win: true,
+          points: [
+            {
+              minute: 0,
+              playerGold: 500,
+              opponentGold: 500,
+              playerGoldLead: 0,
+              playerXp: 0,
+              opponentXp: 0,
+              playerCs: 0,
+              opponentCs: 0,
+              playerItems: [],
+              opponentItems: [],
+              events: [],
+            },
+            {
+              minute: 15,
+              playerGold: 5500,
+              opponentGold: 5000,
+              playerGoldLead: 500,
+              playerXp: 6000,
+              opponentXp: 5700,
+              playerCs: 110,
+              opponentCs: 100,
+              playerItems: [],
+              opponentItems: [],
+              events: [],
+            },
+          ],
+        },
+      ],
+      eventTimelines: [
+        {
+          matchId: 'NA1_1',
+          playerChampion: 'Ahri',
+          opponentChampion: 'Zed',
+          win: true,
+          events: sampleEvents,
+        },
+      ],
+      aggregateSummary: {
+        gamesAnalyzed: 1,
+        killsTotal: 1,
+        deathsTotal: 0,
+        assistsTotal: 0,
+        wardsPlacedTotal: 1,
+        avgFirstDeathMinute: 0,
+        mostDangerousZone: 'Mid Lane',
+        avgGoldLeadAt10: 250,
+        avgGoldLeadAt15: 500,
+      },
+    };
+
+    render(
+      <TimelineAnalysisModal
+        isOpen={true}
+        onClose={vi.fn()}
+        analysis={analysis}
+        summonerName="Faker"
+        onOpenAiCoach={vi.fn()}
+      />
+    );
+
+    const canvas = screen.getByTestId('heatmap-canvas');
+    vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 512,
+      height: 512,
+      right: 512,
+      bottom: 512,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+
+    fireEvent.mouseMove(canvas, { clientX: 256, clientY: 256 });
+
+    const tooltip = screen.getByTestId('heatmap-hover-tooltip');
+    expect(tooltip).toBeInTheDocument();
+    expect(tooltip).toHaveTextContent('08:42 -');
+    expect(tooltip).toHaveTextContent('Ahri killed Zed');
+    expect(screen.getByAltText('Ahri')).toBeInTheDocument();
+    expect(screen.getByAltText('Zed')).toBeInTheDocument();
+
+    fireEvent.mouseLeave(canvas);
+    expect(screen.queryByTestId('heatmap-hover-tooltip')).not.toBeInTheDocument();
+  });
+});
+

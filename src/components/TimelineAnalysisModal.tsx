@@ -5,9 +5,10 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine
 } from 'recharts';
-import type { TimelineAnalysisDto, MatchPowerSpikeDto, PowerSpikePoint } from '../types/timeline';
+import type { TimelineAnalysisDto, MatchPowerSpikeDto, PowerSpikePoint, MatchEventEntry } from '../types/timeline';
 import ItemIcon from './ItemIcon';
 import { useDataDragonStore } from '../store/dataDragonStore';
+import { getCorrectChampionName } from '../utils/championNameHelper';
 
 // Riot minimap image (Map11 2dlevelminimap, 512x512 edge-to-edge with no border/padding)
 const MINIMAP_URL = 'https://raw.communitydragon.org/latest/game/levels/map11/info/2dlevelminimap.png';
@@ -17,6 +18,7 @@ export const MAP_COORD_ORIGIN_X = 0;
 export const MAP_COORD_ORIGIN_Y = 0;
 export const MAP_COORD_SIZE_X = 14850;
 export const MAP_COORD_SIZE_Y = 14850;
+export const HEATMAP_HIT_RADIUS = 12;
 
 export const projectToMinimapCanvas = (
   x: number,
@@ -37,7 +39,48 @@ interface TimelineAnalysisModalProps {
   onOpenAiCoach: (suggestion?: string) => void;
 }
 
-type HeatmapLayer = 'positions' | 'kills' | 'deaths' | 'assists' | 'wards';
+export type HeatmapLayer = 'positions' | 'kills' | 'deaths' | 'assists' | 'wards';
+
+export const formatHeatmapEventTime = (minuteMark: number, secondMark: number): string =>
+  `${String(minuteMark).padStart(2, '0')}:${String(secondMark).padStart(2, '0')}`;
+
+export const isHeatmapEventLayerActive = (
+  ev: MatchEventEntry,
+  activeLayers: Set<HeatmapLayer>
+): boolean => {
+  if (ev.type === 'KILL') return activeLayers.has('kills');
+  if (ev.type === 'DEATH') return activeLayers.has('deaths');
+  if (ev.type === 'ASSIST') return activeLayers.has('assists');
+  if (ev.type === 'WARD_PLACED' || ev.type === 'WARD_KILLED') return activeLayers.has('wards');
+  return false;
+};
+
+export const findHoveredHeatmapEvents = (
+  events: MatchEventEntry[],
+  cursorX: number,
+  cursorY: number,
+  canvasW: number,
+  canvasH: number,
+  activeLayers: Set<HeatmapLayer>,
+  timelineMinute: number,
+  hitRadius: number = HEATMAP_HIT_RADIUS
+): MatchEventEntry[] => {
+  const matches: Array<{ ev: MatchEventEntry; dist: number }> = [];
+  for (const ev of events) {
+    if (!ev.position) continue;
+    if (ev.minuteMark > timelineMinute) continue;
+    if (ev.isPlayer === false) continue;
+    if (!isHeatmapEventLayerActive(ev, activeLayers)) continue;
+
+    const { cx, cy } = projectToMinimapCanvas(ev.position.x, ev.position.y, canvasW, canvasH);
+    const dist = Math.hypot(cursorX - cx, cursorY - cy);
+    if (dist <= hitRadius) {
+      matches.push({ ev, dist });
+    }
+  }
+  matches.sort((a, b) => a.dist - b.dist);
+  return matches.map(m => m.ev);
+};
 
 const LAYER_COLORS: Record<HeatmapLayer, string> = {
   positions: 'rgba(56, 189, 248, 0.40)',   // cyan — very faint, creates density when stacked
@@ -220,17 +263,26 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
   );
   const [selectedMatchIndex, setSelectedMatchIndex] = useState(0);
   const [timelineMinute, setTimelineMinute] = useState<number>(0);
+  const [hoveredHeatmapTooltip, setHoveredHeatmapTooltip] = useState<{
+    xPct: number;
+    yPct: number;
+    events: MatchEventEntry[];
+  } | null>(null);
+  const cdnUrl = useDataDragonStore(state => state.cdnUrl);
+  const champCdnBase = cdnUrl || 'https://ddragon.leagueoflegends.com/cdn/16.22.1';
 
   useEffect(() => {
     const points = analysis.powerSpikeTimelines[selectedMatchIndex]?.points;
     const maxMinute = points && points.length > 0 ? points[points.length - 1].minute : 0;
     setTimelineMinute(maxMinute);
+    setHoveredHeatmapTooltip(null);
   }, [selectedMatchIndex, analysis]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const minimapRef = useRef<HTMLImageElement>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
 
   const toggleLayer = (layer: HeatmapLayer) => {
+    setHoveredHeatmapTooltip(null);
     setActiveLayers(prev => {
       const next = new Set(prev);
       if (next.has(layer)) next.delete(layer);
@@ -244,6 +296,55 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
     (x: number, y: number, canvasW: number, canvasH: number) =>
       projectToMinimapCanvas(x, y, canvasW, canvasH),
     []
+  );
+
+  const handleCanvasMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const displayW = rect.width > 0 ? rect.width : canvas.width;
+      const displayH = rect.height > 0 ? rect.height : canvas.height;
+      const offsetX = e.clientX - rect.left;
+      const offsetY = e.clientY - rect.top;
+      const cursorX = (offsetX / displayW) * canvas.width;
+      const cursorY = (offsetY / displayH) * canvas.height;
+      const hitRadiusInCanvas = HEATMAP_HIT_RADIUS * (canvas.width / displayW);
+
+      const currentMatchId = analysis.powerSpikeTimelines[selectedMatchIndex]?.matchId;
+      const matchEvents =
+        analysis.eventTimelines?.find(et => et.matchId === currentMatchId)?.events ??
+        analysis.eventTimelines?.[selectedMatchIndex]?.events ??
+        [];
+
+      const matched = findHoveredHeatmapEvents(
+        matchEvents,
+        cursorX,
+        cursorY,
+        canvas.width,
+        canvas.height,
+        activeLayers,
+        timelineMinute,
+        hitRadiusInCanvas
+      );
+
+      if (matched.length > 0 && matched[0].position) {
+        const { cx, cy } = projectToMinimapCanvas(
+          matched[0].position.x,
+          matched[0].position.y,
+          canvas.width,
+          canvas.height
+        );
+        setHoveredHeatmapTooltip({
+          xPct: (cx / canvas.width) * 100,
+          yPct: (cy / canvas.height) * 100,
+          events: matched,
+        });
+      } else {
+        setHoveredHeatmapTooltip(null);
+      }
+    },
+    [analysis, selectedMatchIndex, activeLayers, timelineMinute]
   );
 
   const drawHeatmap = useCallback(() => {
@@ -434,8 +535,75 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
                     ref={canvasRef}
                     width={512}
                     height={512}
-                    className="absolute inset-0 w-full h-full pointer-events-none"
+                    data-testid="heatmap-canvas"
+                    onMouseMove={handleCanvasMouseMove}
+                    onMouseLeave={() => setHoveredHeatmapTooltip(null)}
+                    className={`absolute inset-0 w-full h-full ${hoveredHeatmapTooltip ? 'cursor-pointer' : 'cursor-crosshair'}`}
                   />
+                  {hoveredHeatmapTooltip && (
+                    <div
+                      data-testid="heatmap-hover-tooltip"
+                      style={{
+                        left: `${Math.min(Math.max(hoveredHeatmapTooltip.xPct, 18), 82)}%`,
+                        top: `${hoveredHeatmapTooltip.yPct}%`,
+                      }}
+                      className={`absolute z-20 pointer-events-none -translate-x-1/2 ${
+                        hoveredHeatmapTooltip.yPct < 22
+                          ? 'translate-y-3'
+                          : '-translate-y-[calc(100%+10px)]'
+                      } bg-white/95 dark:bg-gray-900/95 border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs shadow-xl whitespace-nowrap space-y-1`}
+                    >
+                      {hoveredHeatmapTooltip.events.slice(0, 3).map((ev, idx) => {
+                        const timeStr = formatHeatmapEventTime(ev.minuteMark, ev.secondMark);
+                        const verb =
+                          ev.type === 'KILL'
+                            ? 'killed'
+                            : ev.type === 'DEATH'
+                            ? 'died to'
+                            : ev.type === 'ASSIST'
+                            ? 'assisted on'
+                            : ev.type === 'WARD_KILLED'
+                            ? 'destroyed ward'
+                            : 'placed ward';
+                        const showTargetChamp =
+                          (ev.type === 'KILL' || ev.type === 'DEATH' || ev.type === 'ASSIST') &&
+                          !!ev.target;
+
+                        return (
+                          <div key={idx} className="flex items-center gap-1.5 text-gray-800 dark:text-gray-200">
+                            <span className="font-mono text-[11px] text-cyan-600 dark:text-cyan-400">
+                              {timeStr} -
+                            </span>
+                            {ev.actor && (
+                              <img
+                                src={`${champCdnBase}/img/champion/${getCorrectChampionName(ev.actor)}.png`}
+                                alt={ev.actor}
+                                className="w-4 h-4 rounded-full shrink-0"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                            )}
+                            <span>
+                              {ev.actor ? `${ev.actor} ` : ''}
+                              {verb}
+                              {ev.target ? ` ${ev.target}` : ''}
+                            </span>
+                            {showTargetChamp && ev.target && (
+                              <img
+                                src={`${champCdnBase}/img/champion/${getCorrectChampionName(ev.target)}.png`}
+                                alt={ev.target}
+                                className="w-4 h-4 rounded-full shrink-0"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                   {!mapLoaded && (
                     <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
                       <svg className="w-8 h-8 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
