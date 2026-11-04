@@ -29,6 +29,7 @@ coverage
 playwright-report/
 test-results/
 blob-report/
+test_output.txt
 
 # Local Env Files
 *.local
