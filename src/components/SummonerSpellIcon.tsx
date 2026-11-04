@@ -11,7 +11,7 @@ const SummonerSpellIcon: React.FC<SummonerSpellIconProps> = ({ spellId, classNam
   const cdnUrl = useDataDragonStore(state => state.cdnUrl);
 
   if (!spellId || !cdnUrl) {
-    return <div className={`${className} bg-gray-200 dark:bg-gray-800/50 rounded`}></div>;
+    return <div className={`${className} bg-slate-200/75 dark:bg-slate-900/75 border border-slate-300/70 dark:border-slate-800 rounded`}></div>;
   }
 
   const spell = summonerSpellMap?.[spellId];
@@ -28,7 +28,7 @@ const SummonerSpellIcon: React.FC<SummonerSpellIconProps> = ({ spellId, classNam
       src={`${cdnUrl}/img/spell/${spell?.image.full}`}
       loading="lazy"
       alt={spell?.name || `Spell ${spellId}`}
-      className={`${className} rounded`}
+      className={`${className} rounded border border-slate-300 dark:border-slate-700`}
       data-tooltip-id="item-tooltip" // We can reuse the item tooltip style
       data-tooltip-content={tooltipContent}
     />

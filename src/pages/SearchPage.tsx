@@ -384,15 +384,15 @@ const SearchPage: React.FC = () => {
    * Renders a skeleton loading state for the summoner info card while data is being fetched.
    */
   const renderSkeleton = () => (
-    <div className="bg-white/60 dark:bg-gray-900/40 backdrop-blur-sm border border-gray-200/50 dark:border-gray-800/50 p-6 rounded-lg shadow-lg">
+    <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 p-5 rounded-lg shadow-xs">
       <div className="flex items-center space-x-4">
-        <Skeleton className="w-20 h-20 rounded-full" />
+        <Skeleton className="w-20 h-20 rounded-xl" />
         <div className="space-y-2">
           <Skeleton className="h-7 w-48" />
           <Skeleton className="h-4 w-24" />
         </div>
       </div>
-      <div className="bg-transparent dark:bg-transparent p-4 rounded-lg mt-4 border border-gray-200/50 dark:border-gray-800/50">
+      <div className="bg-slate-50/70 dark:bg-[#0b101d] p-4 rounded-lg mt-4 border border-slate-200 dark:border-slate-800">
         <Skeleton className="h-5 w-32 mb-4" />
         <div className="flex items-center space-x-4 mt-2">
           <Skeleton className="w-20 h-20 rounded" />
@@ -418,19 +418,19 @@ const SearchPage: React.FC = () => {
 
     if (error === 'NOT_FOUND') {
       return (
-        <div className="bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-400 dark:border-yellow-700/30 text-yellow-800 dark:text-yellow-200 p-6 rounded-lg text-center" role="alert">
-          <h3 className="font-bold text-xl mb-2">Summoner Not Found</h3>
-          <p className="text-yellow-700 dark:text-yellow-300">Please double-check the Summoner Name, Tagline, and selected Region, then try again.</p>
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700/50 text-amber-900 dark:text-amber-200 p-6 rounded-lg text-center shadow-xs" role="alert">
+          <h3 className="font-extrabold text-xl mb-1 tracking-tight">Summoner Not Found</h3>
+          <p className="text-amber-700 dark:text-amber-300 text-sm">Please double-check the Summoner Name, Tagline, and selected Region, then try again.</p>
         </div>
       );
     }
 
     return (
-      <div className="bg-red-100 dark:bg-red-500/10 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-300 p-4 rounded-lg flex items-center space-x-3" role="alert">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-300 dark:border-rose-700/50 text-rose-800 dark:text-rose-200 p-4 rounded-lg flex items-center space-x-3 shadow-xs" role="alert">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
-        <span>{error}</span>
+        <span className="text-sm font-medium">{error}</span>
       </div>
     );
   };
@@ -457,18 +457,25 @@ const SearchPage: React.FC = () => {
   return (
     <div className="flex-1 h-full overflow-y-auto w-full">
       <SEO title={seoTitle} description={seoDescription} schema={seoSchema} />
-      <div className="container mx-auto p-4 md:p-8 flex flex-col items-center">
+      <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-6 flex flex-col items-center">
         <Tooltip 
           id="item-tooltip" 
           place="top"
-          style={{ backgroundColor: 'rgb(17 24 39 / var(--tw-bg-opacity, 1))', borderRadius: '6px', padding: '8px 12px', zIndex: 50 }}
-          border="1px solid rgb(31 41 55)"
+          style={{ backgroundColor: 'rgb(15 23 42)', borderRadius: '6px', padding: '8px 12px', zIndex: 50 }}
+          border="1px solid rgb(51 65 85)"
           noArrow
           offset={10}
           render={({ content }) => <div dangerouslySetInnerHTML={{ __html: content ?? '' }} />}
           opacity={1}
         />
-        <h1 className="text-4xl font-bold mb-8 text-center text-gray-800 dark:text-gray-100 tracking-wider">Summoner Search</h1>
+        <div className="text-center mb-5">
+          <span className="inline-block text-[10px] font-extrabold uppercase tracking-[0.2em] text-sky-600 dark:text-cyan-400 mb-1">
+            League of Legends Telemetry & Match Analytics
+          </span>
+          <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            Summoner Search
+          </h1>
+        </div>
         <SearchBar
           searchInput={localSearchInput}
           setSearchInput={setLocalSearchInput}
@@ -484,10 +491,10 @@ const SearchPage: React.FC = () => {
           startSearch={startSearch}
         />
 
-        <div className="mt-8 w-full max-w-7xl">
+        <div className="mt-6 w-full max-w-7xl">
           {renderError()}
           {!loading && !summonerData && !error && (
-            <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+            <div className="text-center text-sm text-slate-500 dark:text-slate-400">
               <p>
                 Don't know who to search for? Try an example:
                 <button
@@ -495,7 +502,7 @@ const SearchPage: React.FC = () => {
                     setRegion('euw1');
                     startSearch('pride', 'persi', 'euw1');
                   }}
-                  className="ml-1 font-semibold text-cyan-600 hover:text-cyan-500 dark:text-cyan-400 dark:hover:text-cyan-500 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded"
+                  className="ml-1.5 font-bold text-sky-600 hover:text-sky-500 dark:text-cyan-400 dark:hover:text-cyan-300 transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 rounded"
                 >
                   pride#persi on EUW
                 </button>
@@ -504,7 +511,7 @@ const SearchPage: React.FC = () => {
           )}
           {loading && renderSkeleton()}
           {loading && showLongSearchMessage && (
-            <div className="text-center mt-4 text-cyan-600 dark:text-cyan-400 animate-pulse font-medium">
+            <div className="text-center mt-4 text-sky-600 dark:text-cyan-400 animate-pulse font-semibold text-sm">
               Fetching full seasonal history... this might take a moment.
             </div>
           )}

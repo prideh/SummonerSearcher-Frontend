@@ -46,18 +46,18 @@ const MatchDetails: React.FC<MatchDetailsProps> = ({ match, puuid, onPlayerClick
   const matchId = match.metadata?.matchId ?? '';
 
   return (
-    <div id={id} className="col-span-full bg-white dark:bg-gray-900/70 rounded-b-lg text-gray-800 dark:text-gray-200 border-t border-gray-200 dark:border-gray-800/50 overflow-hidden">
+    <div id={id} className="col-span-full bg-white dark:bg-[#0d1322] rounded-b-lg text-slate-800 dark:text-slate-200 border-t border-slate-200 dark:border-slate-800 overflow-hidden telemetry-nums">
       {/* Tab bar */}
-      <div className="relative border-b border-gray-200 dark:border-gray-800/50">
-        <div className="flex w-full px-1 pt-1">
+      <div className="bg-slate-100/90 dark:bg-[#090d16] border-b border-slate-200 dark:border-slate-800 px-3 py-1.5">
+        <div className="flex w-full gap-1.5">
           {(['scoreboard', 'graphs', 'runes', 'analysis', 'details'] as ActiveTab[]).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 text-center py-2 text-xs sm:text-sm font-semibold whitespace-nowrap capitalize transition-all border-b-2 -mb-px ${
+              className={`flex-1 text-center py-1.5 px-2 text-xs font-extrabold uppercase tracking-wider whitespace-nowrap rounded transition-colors ${
                 activeTab === tab
-                  ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+                  ? 'bg-sky-600 text-white dark:bg-cyan-400 dark:text-slate-950 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/70 dark:hover:bg-slate-800/70'
               }`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -65,7 +65,7 @@ const MatchDetails: React.FC<MatchDetailsProps> = ({ match, puuid, onPlayerClick
           ))}
         </div>
       </div>
-      <Suspense fallback={<div className="p-4"><Skeleton className="w-full h-48 rounded-md bg-gray-200/50 dark:bg-gray-800/50" /></div>}>
+      <Suspense fallback={<div className="p-4"><Skeleton className="w-full h-48 rounded-md bg-slate-200/60 dark:bg-slate-800/60" /></div>}>
         {activeTab === 'scoreboard' && <ScoreboardTab match={match} puuid={puuid} onPlayerClick={onPlayerClick} />}
         {activeTab === 'graphs' && <GraphsTab match={match} puuid={puuid} onPlayerClick={onPlayerClick} />}
         {activeTab === 'runes' && <RunesTab match={match} puuid={puuid} onPlayerClick={onPlayerClick} />}
@@ -81,7 +81,7 @@ const MatchDetails: React.FC<MatchDetailsProps> = ({ match, puuid, onPlayerClick
           />
         )}
         {activeTab === 'details' && !playerParticipant && (
-          <div className="p-6 text-center text-gray-500 dark:text-gray-400">Player data not available for this match.</div>
+          <div className="p-6 text-center text-slate-500 dark:text-slate-400">Player data not available for this match.</div>
         )}
       </Suspense>
     </div>

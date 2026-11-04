@@ -36,13 +36,20 @@ const RunesTab: React.FC<RunesTabProps> = ({ match, puuid, onPlayerClick }) => {
           const secondaryStyle = perks?.styles?.[1];
 
           return (
-            <div key={player.puuid} className={`p-3 rounded-lg ${player.puuid === puuid ? 'bg-cyan-500/10 dark:bg-cyan-900/30' : 'bg-gray-100 dark:bg-gray-900/40'}`}>
+            <div
+              key={player.puuid}
+              className={`p-3 rounded-lg border ${
+                player.puuid === puuid
+                  ? 'bg-sky-50/80 dark:bg-cyan-950/30 border-sky-300 dark:border-cyan-700/60'
+                  : 'bg-slate-50/80 dark:bg-[#0b101d] border-slate-200 dark:border-slate-800'
+              }`}
+            >
               <div 
                 className="flex items-center space-x-2 mb-3 cursor-pointer group"
                 onClick={() => onPlayerClick(player.riotIdGameName!, player.riotIdTagline!)}
               >
-                <img src={`${CDN_URL}/img/champion/${getCorrectChampionName(player.championName)}.png`} loading="lazy" alt={player.championName} className="w-8 h-8 rounded-full" />
-                <span className="font-semibold text-gray-800 dark:text-gray-200 truncate group-hover:text-cyan-500 dark:group-hover:text-cyan-400">{player.riotIdGameName}</span>
+                <img src={`${CDN_URL}/img/champion/${getCorrectChampionName(player.championName)}.png`} loading="lazy" alt={player.championName} className="w-8 h-8 rounded border border-slate-300 dark:border-slate-700" />
+                <span className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate group-hover:text-sky-600 dark:group-hover:text-cyan-400">{player.riotIdGameName}</span>
               </div>
               {/* Mobile View: Single row of runes */}
               <div className="flex md:hidden justify-start items-center space-x-1.5">
@@ -77,13 +84,13 @@ const RunesTab: React.FC<RunesTabProps> = ({ match, puuid, onPlayerClick }) => {
   const redTeam = match.info.participants.filter(p => p.teamId === 200);
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-4 space-y-5">
       <div>
-        <h3 className="text-lg font-bold text-blue-600 dark:text-blue-400 mb-2">Blue Team</h3>
+        <h3 className="text-xs font-extrabold uppercase tracking-wider text-sky-600 dark:text-sky-400 mb-2">Blue Team</h3>
         {renderTeamRunes(blueTeam)}
       </div>
       <div>
-        <h3 className="text-lg font-bold text-red-600 dark:text-red-400 mb-2">Red Team</h3>
+        <h3 className="text-xs font-extrabold uppercase tracking-wider text-rose-600 dark:text-rose-400 mb-2">Red Team</h3>
         {renderTeamRunes(redTeam)}
       </div>
     </div>

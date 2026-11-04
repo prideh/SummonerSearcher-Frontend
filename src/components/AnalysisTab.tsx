@@ -10,6 +10,7 @@ import {
 } from '../utils/formatters';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import { calculateLaneCsMissedAt10, isStatAllowedForPosition } from '../utils/statsCalculator';
+import { getCorrectChampionName } from '../utils/championNameHelper';
 
 /**
  * Props for the AnalysisTab component.
@@ -29,12 +30,13 @@ interface AnalysisTabProps {
  */
 const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
   const storeVersion = useDataDragonStore(state => state.version);
+  const CDN_URL = useDataDragonStore(state => state.cdnUrl);
   const patchVersion = match.info?.gameVersion || storeVersion;
   const participants = match.info?.participants;
   const mainPlayer = participants?.find(p => p.puuid === puuid);
 
   if (!mainPlayer) {
-    return <p className="p-4 text-gray-500 dark:text-gray-400">Main player data not found for analysis.</p>;
+    return <p className="p-4 text-slate-500 dark:text-slate-400">Main player data not found for analysis.</p>;
   }
 
   // Find the direct lane opponent by matching team position and ensuring they are on the opposite team.
@@ -63,11 +65,11 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
         .sort();
 
     if (allChallengeKeys.length === 0) {
-      return <p className="text-gray-500 dark:text-gray-400 text-center mt-4">No challenges data available for {player.riotIdGameName}.</p>;
+      return <p className="text-slate-500 dark:text-slate-400 text-center mt-4">No challenges data available for {player.riotIdGameName}.</p>;
     }
 
     return (
-      <ul className="space-y-1.5 text-sm">
+      <ul className="space-y-1 text-xs telemetry-nums">
         {allChallengeKeys.map(key => {
           const playerValue = playerChallenges[key] as number | undefined;
           const opponentValue = opponentChallenges[key] as number | undefined;
@@ -93,20 +95,29 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
               : null;
 
           return (
-            <li key={key} className={`flex justify-between break-all p-1.5 rounded-md transition-colors ${isWinner ? 'bg-green-500/10 dark:bg-green-500/10' : 'bg-transparent'}`}>
-              <span className={`${isWinner ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>{camelCaseToTitleCase(key)}:</span>
+            <li
+              key={key}
+              className={`flex justify-between items-center break-all px-2.5 py-1.5 rounded transition-colors ${
+                isWinner
+                  ? 'bg-emerald-500/12 dark:bg-emerald-500/15 border-l-2 border-l-emerald-500'
+                  : 'bg-white/60 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/60'
+              }`}
+            >
+              <span className={`font-medium ${isWinner ? 'text-emerald-700 dark:text-emerald-400 font-semibold' : 'text-slate-600 dark:text-slate-400'}`}>
+                {camelCaseToTitleCase(key)}:
+              </span>
               {laneCsBreakdown ? (
-                <span className={`font-semibold pl-2 ${isWinner ? 'text-gray-800 dark:text-gray-200' : 'text-gray-500 dark:text-gray-500'}`}>
+                <span className={`font-bold pl-2 ${isWinner ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
                   {laneCsBreakdown.hit} / {laneCsBreakdown.available} ({laneCsBreakdown.missed} missed)
                 </span>
               ) : typeof playerValue === 'number' ? (
-                <span className={`font-semibold pl-2 ${isWinner ? 'text-gray-800 dark:text-gray-200' : 'text-gray-500 dark:text-gray-500'}`}>
+                <span className={`font-bold pl-2 ${isWinner ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
                     {isTime ? formatDuration(playerValue) : isPercentage ? formatPercentage(playerValue) : formatNumber(playerValue)}
                 </span>
               ) : playerValue !== undefined ? (
-                <span className={`font-semibold pl-2 ${isWinner ? 'text-gray-800 dark:text-gray-200' : 'text-gray-500 dark:text-gray-500'}`}>{String(playerValue)}</span>
+                <span className={`font-bold pl-2 ${isWinner ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{String(playerValue)}</span>
               ) : (
-                <span className="font-semibold pl-2 text-gray-500 dark:text-gray-600">-</span>
+                <span className="font-bold pl-2 text-slate-400 dark:text-slate-600">-</span>
               )}
             </li>
           );
@@ -116,17 +127,47 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
   };
 
   return (
-    <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto">
-      <div className="bg-white dark:bg-gray-900/50 p-3 md:p-4 rounded-lg shadow-sm dark:shadow-none">
-        <h4 className="font-bold text-cyan-600 dark:text-cyan-400 border-b border-gray-200 dark:border-gray-800 pb-2 mb-3">{mainPlayer.riotIdGameName} (You)</h4>
+    <div className="p-3.5 grid grid-cols-1 lg:grid-cols-2 gap-3.5 max-h-[500px] overflow-y-auto telemetry-nums">
+      <div className="bg-slate-50/80 dark:bg-[#0b101d] border border-slate-200 dark:border-slate-800 p-3.5 rounded-lg">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2.5 mb-2.5">
+          <div className="flex items-center gap-2">
+            <img
+              src={`${CDN_URL}/img/champion/${getCorrectChampionName(mainPlayer.championName)}.png`}
+              alt={mainPlayer.championName}
+              loading="lazy"
+              className="w-6 h-6 rounded border border-sky-500 dark:border-cyan-400"
+            />
+            <h4 className="font-extrabold text-sm text-sky-600 dark:text-cyan-400">
+              {mainPlayer.riotIdGameName} (You)
+            </h4>
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            {mainPlayer.championName}
+          </span>
+        </div>
         {renderPlayerChallenges(mainPlayer, opponent)}
       </div>
       {opponent ? (
-        <div className="bg-white dark:bg-gray-900/50 p-3 md:p-4 rounded-lg shadow-sm dark:shadow-none">
-          <h4 className="font-bold text-red-600 dark:text-red-400 border-b border-gray-200 dark:border-gray-800 pb-2 mb-3">{opponent.riotIdGameName} (Opponent)</h4>
+        <div className="bg-slate-50/80 dark:bg-[#0b101d] border border-slate-200 dark:border-slate-800 p-3.5 rounded-lg">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2.5 mb-2.5">
+            <div className="flex items-center gap-2">
+              <img
+                src={`${CDN_URL}/img/champion/${getCorrectChampionName(opponent.championName)}.png`}
+                alt={opponent.championName}
+                loading="lazy"
+                className="w-6 h-6 rounded border border-rose-500"
+              />
+              <h4 className="font-extrabold text-sm text-rose-600 dark:text-rose-400">
+                {opponent.riotIdGameName} (Opponent)
+              </h4>
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              {opponent.championName}
+            </span>
+          </div>
           {renderPlayerChallenges(opponent, mainPlayer)}
         </div>
-      ) : <p className="p-4 text-gray-500 dark:text-gray-400 text-center lg:text-left">No direct lane opponent found for analysis.</p>}
+      ) : <p className="p-4 text-slate-500 dark:text-slate-400 text-center lg:text-left">No direct lane opponent found for analysis.</p>}
     </div>
   );
 };

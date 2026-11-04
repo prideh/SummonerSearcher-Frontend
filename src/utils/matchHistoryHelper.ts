@@ -35,12 +35,20 @@ export const formatDuration = (seconds: number | undefined) => {
 export const getMatchOutcomeStyles = (win: boolean | undefined, gameEndedInEarlySurrender: boolean | undefined) => {
   if (gameEndedInEarlySurrender) {
     return {
-      container: 'bg-gray-700/20 border-gray-500',
-      text: 'text-gray-400',
+      container: 'bg-slate-100/90 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 border-l-4 border-l-slate-400 dark:border-l-slate-500',
+      text: 'text-slate-600 dark:text-slate-400',
       label: 'Remake',
     };
   }
   return win
-    ? { container: 'bg-blue-900/30 border-blue-500', text: 'text-blue-400', label: 'Victory' }
-    : { container: 'bg-red-900/30 border-red-700', text: 'text-red-300', label: 'Defeat' };
+    ? {
+        container: 'bg-emerald-50/75 dark:bg-emerald-950/20 border border-slate-200 dark:border-slate-800 border-l-4 border-l-emerald-500',
+        text: 'text-emerald-700 dark:text-emerald-400',
+        label: 'Victory',
+      }
+    : {
+        container: 'bg-rose-50/75 dark:bg-rose-950/20 border border-slate-200 dark:border-slate-800 border-l-4 border-l-rose-500',
+        text: 'text-rose-700 dark:text-rose-400',
+        label: 'Defeat',
+      };
 };

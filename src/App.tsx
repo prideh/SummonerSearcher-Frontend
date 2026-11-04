@@ -29,7 +29,7 @@ function App() {
   }, [versionReady, fetchItemData, fetchSummonerSpellData, fetchRuneData, fetchChampionData]);
 
   return (
-    <div className="bg-gray-100 dark:bg-gray-950 text-gray-800 dark:text-gray-200 h-screen flex flex-col overflow-y-auto">
+    <div className="bg-slate-100 dark:bg-[#090d16] text-slate-900 dark:text-slate-100 h-screen flex flex-col overflow-y-auto antialiased selection:bg-sky-500/20 selection:text-sky-600 dark:selection:bg-cyan-400/20 dark:selection:text-cyan-300">
         <RateLimitBanner />
         <NavigationLayout />
         <AuthModal />

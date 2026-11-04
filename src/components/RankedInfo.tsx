@@ -40,61 +40,72 @@ const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData, match
     : 'N/A';
 
   return (
-    <div className="bg-transparent dark:bg-transparent rounded-xl mt-4 border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-gray-200 dark:divide-gray-700">
+    <div className="bg-slate-50/70 dark:bg-[#0b101d] rounded-lg mt-4 border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-slate-200 dark:divide-slate-800">
         <div className="p-4 flex flex-col justify-center">
-          <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Ranked Solo/Duo</h3>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-[11px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ranked Solo/Duo</h3>
+            {(() => {
+              if (!matches || matches.length === 0) return null;
+              
+              const roleCounts: Record<string, number> = {};
+              let totalRoleGames = 0;
+
+              matches.forEach(match => {
+                const participant = match.info?.participants.find(p => p.puuid === summonerData.puuid);
+                if (participant && participant.teamPosition && participant.teamPosition !== 'NONE') {
+                  roleCounts[participant.teamPosition] = (roleCounts[participant.teamPosition] || 0) + 1;
+                  totalRoleGames++;
+                }
+              });
+
+              if (totalRoleGames === 0) return null;
+
+              const sortedRoles = Object.entries(roleCounts).sort((a, b) => b[1] - a[1]);
+              if (sortedRoles.length === 0) return null;
+
+              const [bestRole, count] = sortedRoles[0];
+              
+              if (sortedRoles.length > 1 && sortedRoles[1][1] === count) {
+                  return <p className="text-[10px] px-2 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider">Multirole</p>;
+              }
+
+              const roleName = bestRole === 'UTILITY' ? 'Support' : 
+                               bestRole === 'BOTTOM' ? 'ADC' : 
+                               bestRole === 'MIDDLE' ? 'Mid' : 
+                               bestRole.charAt(0) + bestRole.slice(1).toLowerCase();
+              return <p className="text-[10px] px-2 py-0.5 rounded bg-sky-50 dark:bg-cyan-950/60 border border-sky-200 dark:border-cyan-800/60 text-sky-700 dark:text-cyan-300 font-bold uppercase tracking-wider">{roleName} Main</p>;
+            })()}
+          </div>
+          <div className="flex items-center space-x-3.5">
             {rankedData.tier && (
-              <img
-                src={`${communityDragonUrl}/rcp-fe-lol-shared-components/global/default/images/${rankedData.tier.toLowerCase()}.png`}
-                alt={rankedData.tier}
-                className="w-14 h-14"
-              />
+              <div className="w-16 h-16 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center p-1 shrink-0">
+                <img
+                  src={`${communityDragonUrl}/rcp-fe-lol-shared-components/global/default/images/${rankedData.tier.toLowerCase()}.png`}
+                  alt={rankedData.tier}
+                  className="w-14 h-14 object-contain"
+                />
+              </div>
             )}
-            <div>
-              <p className="text-lg font-bold capitalize text-gray-900 dark:text-white leading-tight">
+            <div className="flex-1 min-w-0">
+              <p className="text-lg font-extrabold capitalize text-slate-900 dark:text-white leading-tight tracking-tight">
                 {rankedData.tier?.toLowerCase() || 'Unranked'} {rankedData.rank}
               </p>
-              {(() => {
-                if (!matches || matches.length === 0) return null;
-                
-                const roleCounts: Record<string, number> = {};
-                let totalGames = 0;
-
-                matches.forEach(match => {
-                  const participant = match.info?.participants.find(p => p.puuid === summonerData.puuid);
-                  if (participant && participant.teamPosition && participant.teamPosition !== 'NONE') {
-                    roleCounts[participant.teamPosition] = (roleCounts[participant.teamPosition] || 0) + 1;
-                    totalGames++;
-                  }
-                });
-
-                if (totalGames === 0) return null;
-
-                const sortedRoles = Object.entries(roleCounts).sort((a, b) => b[1] - a[1]);
-                if (sortedRoles.length === 0) return null;
-
-                const [bestRole, count] = sortedRoles[0];
-                
-                // Check for tie
-                if (sortedRoles.length > 1 && sortedRoles[1][1] === count) {
-                    return <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Multirole</p>;
-                }
-
-                const roleName = bestRole === 'UTILITY' ? 'Support' : 
-                                 bestRole === 'BOTTOM' ? 'ADC' : 
-                                 bestRole === 'MIDDLE' ? 'Mid' : 
-                                 bestRole.charAt(0) + bestRole.slice(1).toLowerCase();
-                return <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{roleName} Main</p>;
-              })()}
-              <div className="flex items-center text-sm text-gray-600 dark:text-gray-300 space-x-2">
-                <span>{rankedData.leaguePoints} LP</span>
-                <span className="text-gray-300 dark:text-gray-600">|</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {rankedData.wins}W / {rankedData.losses}L (<span className={`${getWinRateColorClass(parseFloat(winRate))} font-semibold`}>{winRate}%</span>)
+              <div className="flex items-center text-sm text-slate-700 dark:text-slate-200 space-x-2 mt-1 telemetry-nums">
+                <span className="font-bold text-sky-600 dark:text-cyan-400">{rankedData.leaguePoints} LP</span>
+                <span className="text-slate-300 dark:text-slate-700">|</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  {rankedData.wins}W / {rankedData.losses}L (<span className={`${getWinRateColorClass(parseFloat(winRate))} font-bold`}>{winRate}%</span>)
                 </span>
               </div>
+              {totalGames > 0 && (
+                <div className="w-full h-1.5 bg-rose-500/30 dark:bg-rose-500/30 rounded-full overflow-hidden mt-2">
+                  <div
+                    className="h-full bg-emerald-500 rounded-l-full"
+                    style={{ width: `${Math.min(100, Math.max(0, (wins / totalGames) * 100))}%` }}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>

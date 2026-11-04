@@ -82,44 +82,48 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
       {/* Champion & Spells */}
       <div className="flex items-center space-x-2">
         {!isOpponent && !condensed && (
-          <div className="w-6 h-6 hidden md:block">
-            <RoleIcon role={teamPosition} className="w-6 h-6" />
+          <div className="w-5 h-5 hidden md:block shrink-0">
+            <RoleIcon role={teamPosition} className="w-5 h-5" />
           </div>
         )}
         <img
           src={`${CDN_URL}/img/champion/${getCorrectChampionName(championName)}.png`}
           alt={`${championName} Champion Icon`}
           loading="lazy"
-          className="w-16 h-16 rounded-md"
+          className="w-14 h-14 rounded-lg border border-slate-300 dark:border-slate-700 shadow-xs shrink-0"
           data-tooltip-id="player-name-tooltip"
           data-tooltip-content={championName}
         />
         {!condensed && (
           <>
             <div className="flex flex-col space-y-1 shrink-0">
-              <SummonerSpellIcon spellId={summoner1Id} className="w-7 h-7" />
-              <SummonerSpellIcon spellId={summoner2Id} className="w-7 h-7" />
+              <SummonerSpellIcon spellId={summoner1Id} className="w-6 h-6" />
+              <SummonerSpellIcon spellId={summoner2Id} className="w-6 h-6" />
             </div>
             <div className="flex flex-col space-y-1 shrink-0">
-              <RuneIcon runeId={primaryRune} isKeystone={true} className="w-7 h-7" />
-              <RuneIcon runeId={secondaryPath} className="w-7 h-7" />
+              <RuneIcon runeId={primaryRune} isKeystone={true} className="w-6 h-6" />
+              <RuneIcon runeId={secondaryPath} className="w-6 h-6" />
             </div>
           </>
         )}
       </div>
       {/* KDA */}
       {!condensed && (
-        <div className="text-center min-h-[100px]">
-          <p className="text-lg font-bold text-gray-800 dark:text-gray-200 whitespace-nowrap">
-            <span className="text-green-700 dark:text-green-400">{kills}</span> / <span className="text-red-700 dark:text-red-400">{deaths}</span> / <span className="text-yellow-600 dark:text-yellow-400">{assists}</span>
+        <div className="text-center min-h-[92px] flex flex-col justify-center telemetry-nums">
+          <p className="text-base font-extrabold text-slate-900 dark:text-slate-100 whitespace-nowrap tracking-tight">
+            <span className="text-emerald-600 dark:text-emerald-400">{kills}</span>
+            <span className="text-slate-400 dark:text-slate-500 mx-0.5">/</span>
+            <span className="text-rose-600 dark:text-rose-400">{deaths}</span>
+            <span className="text-slate-400 dark:text-slate-500 mx-0.5">/</span>
+            <span className="text-amber-600 dark:text-amber-400">{assists}</span>
           </p>
           {deaths === 0 ? (
-            <p className="text-xs font-bold text-yellow-600 dark:text-yellow-400 mt-1">Perfect KDA</p>
+            <p className="text-xs font-extrabold text-amber-600 dark:text-amber-400 mt-0.5">Perfect KDA</p>
           ) : (
-            <p className={`text-xs font-bold ${getKdaColorClass(kda)} mt-1`}>{kda.toFixed(2)} KDA</p>
+            <p className={`text-xs font-extrabold ${getKdaColorClass(kda)} mt-0.5`}>{kda.toFixed(2)} KDA</p>
           )}
           <p
-            className="text-xs text-gray-600 dark:text-gray-300 mt-1"
+            className="text-xs font-medium text-slate-600 dark:text-slate-300 mt-0.5"
             data-tooltip-id="player-name-tooltip"
             data-tooltip-content={csTooltipContent}
           >
@@ -127,20 +131,20 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
           </p>
           {laneCsAt10Breakdown && (
             <p
-              className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 whitespace-nowrap"
+              className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5 whitespace-nowrap"
               data-testid="lane-cs-10"
               data-tooltip-id="player-name-tooltip"
               data-tooltip-content={`Lane minions @ 10:00: ${laneCsAt10Breakdown.hit}/${laneCsAt10Breakdown.available} (${laneCsAt10Breakdown.missed} missed)`}
             >
-              CS@10: {laneCsAt10Breakdown.hit} <span className="text-gray-400 dark:text-gray-500">(-{laneCsAt10Breakdown.missed})</span>
+              CS@10: {laneCsAt10Breakdown.hit} <span className="text-slate-400 dark:text-slate-500">(-{laneCsAt10Breakdown.missed})</span>
             </p>
           )}
-          <p className="text-xs text-red-600 dark:text-red-300 mt-1">KP: {killParticipation.toFixed(0)}%</p>
-          <div className="h-6 mt-1">
-            {(challenges?.soloKills ?? 0) > 0 && (
-              <p className="text-xs font-semibold text-yellow-700 dark:text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded inline-block">Solo Kills: {challenges?.soloKills}</p>
-            )}
-          </div>
+          <p className="text-xs font-bold text-rose-600 dark:text-rose-400 mt-0.5">KP: {killParticipation.toFixed(0)}%</p>
+          {(challenges?.soloKills ?? 0) > 0 && (
+            <div className="mt-1">
+              <p className="text-[10px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded inline-block">Solo Kills: {challenges?.soloKills}</p>
+            </div>
+          )}
         </div>
       )}
     </>
@@ -150,7 +154,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
   if (isOpponent) {
     return (
       <div
-        className="grid grid-cols-[auto_auto_1fr_auto] gap-x-3 items-center w-full cursor-pointer group"
+        className="grid grid-cols-[auto_auto_1fr_auto] gap-x-2.5 items-center w-full cursor-pointer group telemetry-nums"
         onClick={(e) => {
           e.stopPropagation();
           if (onPlayerClick && riotIdGameName && riotIdTagline) {
@@ -174,22 +178,22 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
           src={`${CDN_URL}/img/champion/${getCorrectChampionName(championName)}.png`}
           alt={`${championName} Champion Icon`}
           loading="lazy"
-          className="w-16 h-16 rounded-md group-hover:opacity-80 transition-opacity"
+          className="w-14 h-14 rounded-lg border border-slate-300 dark:border-slate-700 group-hover:border-sky-500 dark:group-hover:border-cyan-400 transition-colors shrink-0"
           data-tooltip-id="player-name-tooltip"
           data-tooltip-content={championName}
         />
         {!condensed && (
           <>
             <div className="flex flex-col space-y-1 shrink-0">
-              <SummonerSpellIcon spellId={summoner1Id} className="w-7 h-7" />
-              <SummonerSpellIcon spellId={summoner2Id} className="w-7 h-7" />
+              <SummonerSpellIcon spellId={summoner1Id} className="w-6 h-6" />
+              <SummonerSpellIcon spellId={summoner2Id} className="w-6 h-6" />
             </div>
             <div className="flex flex-col justify-center min-w-0">
               <div className="truncate" title={`${riotIdGameName}#${riotIdTagline}`}>
-                <span className="font-semibold text-gray-800 dark:text-gray-200 group-hover:text-cyan-500 dark:group-hover:text-cyan-400 transition-colors">
+                <span className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-cyan-400 transition-colors">
                   {riotIdGameName}
                 </span>
-                <span className="text-gray-500 dark:text-gray-500 ml-1">#{riotIdTagline}</span>
+                <span className="text-slate-400 dark:text-slate-500 text-xs ml-1">#{riotIdTagline}</span>
               </div>
               <div className="flex space-x-1 mt-1">
                 <RuneIcon runeId={primaryRune} isKeystone={true} className="w-5 h-5" />
@@ -199,17 +203,21 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
           </>
         )}
         {!condensed && (
-          <div className="text-center min-h-[100px]">
-            <p className="text-lg font-bold text-gray-800 dark:text-gray-200 whitespace-nowrap">
-              <span className="text-green-700 dark:text-green-400">{kills}</span> / <span className="text-red-700 dark:text-red-400">{deaths}</span> / <span className="text-yellow-600 dark:text-yellow-400">{assists}</span>
+          <div className="text-center min-h-[92px] flex flex-col justify-center">
+            <p className="text-base font-extrabold text-slate-900 dark:text-slate-100 whitespace-nowrap tracking-tight">
+              <span className="text-emerald-600 dark:text-emerald-400">{kills}</span>
+              <span className="text-slate-400 dark:text-slate-500 mx-0.5">/</span>
+              <span className="text-rose-600 dark:text-rose-400">{deaths}</span>
+              <span className="text-slate-400 dark:text-slate-500 mx-0.5">/</span>
+              <span className="text-amber-600 dark:text-amber-400">{assists}</span>
             </p>
             {deaths === 0 ? (
-              <p className="text-xs font-bold text-yellow-600 dark:text-yellow-400 mt-1">Perfect KDA</p>
+              <p className="text-xs font-extrabold text-amber-600 dark:text-amber-400 mt-0.5">Perfect KDA</p>
             ) : (
-              <p className={`text-xs font-bold ${getKdaColorClass(kda)} mt-1`}>{kda.toFixed(2)} KDA</p>
+              <p className={`text-xs font-extrabold ${getKdaColorClass(kda)} mt-0.5`}>{kda.toFixed(2)} KDA</p>
             )}
             <p
-              className="text-xs text-gray-600 dark:text-gray-300 mt-1"
+              className="text-xs font-medium text-slate-600 dark:text-slate-300 mt-0.5"
               data-tooltip-id="player-name-tooltip"
               data-tooltip-content={csTooltipContent}
             >
@@ -217,20 +225,20 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
             </p>
             {laneCsAt10Breakdown && (
               <p
-                className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 whitespace-nowrap"
+                className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5 whitespace-nowrap"
                 data-testid="lane-cs-10"
                 data-tooltip-id="player-name-tooltip"
                 data-tooltip-content={`Lane minions @ 10:00: ${laneCsAt10Breakdown.hit}/${laneCsAt10Breakdown.available} (${laneCsAt10Breakdown.missed} missed)`}
               >
-                CS@10: {laneCsAt10Breakdown.hit} <span className="text-gray-400 dark:text-gray-500">(-{laneCsAt10Breakdown.missed})</span>
+                CS@10: {laneCsAt10Breakdown.hit} <span className="text-slate-400 dark:text-slate-500">(-{laneCsAt10Breakdown.missed})</span>
               </p>
             )}
-            <p className="text-xs text-red-600 dark:text-red-300 mt-1">KP: {killParticipation.toFixed(0)}%</p>
-            <div className="h-6 mt-1">
-              {(challenges?.soloKills ?? 0) > 0 && (
-                <p className="text-xs font-semibold text-yellow-700 dark:text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded inline-block">Solo Kills: {challenges?.soloKills}</p>
-              )}
-            </div>
+            <p className="text-xs font-bold text-rose-600 dark:text-rose-400 mt-0.5">KP: {killParticipation.toFixed(0)}%</p>
+            {(challenges?.soloKills ?? 0) > 0 && (
+              <div className="mt-1">
+                <p className="text-[10px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded inline-block">Solo Kills: {challenges?.soloKills}</p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -239,7 +247,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
 
   // Render the default layout for the main searched player.
   return (
-    <div className="flex items-center space-x-4 justify-between">
+    <div className="flex items-center space-x-3 justify-between">
       {playerStatsContent}
     </div>
   );

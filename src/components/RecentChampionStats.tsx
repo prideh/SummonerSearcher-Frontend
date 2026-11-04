@@ -34,15 +34,15 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ championStats
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
 
   if (!overallStats || (championStats.length === 0 && overallStats.wins + overallStats.losses === 0)) {
-    return <p className="text-sm text-gray-500 dark:text-gray-500 mt-4">Not enough recent games to show champion stats.</p>;
+    return <p className="text-sm text-slate-500 dark:text-slate-500 mt-4">Not enough recent games to show champion stats.</p>;
   }
 
   return (
-    <div className="text-center md:text-left">
+    <div className="text-center md:text-left telemetry-nums">
       <div className="flex justify-between items-center mb-2">
-        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last {overallStats.wins + overallStats.losses} Games</h3>
+        <h3 className="text-[11px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Last {overallStats.wins + overallStats.losses} Games</h3>
         <div className="text-xs text-right">
-          <span className={`font-bold ${getWinRateColorClass(Number(overallStats.winRate))}`}>
+          <span className={`font-extrabold ${getWinRateColorClass(Number(overallStats.winRate))}`}>
             {overallStats.wins}W {overallStats.losses}L ({Number(overallStats.winRate).toFixed(0)}%)
           </span>
         </div>
@@ -70,7 +70,7 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ championStats
               key={stat.championName}
               src={`${CDN_URL}/img/champion/${getCorrectChampionName(stat.championName)}.png`} 
               alt={stat.championName} 
-              className="w-12 h-12 rounded-md transition-transform hover:scale-110"
+              className="w-11 h-11 rounded-md border border-slate-300 dark:border-slate-700 transition-transform hover:scale-105 hover:border-sky-500 dark:hover:border-cyan-400"
               data-tooltip-id="item-tooltip"
               data-tooltip-content={tooltipContent}
             />
@@ -78,28 +78,28 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ championStats
         })}
       </div>
       
-      <div className="text-xs border-t border-gray-100 dark:border-gray-700 pt-2 flex justify-between items-start">
-          <div className="flex flex-col space-y-1">
+      <div className="text-xs border-t border-slate-200 dark:border-slate-800 pt-2.5 flex justify-between items-start">
+          <div className="flex flex-col space-y-1.5">
               <div className="flex items-center space-x-1">
-                  <span className="text-blue-500 font-bold">Blue:</span>
-                  <span className="text-gray-600 dark:text-gray-400">{overallStats.blueSide.games}G</span>
+                  <span className="text-sky-600 dark:text-sky-400 font-bold">Blue:</span>
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">{overallStats.blueSide.games}G</span>
                   <span className={`font-bold ${getWinRateColorClass(Number(overallStats.blueSide.winRate))}`}>({Number(overallStats.blueSide.winRate).toFixed(0)}%)</span>
               </div>
               <div className="flex items-center space-x-1">
-                  <span className="text-red-500 font-bold">Red:</span>
-                  <span className="text-gray-600 dark:text-gray-400">{overallStats.redSide.games}G</span>
+                  <span className="text-rose-600 dark:text-rose-400 font-bold">Red:</span>
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">{overallStats.redSide.games}G</span>
                   <span className={`font-bold ${getWinRateColorClass(Number(overallStats.redSide.winRate))}`}>({Number(overallStats.redSide.winRate).toFixed(0)}%)</span>
               </div>
           </div>
-          <div className="flex flex-col space-y-1 text-gray-500 dark:text-gray-400 text-right">
-              <div className="text-[10px] text-gray-400 mb-1 font-medium">You <span className="text-gray-300">vs</span> Opp</div>
+          <div className="flex flex-col space-y-0.5 text-slate-500 dark:text-slate-400 text-right">
+              <div className="text-[10px] text-slate-400 dark:text-slate-500 mb-0.5 font-bold uppercase tracking-wider">You <span className="text-slate-300 dark:text-slate-600">vs</span> Opp</div>
               <div className="flex items-center justify-end space-x-1">
                   <span>KDA:</span>
                   <div className="flex items-center space-x-1">
-                    <span className={`font-bold ${Number(overallStats.kda) >= Number(overallStats.oppAvgKda) ? 'text-cyan-500 dark:text-cyan-400' : getKdaColorClass(Number(overallStats.kda))}`}>
+                    <span className={`font-bold ${Number(overallStats.kda) >= Number(overallStats.oppAvgKda) ? 'text-sky-600 dark:text-cyan-400' : getKdaColorClass(Number(overallStats.kda))}`}>
                       {Number(overallStats.kda) === Infinity ? 'Inf' : Number(overallStats.kda).toFixed(2)}
                     </span>
-                    <span className={`text-[10px] ${Number(overallStats.oppAvgKda) > Number(overallStats.kda) ? 'text-cyan-500 dark:text-cyan-400 font-semibold' : 'text-gray-500'}`}>
+                    <span className={`text-[10px] ${Number(overallStats.oppAvgKda) > Number(overallStats.kda) ? 'text-sky-600 dark:text-cyan-400 font-semibold' : 'text-slate-500'}`}>
                       ({Number(overallStats.oppAvgKda) === Infinity ? 'Inf' : Number(overallStats.oppAvgKda).toFixed(2)})
                     </span>
                   </div>
@@ -107,10 +107,10 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ championStats
               <div className="flex items-center justify-end space-x-1">
                   <span>KP:</span>
                   <div className="flex items-center space-x-1">
-                    <span className={`font-semibold ${Number(overallStats.avgKillParticipation) >= Number(overallStats.oppAvgKillParticipation) ? 'text-cyan-500 dark:text-cyan-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                    <span className={`font-semibold ${Number(overallStats.avgKillParticipation) >= Number(overallStats.oppAvgKillParticipation) ? 'text-sky-600 dark:text-cyan-400' : 'text-slate-700 dark:text-slate-300'}`}>
                       {Number(overallStats.avgKillParticipation).toFixed(0)}%
                     </span>
-                    <span className={`text-[10px] ${Number(overallStats.oppAvgKillParticipation) > Number(overallStats.avgKillParticipation) ? 'text-cyan-500 dark:text-cyan-400 font-semibold' : 'text-gray-500'}`}>
+                    <span className={`text-[10px] ${Number(overallStats.oppAvgKillParticipation) > Number(overallStats.avgKillParticipation) ? 'text-sky-600 dark:text-cyan-400 font-semibold' : 'text-slate-500'}`}>
                       ({Number(overallStats.oppAvgKillParticipation).toFixed(0)}%)
                     </span>
                   </div>
@@ -118,10 +118,10 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ championStats
               <div className="flex items-center justify-end space-x-1">
                   <span>CS/m:</span>
                   <div className="flex items-center space-x-1">
-                    <span className={`font-semibold ${Number(overallStats.avgCsPerMinute) >= Number(overallStats.oppAvgCsPerMinute) ? 'text-cyan-500 dark:text-cyan-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                    <span className={`font-semibold ${Number(overallStats.avgCsPerMinute) >= Number(overallStats.oppAvgCsPerMinute) ? 'text-sky-600 dark:text-cyan-400' : 'text-slate-700 dark:text-slate-300'}`}>
                       {Number(overallStats.avgCsPerMinute).toFixed(1)}
                     </span>
-                    <span className={`text-[10px] ${Number(overallStats.oppAvgCsPerMinute) > Number(overallStats.avgCsPerMinute) ? 'text-cyan-500 dark:text-cyan-400 font-semibold' : 'text-gray-500'}`}>
+                    <span className={`text-[10px] ${Number(overallStats.oppAvgCsPerMinute) > Number(overallStats.avgCsPerMinute) ? 'text-sky-600 dark:text-cyan-400 font-semibold' : 'text-slate-500'}`}>
                       ({Number(overallStats.oppAvgCsPerMinute).toFixed(1)})
                     </span>
                   </div>
@@ -129,10 +129,10 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ championStats
               <div className="flex items-center justify-end space-x-1">
                   <span>Avg Solokills:</span>
                   <div className="flex items-center space-x-1">
-                    <span className={`font-semibold ${Number(overallStats.avgSoloKills) >= Number(overallStats.oppAvgSoloKills) ? 'text-cyan-500 dark:text-cyan-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                    <span className={`font-semibold ${Number(overallStats.avgSoloKills) >= Number(overallStats.oppAvgSoloKills) ? 'text-sky-600 dark:text-cyan-400' : 'text-slate-700 dark:text-slate-300'}`}>
                       {Number(overallStats.avgSoloKills).toFixed(1)}
                     </span>
-                    <span className={`text-[10px] ${Number(overallStats.oppAvgSoloKills) > Number(overallStats.avgSoloKills) ? 'text-cyan-500 dark:text-cyan-400 font-semibold' : 'text-gray-500'}`}>
+                    <span className={`text-[10px] ${Number(overallStats.oppAvgSoloKills) > Number(overallStats.avgSoloKills) ? 'text-sky-600 dark:text-cyan-400 font-semibold' : 'text-slate-500'}`}>
                       ({Number(overallStats.oppAvgSoloKills).toFixed(1)})
                     </span>
                   </div>
@@ -140,10 +140,10 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ championStats
               <div className="flex items-center justify-end space-x-1">
                   <span>Avg Tower Plates:</span>
                   <div className="flex items-center space-x-1">
-                    <span className={`font-semibold ${Number(overallStats.avgTurretPlates) >= Number(overallStats.oppAvgTurretPlates) ? 'text-cyan-500 dark:text-cyan-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                    <span className={`font-semibold ${Number(overallStats.avgTurretPlates) >= Number(overallStats.oppAvgTurretPlates) ? 'text-sky-600 dark:text-cyan-400' : 'text-slate-700 dark:text-slate-300'}`}>
                       {Number(overallStats.avgTurretPlates).toFixed(1)}
                     </span>
-                    <span className={`text-[10px] ${Number(overallStats.oppAvgTurretPlates) > Number(overallStats.avgTurretPlates) ? 'text-cyan-500 dark:text-cyan-400 font-semibold' : 'text-gray-500'}`}>
+                    <span className={`text-[10px] ${Number(overallStats.oppAvgTurretPlates) > Number(overallStats.avgTurretPlates) ? 'text-sky-600 dark:text-cyan-400 font-semibold' : 'text-slate-500'}`}>
                       ({Number(overallStats.oppAvgTurretPlates).toFixed(1)})
                     </span>
                   </div>

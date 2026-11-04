@@ -11,7 +11,7 @@ const ItemIcon: React.FC<ItemIconProps> = ({ itemId, className = 'w-8 h-8' }) =>
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
 
   if (!itemId || !CDN_URL) {
-    return <div className={`${className} bg-gray-200 dark:bg-gray-800/50 rounded`}></div>;
+    return <div className={`${className} bg-slate-200/75 dark:bg-slate-900/75 border border-slate-300/70 dark:border-slate-800 rounded`}></div>;
   }
 
   const item = itemMap?.[itemId];
@@ -29,7 +29,7 @@ const ItemIcon: React.FC<ItemIconProps> = ({ itemId, className = 'w-8 h-8' }) =>
       src={`${CDN_URL}/img/item/${itemId}.png`}
       loading="lazy"
       alt={item?.name || `Item ${itemId}`}
-      className={`${className} rounded`}
+      className={`${className} rounded border border-slate-300 dark:border-slate-700`}
       data-tooltip-id="item-tooltip"
       data-tooltip-content={tooltipContent}
     />

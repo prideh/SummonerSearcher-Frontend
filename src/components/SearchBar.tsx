@@ -98,9 +98,9 @@ const SearchBar: React.FC<SearchBarProps> = ({
 
   return (
     <div className="w-full max-w-2xl relative z-20">
-      {/* Main Glass Container */}
+      {/* Crisp Esports Telemetry Search Container */}
       <div 
-        className="flex flex-col sm:flex-row items-stretch bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-2xl shadow-lg dark:shadow-2xl transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/50 focus-within:border-blue-500/50"
+        className="flex flex-col sm:flex-row items-stretch bg-white dark:bg-[#111827] border border-slate-300 dark:border-slate-700 rounded-lg shadow-xs transition-all duration-200 focus-within:ring-2 focus-within:ring-sky-500/40 dark:focus-within:ring-cyan-400/40 focus-within:border-sky-500 dark:focus-within:border-cyan-400"
       >
         
         {/* Input Section */}
@@ -120,42 +120,36 @@ const SearchBar: React.FC<SearchBarProps> = ({
             }}
             onFocus={() => setShowRecent(true)}
             onBlur={() => {
-              // Delay hiding to allow clicks on dropdown items to register if needed,
-              // though onMouseDown prevention usually handles this.
-              // We check if we are still hovering to avoid flickering if moving between items?
-              // Actually, if we blur, we usually want to hide, UNLESS we clicked the dropdown.
-              // The onMouseDown preventDefault on the dropdown handles the click case.
-              // So here we just hide.
               setShowRecent(false);
             }}
             onKeyDown={handleKeyDown}
-            className="w-full h-full bg-transparent border-none p-4 text-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-0 focus:outline-none rounded-l-2xl"
+            className="w-full h-full bg-transparent border-none px-4 py-3.5 text-base font-medium text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-0 focus:outline-none rounded-l-lg"
           />
 
           {/* Dropdown Container */}
           {showRecent && (suggestions.length > 0 || searchInput.length >= 2 || filteredRecentSearches.length > 0) && (
             <div 
-              className="absolute top-full left-0 w-full min-w-[300px] mt-2 bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-2xl border border-gray-200 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 animate-fade-in-down"
+              className="absolute top-full left-0 w-full min-w-[300px] mt-1.5 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl overflow-hidden z-50 animate-fade-in-down"
               onMouseDown={(e) => e.preventDefault()} // Prevent focus loss when clicking dropdown
             >
               
               {/* Recent Searches Section - Always shows when there are matching local searches */}
               {filteredRecentSearches.length > 0 && (
                 <>
-                  <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5">
-                    <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">Recent Searches</span>
+                  <div className="flex justify-between items-center px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Recent Searches</span>
                     <button 
                       onClick={handleClearRecentSearches} 
-                      className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 transition-colors focus:outline-none"
+                      className="text-xs font-semibold text-sky-600 dark:text-cyan-400 hover:text-sky-500 dark:hover:text-cyan-300 transition-colors focus:outline-none"
                     >
                       Clear History
                     </button>
                   </div>
-                  <ul>
+                  <ul className="divide-y divide-slate-100 dark:divide-slate-800/60">
                     {filteredRecentSearches.map((search, index) => (
                       <li
                         key={`recent-${index}`}
-                        className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer transition-colors flex items-center justify-between group"
+                        className="px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-sky-50/80 dark:hover:bg-slate-800/70 cursor-pointer transition-colors flex items-center justify-between group"
                         onClick={() => {
                           setSearchInput(search.query);
                           const [name, tag] = search.query.split('#');
@@ -165,12 +159,12 @@ const SearchBar: React.FC<SearchBarProps> = ({
                         }}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-500 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                            <Search className="h-4 w-4" />
+                          <div className="w-7 h-7 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:border-sky-300 dark:group-hover:border-cyan-500/40 group-hover:text-sky-600 dark:group-hover:text-cyan-400 transition-colors">
+                            <Search className="h-3.5 w-3.5" />
                           </div>
-                          <span className="font-medium">{search.query}</span>
+                          <span className="font-semibold">{search.query}</span>
                         </div>
-                        <span className="px-2 py-1 text-[10px] font-bold text-gray-500 bg-gray-200 dark:bg-gray-800 rounded-md uppercase tracking-wider">
+                        <span className="px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded uppercase tracking-wider telemetry-nums">
                           {search.server.replace(/[0-9]/g, '')}
                         </span>
                       </li>
@@ -182,20 +176,20 @@ const SearchBar: React.FC<SearchBarProps> = ({
               {/* Autocomplete Section - Shows below if user is typing at least 2 characters */}
               {searchInput.length >= 2 && (
                 <>
-                  <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5">
-                    <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">Players</span>
-                    {isSearchingAutocomplete && <span className="text-xs text-blue-500 animate-pulse">Searching...</span>}
+                  <div className="flex justify-between items-center px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Players</span>
+                    {isSearchingAutocomplete && <span className="text-xs text-sky-600 dark:text-cyan-400 font-semibold animate-pulse">Searching...</span>}
                   </div>
-                  <ul>
+                  <ul className="divide-y divide-slate-100 dark:divide-slate-800/60">
                     {suggestions.length === 0 && !isSearchingAutocomplete ? (
-                      <li className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400 text-center">
+                      <li className="px-4 py-4 text-sm text-slate-500 dark:text-slate-400 text-center">
                         No players found. Press enter to search Riot directly.
                       </li>
                     ) : (
                       suggestions.map((player) => (
                         <li
                           key={`auto-${player.puuid}`}
-                          className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer transition-colors flex items-center justify-between group"
+                          className="px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-sky-50/80 dark:hover:bg-slate-800/70 cursor-pointer transition-colors flex items-center justify-between group"
                           onClick={() => {
                             setSearchInput(`${player.gameName}#${player.tagLine}`);
                             setRegion(player.region);
@@ -207,22 +201,22 @@ const SearchBar: React.FC<SearchBarProps> = ({
                             <img 
                               src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/${player.profileIconId}.jpg`}
                               alt="Profile"
-                              className="w-10 h-10 rounded-xl shadow-sm group-hover:shadow-md transition-shadow object-cover"
+                              className="w-9 h-9 rounded-md border border-slate-200 dark:border-slate-700 object-cover"
                               onError={(e) => {
                                 // Fallback icon if communitydragon fails
                                 (e.target as HTMLImageElement).src = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/29.jpg';
                               }}
                             />
                             <div className="flex flex-col">
-                              <span className="font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                              <span className="font-bold text-slate-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-cyan-400 transition-colors">
                                 {player.gameName}
                               </span>
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                              <span className="text-xs text-slate-500 dark:text-slate-400 telemetry-nums">
                                 #{player.tagLine} • Lvl {player.summonerLevel}
                               </span>
                             </div>
                           </div>
-                          <span className="px-2 py-1 text-[10px] font-bold text-white bg-blue-600/80 rounded-md uppercase tracking-wider hidden sm:block">
+                          <span className="px-2 py-0.5 text-[10px] font-bold text-white bg-sky-600 dark:bg-cyan-600 rounded uppercase tracking-wider hidden sm:block">
                             {player.region.replace(/[0-9]/g, '')}
                           </span>
                         </li>
@@ -236,22 +230,22 @@ const SearchBar: React.FC<SearchBarProps> = ({
         </div>
 
         {/* Divider */}
-        <div className="h-px sm:h-auto sm:w-px bg-gray-200 dark:bg-white/10" />
+        <div className="h-px sm:h-auto sm:w-px bg-slate-200 dark:bg-slate-700" />
 
         {/* Region Selector */}
-        <div className="relative min-w-[100px]">
+        <div className="relative min-w-[96px]">
           <select 
             value={region} 
             onChange={(e) => setRegion(e.target.value)} 
             aria-label="Select Region" 
-            className="w-full h-full appearance-none bg-transparent border-none py-4 pl-6 pr-10 text-gray-700 dark:text-gray-300 font-medium focus:ring-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-center sm:text-left"
+            className="w-full h-full appearance-none bg-slate-50/70 dark:bg-slate-800/50 border-none py-3.5 pl-4 pr-9 text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200 focus:ring-0 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-center sm:text-left"
           >
-            <option value="EUW1" className="bg-white dark:bg-gray-800">EUW</option>
-            <option value="NA1" className="bg-white dark:bg-gray-800">NA</option>
-            <option value="KR" className="bg-white dark:bg-gray-800">KR</option>
+            <option value="EUW1" className="bg-white dark:bg-slate-900">EUW</option>
+            <option value="NA1" className="bg-white dark:bg-slate-900">NA</option>
+            <option value="KR" className="bg-white dark:bg-slate-900">KR</option>
           </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500 dark:text-gray-400">
-            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 dark:text-slate-400">
+            <svg className="fill-current h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
           </div>
         </div>
 
@@ -259,11 +253,11 @@ const SearchBar: React.FC<SearchBarProps> = ({
         <button 
           onClick={handleSearchClick} 
           disabled={loading} 
-          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-4 px-8 sm:rounded-r-2xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2 group"
+          className="bg-sky-600 hover:bg-sky-500 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950 font-extrabold text-sm uppercase tracking-wider py-3.5 px-6 sm:rounded-r-[7px] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 group"
         >
           {loading ? (
             <>
-              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg className="animate-spin h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
@@ -272,7 +266,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           ) : (
             <>
               <span>Search</span>
-              <Search className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              <Search className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
             </>
           )}
         </button>
