@@ -256,6 +256,17 @@ export const PowerSpikeTooltip = ({ active, payload, label }: CustomTooltipProps
   );
 };
 
+const getMatchMaxMinute = (analysis: TimelineAnalysisDto, matchIndex: number): number => {
+  const spike = analysis.powerSpikeTimelines[matchIndex];
+  const points = spike?.points;
+  const spikeMax = points && points.length > 0 ? points[points.length - 1].minute : 0;
+  const matchId = spike?.matchId;
+  const heatmapMax = (analysis.heatmapPositions ?? [])
+    .filter(pt => !matchId || pt.matchId === matchId)
+    .reduce((max, pt) => Math.max(max, pt.minute), 0);
+  return Math.max(spikeMax, heatmapMax);
+};
+
 const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
   isOpen, onClose, analysis, summonerName, onOpenAiCoach
 }) => {
@@ -263,7 +274,9 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
     new Set(['positions', 'deaths', 'wards', 'kills', 'assists'])
   );
   const [selectedMatchIndex, setSelectedMatchIndex] = useState(0);
-  const [timelineMinute, setTimelineMinute] = useState<number>(0);
+  const [timelineMinute, setTimelineMinute] = useState<number>(() =>
+    getMatchMaxMinute(analysis, 0)
+  );
   const [hoveredHeatmapTooltip, setHoveredHeatmapTooltip] = useState<{
     xPct: number;
     yPct: number;
@@ -271,16 +284,26 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
   } | null>(null);
   const cdnUrl = useDataDragonStore(state => state.cdnUrl);
   const champCdnBase = cdnUrl || `https://ddragon.leagueoflegends.com/cdn/${COMMITTED_DDRAGON_VERSION}`;
+  const fallbackMinimapUrl = `${champCdnBase}/img/map/map11.png`;
 
   useEffect(() => {
-    const points = analysis.powerSpikeTimelines[selectedMatchIndex]?.points;
-    const maxMinute = points && points.length > 0 ? points[points.length - 1].minute : 0;
-    setTimelineMinute(maxMinute);
+    setTimelineMinute(getMatchMaxMinute(analysis, selectedMatchIndex));
     setHoveredHeatmapTooltip(null);
   }, [selectedMatchIndex, analysis]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const minimapRef = useRef<HTMLImageElement>(null);
-  const [mapLoaded, setMapLoaded] = useState(false);
+  const [minimapSrc, setMinimapSrc] = useState<string>(MINIMAP_URL);
+  const [minimapFailed, setMinimapFailed] = useState(false);
+  const hasAnalysisPayload = Boolean(
+    analysis &&
+      ((analysis.heatmapPositions?.length ?? 0) > 0 ||
+        (analysis.powerSpikeTimelines?.length ?? 0) > 0 ||
+        (analysis.killPositions?.length ?? 0) > 0 ||
+        (analysis.deathPositions?.length ?? 0) > 0 ||
+        (analysis.wardPositions?.length ?? 0) > 0 ||
+        (analysis.assistPositions?.length ?? 0) > 0)
+  );
+  const [mapLoaded, setMapLoaded] = useState<boolean>(hasAnalysisPayload);
 
   const toggleLayer = (layer: HeatmapLayer) => {
     setHoveredHeatmapTooltip(null);
@@ -350,7 +373,7 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
 
   const drawHeatmap = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !mapLoaded) return;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -358,11 +381,16 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
     const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
 
-    const currentMatchId = analysis.powerSpikeTimelines[selectedMatchIndex]?.matchId;
+    const currentMatchId =
+      analysis.powerSpikeTimelines[selectedMatchIndex]?.matchId ??
+      analysis.heatmapPositions?.[0]?.matchId;
+    const matchesGame = (matchId: string) => !currentMatchId || matchId === currentMatchId;
 
     // Draw each layer if active — ordered so kills/deaths/wards render on top of positions
     if (activeLayers.has('positions')) {
-      const positions = analysis.heatmapPositions.filter(pt => pt.matchId === currentMatchId && pt.minute <= timelineMinute);
+      const positions = (analysis.heatmapPositions ?? []).filter(
+        pt => matchesGame(pt.matchId) && pt.minute <= timelineMinute
+      );
       for (const pt of positions) {
         const { cx, cy } = toCanvas(pt.x, pt.y, w, h);
         ctx.beginPath();
@@ -372,7 +400,9 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
       }
     }
     if (activeLayers.has('kills')) {
-      const kills = analysis.killPositions.filter(pt => pt.matchId === currentMatchId && pt.minute <= timelineMinute);
+      const kills = (analysis.killPositions ?? []).filter(
+        pt => matchesGame(pt.matchId) && pt.minute <= timelineMinute
+      );
       ctx.font = '16px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -383,7 +413,9 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
       }
     }
     if (activeLayers.has('deaths')) {
-      const deaths = analysis.deathPositions.filter(pt => pt.matchId === currentMatchId && pt.minute <= timelineMinute);
+      const deaths = (analysis.deathPositions ?? []).filter(
+        pt => matchesGame(pt.matchId) && pt.minute <= timelineMinute
+      );
       ctx.font = '16px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -394,7 +426,9 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
       }
     }
     if (activeLayers.has('wards')) {
-      const wards = analysis.wardPositions.filter(pt => pt.matchId === currentMatchId && pt.minute <= timelineMinute);
+      const wards = (analysis.wardPositions ?? []).filter(
+        pt => matchesGame(pt.matchId) && pt.minute <= timelineMinute
+      );
       ctx.font = '14px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -405,7 +439,9 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
       }
     }
     if (activeLayers.has('assists')) {
-      const assists = analysis.assistPositions.filter(pt => pt.matchId === currentMatchId && pt.minute <= timelineMinute);
+      const assists = (analysis.assistPositions ?? []).filter(
+        pt => matchesGame(pt.matchId) && pt.minute <= timelineMinute
+      );
       ctx.font = '16px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -415,11 +451,15 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
         ctx.fillText('🤝', cx, cy);
       }
     }
-  }, [analysis, activeLayers, mapLoaded, toCanvas, selectedMatchIndex, timelineMinute]);
+  }, [analysis, activeLayers, toCanvas, selectedMatchIndex, timelineMinute]);
 
   useEffect(() => {
+    if (!isOpen) return;
+    if (hasAnalysisPayload || minimapRef.current?.complete) {
+      setMapLoaded(true);
+    }
     drawHeatmap();
-  }, [drawHeatmap]);
+  }, [isOpen, hasAnalysisPayload, drawHeatmap]);
 
   const selectedSpike: MatchPowerSpikeDto | undefined = analysis.powerSpikeTimelines[selectedMatchIndex];
   const summary = analysis.aggregateSummary;
@@ -523,14 +563,22 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
                 <div className="relative bg-gray-100 dark:bg-black rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800" style={{ aspectRatio: '1 / 1' }}>
                   <img
                     ref={minimapRef}
-                    src={MINIMAP_URL}
+                    src={minimapSrc}
                     alt="League of Legends Minimap"
-                    className="w-full h-full object-cover"
+                    className={`w-full h-full object-cover ${minimapFailed ? 'hidden' : ''}`}
                     onLoad={() => {
                       setMapLoaded(true);
-                      setTimeout(drawHeatmap, 50);
+                      drawHeatmap();
                     }}
-                    crossOrigin="anonymous"
+                    onError={() => {
+                      if (minimapSrc !== fallbackMinimapUrl) {
+                        setMinimapSrc(fallbackMinimapUrl);
+                      } else {
+                        setMinimapFailed(true);
+                      }
+                      setMapLoaded(true);
+                      drawHeatmap();
+                    }}
                   />
                   <canvas
                     ref={canvasRef}
@@ -606,7 +654,10 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
                     </div>
                   )}
                   {!mapLoaded && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                    <div
+                      data-testid="heatmap-loading-spinner"
+                      className="absolute inset-0 flex items-center justify-center bg-gray-900"
+                    >
                       <svg className="w-8 h-8 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -641,10 +692,7 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
                   <input
                     type="range"
                     min="0"
-                    max={(() => {
-                      const pts = analysis.powerSpikeTimelines[selectedMatchIndex]?.points;
-                      return pts && pts.length > 0 ? pts[pts.length - 1].minute : 0;
-                    })()}
+                    max={getMatchMaxMinute(analysis, selectedMatchIndex)}
                     value={timelineMinute}
                     onChange={(e) => setTimelineMinute(parseInt(e.target.value))}
                     className="w-full accent-cyan-500 h-1.5 bg-gray-200 dark:bg-gray-800 rounded-lg appearance-none cursor-pointer"

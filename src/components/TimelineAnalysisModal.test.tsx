@@ -325,3 +325,126 @@ describe('Heatmap hover tooltips (#7)', () => {
   });
 });
 
+describe('Player Heatmap render state and minimap resilience (#11)', () => {
+  beforeEach(() => {
+    useDataDragonStore.setState({
+      cdnUrl: 'https://ddragon.leagueoflegends.com/cdn/16.22.1',
+      itemMap: {},
+    });
+  });
+
+  it('draws heatmapPositions onto the canvas immediately on open without sticking on the loading spinner', () => {
+    const arcSpy = vi.fn();
+    const fillSpy = vi.fn();
+    const clearRectSpy = vi.fn();
+    const beginPathSpy = vi.fn();
+    const fillTextSpy = vi.fn();
+
+    const getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue({
+        clearRect: clearRectSpy,
+        beginPath: beginPathSpy,
+        arc: arcSpy,
+        fill: fillSpy,
+        fillText: fillTextSpy,
+        fillStyle: '',
+        font: '',
+        textAlign: 'center',
+        textBaseline: 'middle',
+      } as unknown as RenderingContext);
+
+    const analysis: TimelineAnalysisDto = {
+      heatmapPositions: [
+        { x: 1200, y: 1400, matchId: 'EUW1_101', minute: 3 },
+        { x: 7425, y: 7425, matchId: 'EUW1_101', minute: 10 },
+        { x: 11200, y: 10800, matchId: 'EUW1_101', minute: 18 },
+      ],
+      killPositions: [{ x: 7425, y: 7425, matchId: 'EUW1_101', minute: 10 }],
+      deathPositions: [],
+      assistPositions: [],
+      wardPositions: [],
+      buildOrders: [],
+      skillOrders: [],
+      powerSpikeTimelines: [
+        {
+          matchId: 'EUW1_101',
+          playerChampion: 'Orianna',
+          opponentChampion: 'Syndndra',
+          win: true,
+          points: [
+            {
+              minute: 0,
+              playerGold: 500,
+              opponentGold: 500,
+              playerGoldLead: 0,
+              playerXp: 0,
+              opponentXp: 0,
+              playerCs: 0,
+              opponentCs: 0,
+              playerItems: [],
+              opponentItems: [],
+              events: [],
+            },
+            {
+              minute: 20,
+              playerGold: 7800,
+              opponentGold: 7100,
+              playerGoldLead: 700,
+              playerXp: 9200,
+              opponentXp: 8700,
+              playerCs: 168,
+              opponentCs: 152,
+              playerItems: [],
+              opponentItems: [],
+              events: [],
+            },
+          ],
+        },
+      ],
+      eventTimelines: [],
+      aggregateSummary: {
+        gamesAnalyzed: 1,
+        killsTotal: 1,
+        deathsTotal: 0,
+        assistsTotal: 0,
+        wardsPlacedTotal: 0,
+        avgFirstDeathMinute: 0,
+        mostDangerousZone: 'Mid Lane',
+        avgGoldLeadAt10: 300,
+        avgGoldLeadAt15: 550,
+      },
+    };
+
+    render(
+      <TimelineAnalysisModal
+        isOpen={true}
+        onClose={vi.fn()}
+        analysis={analysis}
+        summonerName="Caps"
+        onOpenAiCoach={vi.fn()}
+      />
+    );
+
+    // Loading spinner must not block the heatmap when analysis payload is present
+    expect(screen.queryByTestId('heatmap-loading-spinner')).not.toBeInTheDocument();
+
+    // All 3 heatmapPositions for match EUW1_101 should be drawn immediately on the canvas
+    expect(arcSpy).toHaveBeenCalledTimes(3);
+    expect(fillSpy).toHaveBeenCalledTimes(3);
+    expect(fillTextSpy).toHaveBeenCalledWith('⚔️', 256, 256);
+
+    // Minimap img does not force anonymous CORS and falls back to DDragon Map 11 on error
+    const minimapImg = screen.getByAltText('League of Legends Minimap') as HTMLImageElement;
+    expect(minimapImg).not.toHaveAttribute('crossOrigin');
+    fireEvent.error(minimapImg);
+    expect(minimapImg.getAttribute('src')).toBe(
+      'https://ddragon.leagueoflegends.com/cdn/16.22.1/img/map/map11.png'
+    );
+    expect(screen.queryByTestId('heatmap-loading-spinner')).not.toBeInTheDocument();
+
+    getContextSpy.mockRestore();
+  });
+});
+
+
