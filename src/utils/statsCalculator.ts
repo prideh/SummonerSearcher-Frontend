@@ -204,6 +204,9 @@ export interface LaneCsAt10Comparison {
   supplyLabel: string | null;
 }
 
+export const SPAWNED_SUPPLY_AT_10_LABEL =
+  'Theoretical spawned supply (not guaranteed farmable)';
+
 /**
  * Builds the provisional comparison between actual lane-only minions last-hit by 10:00
  * (`challenges.laneMinionsFirst10Minutes`) and the post-26.1 theoretical spawned supply
@@ -241,7 +244,70 @@ export const calculateLaneCsAt10Comparison = (
     spawnedSupply,
     wavesSpawned,
     cannonWavesSpawned,
-    supplyLabel: 'Theoretical spawned supply (not guaranteed farmable)',
+    supplyLabel: SPAWNED_SUPPLY_AT_10_LABEL,
+  };
+};
+
+/**
+ * Computes the average lane-only CS @ 10:00 (`challenges.laneMinionsFirst10Minutes`) across the
+ * listed matches for a given player `puuid`.
+ *
+ * Rules:
+ * - Includes LANER games only (`TOP`, `MIDDLE`, `BOTTOM`).
+ * - Includes only games where `challenges.laneMinionsFirst10Minutes` is a finite number
+ *   (missing values are excluded and never counted as `0`).
+ * - Computes `avgSpawnedSupply` from Patch 26.1+ (`16.1+` / `26.1+`) eligible laner games only.
+ * - Returns `null` when no listed games have eligible laner `laneMinionsFirst10Minutes` data.
+ */
+export const calculateAverageLaneCsAt10 = (
+  matches: MatchDto[],
+  puuid: string
+): AverageLaneCsAt10Summary | null => {
+  if (!matches || matches.length === 0) {
+    return null;
+  }
+
+  let actualSum = 0;
+  let matchCount = 0;
+  let spawnedSupplySum = 0;
+  let ceilingMatchCount = 0;
+
+  for (const match of matches) {
+    const info = match.info;
+    if (!info || info.gameDuration === 0 || !Array.isArray(info.participants)) continue;
+
+    const participant = info.participants.find(p => p.puuid === puuid);
+    if (!participant || !isLanerPosition(participant.teamPosition)) continue;
+
+    const rawLaneCs10 = participant.challenges?.laneMinionsFirst10Minutes;
+    if (typeof rawLaneCs10 !== 'number' || !Number.isFinite(rawLaneCs10)) continue;
+
+    const comparison = calculateLaneCsAt10Comparison(rawLaneCs10, info.gameVersion);
+    actualSum += comparison.actual;
+    matchCount += 1;
+
+    if (comparison.spawnedSupply !== null) {
+      spawnedSupplySum += comparison.spawnedSupply;
+      ceilingMatchCount += 1;
+    }
+  }
+
+  if (matchCount === 0) {
+    return null;
+  }
+
+  const avgActual = Math.round((actualSum / matchCount) * 10) / 10;
+  const avgSpawnedSupply =
+    ceilingMatchCount > 0
+      ? Math.round((spawnedSupplySum / ceilingMatchCount) * 10) / 10
+      : null;
+
+  return {
+    avgActual,
+    matchCount,
+    avgSpawnedSupply,
+    ceilingMatchCount,
+    supplyLabel: avgSpawnedSupply !== null ? SPAWNED_SUPPLY_AT_10_LABEL : null,
   };
 };
 
@@ -397,7 +463,8 @@ export const calculateConsistency = (matches: MatchDto[], puuid: string) => {
     return { bestStats, worstStats };
 };
 
-import type { ChampionStats, OverallStats } from '../types/summoner';
+import type { AverageLaneCsAt10Summary, ChampionStats, OverallStats } from '../types/summoner';
+export type { AverageLaneCsAt10Summary };
 
 export const calculateStatsFromMatches = (matches: MatchDto[], puuid: string): { championStats: ChampionStats[], overallStats: OverallStats | null } => {
     if (!matches || matches.length === 0) {
@@ -565,7 +632,8 @@ export const calculateStatsFromMatches = (matches: MatchDto[], puuid: string): {
             games: redSideGames,
             wins: redSideWins,
             winRate: redSideGames > 0 ? (redSideWins / redSideGames) * 100 : 0
-        }
+        },
+        avgLaneCsAt10: calculateAverageLaneCsAt10(matches, puuid),
     };
 
     const championStats: ChampionStats[] = Object.entries(championStatsMap).map(([name, stats]) => ({

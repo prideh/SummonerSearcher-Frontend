@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { MatchDto } from '../types/match';
 import MatchHistoryItem from './MatchHistoryItem';
 import { Skeleton } from './ui/Skeleton';
+import { calculateAverageLaneCsAt10 } from '../utils/statsCalculator';
 
 /**
  * Props for the MatchHistory component.
@@ -30,13 +31,49 @@ interface MatchHistoryProps {
 const MatchHistory: React.FC<MatchHistoryProps> = ({ puuid, matches, onPlayerClick, onLoadMore, hasMore, loadingMore, region }) => {
   // The loading and error states are now handled by SearchPage.
   // We just need to handle the case where there are no matches.
+  const avgLaneCsAt10 = useMemo(
+    () => calculateAverageLaneCsAt10(matches, puuid),
+    [matches, puuid]
+  );
 
   if (!matches || matches.length === 0) {
     return <p className="text-slate-500 dark:text-slate-400 text-center mt-4 text-sm">No recent matches found.</p>;
   }
+
+  const avgLaneCsAt10Tooltip = avgLaneCsAt10
+    ? avgLaneCsAt10.avgSpawnedSupply !== null
+      ? `Average lane-only CS @ 10:00 across ${avgLaneCsAt10.matchCount} laner ${avgLaneCsAt10.matchCount === 1 ? 'game' : 'games'}: ${avgLaneCsAt10.avgActual.toFixed(1)} last-hit / ${avgLaneCsAt10.avgSpawnedSupply} theoretical spawned supply (${avgLaneCsAt10.ceilingMatchCount} patch 26.1+ ${avgLaneCsAt10.ceilingMatchCount === 1 ? 'game' : 'games'}; not guaranteed farmable)`
+      : `Average lane-only CS @ 10:00 across ${avgLaneCsAt10.matchCount} laner ${avgLaneCsAt10.matchCount === 1 ? 'game' : 'games'}: ${avgLaneCsAt10.avgActual.toFixed(1)} last-hit`
+    : undefined;
   
   return (
     <div className="mt-4 space-y-2.5 w-full min-w-0">
+      {avgLaneCsAt10 && (
+        <div
+          className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 rounded-lg bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 text-xs telemetry-nums shadow-xs"
+          data-testid="match-history-avg-lane-cs-10"
+          title={avgLaneCsAt10Tooltip}
+        >
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="font-extrabold uppercase tracking-wider text-[11px] text-slate-500 dark:text-slate-400">
+              Avg Lane CS@10 ({avgLaneCsAt10.matchCount} {avgLaneCsAt10.matchCount === 1 ? 'game' : 'games'}):
+            </span>
+            <span className="font-extrabold text-slate-900 dark:text-slate-100">
+              {avgLaneCsAt10.avgActual.toFixed(1)}
+            </span>
+            {avgLaneCsAt10.avgSpawnedSupply !== null && (
+              <span className="text-slate-500 dark:text-slate-400 font-medium">
+                / {avgLaneCsAt10.avgSpawnedSupply} spawned*
+              </span>
+            )}
+          </div>
+          {avgLaneCsAt10.avgSpawnedSupply !== null && (
+            <span className="text-[11px] text-slate-400 dark:text-slate-500">
+              *Theoretical spawned supply ({avgLaneCsAt10.ceilingMatchCount} patch 26.1+ {avgLaneCsAt10.ceilingMatchCount === 1 ? 'game' : 'games'}), not guaranteed farmable
+            </span>
+          )}
+        </div>
+      )}
       {matches.map((match, index) => (
         // Each match is rendered by the MatchHistoryItem component.
         <MatchHistoryItem key={index} match={match} puuid={puuid} onPlayerClick={onPlayerClick} region={region} />
