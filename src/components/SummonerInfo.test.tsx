@@ -274,6 +274,28 @@ describe('SummonerInfo', () => {
     expect(drawer).toHaveTextContent('9.15/m (2G)');
     expect(drawer).toHaveTextContent('750g (3D)');
     expect(drawer).toHaveTextContent('800.0g / 854.5g');
+
+    // Verify dynamic viewport dialog bounds, independent scroll containers, input typing without paid AI call, and close/reopen
+    const dialog = screen.getByTestId('ai-coach-modal-dialog');
+    expect(dialog.className).toContain('100dvh');
+    expect(drawer.className).toContain('overflow-y-auto');
+    const chatScroll = screen.getByTestId('ai-coach-chat-scroll');
+    expect(chatScroll.className).toContain('overflow-y-auto');
+    expect(chatScroll.className).toContain('min-h-[5.5rem]');
+
+    const coachInput = screen.getByTestId('ai-coach-input') as HTMLInputElement;
+    expect(coachInput.className).toContain('min-w-0');
+    fireEvent.focus(coachInput);
+    fireEvent.change(coachInput, { target: { value: 'Check my 10m lane CS vs target' } });
+    expect(coachInput.value).toBe('Check my 10m lane CS vs target');
+    expect(screen.getByTestId('ai-coach-send-button')).not.toBeDisabled();
+
+    // Close and reopen AI Coach modal
+    fireEvent.click(screen.getByTestId('ai-coach-close-button'));
+    expect(screen.queryByTestId('ai-coach-modal-dialog')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('AI Coach'));
+    expect(screen.getByTestId('ai-coach-modal-dialog')).toBeInTheDocument();
+    expect(screen.getByTestId('ai-coach-input')).toBeInTheDocument();
   });
 });
 

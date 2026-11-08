@@ -559,12 +559,14 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
   return (
     <section
       data-testid="improvement-stats-section"
-      className={`bg-slate-50/70 dark:bg-[#0b101d] rounded-lg ${compact ? 'mt-0' : 'mt-4'} border border-slate-200 dark:border-slate-800 p-4`}
+      className={`bg-slate-50/70 dark:bg-[#0b101d] rounded-lg ${
+        compact ? 'mt-0 p-2 sm:p-3' : 'mt-4 p-4'
+      } border border-slate-200 dark:border-slate-800`}
     >
       {/* Section Header + Filter Pills */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-200 dark:border-slate-800">
+      <div className={`flex flex-col lg:flex-row lg:items-center justify-between ${compact ? 'gap-1.5 pb-1.5' : 'gap-2.5 pb-2.5'} border-b border-slate-200 dark:border-slate-800`}>
         <div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             {!compact && (
               <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
                 5-Stat Improvement Summary
@@ -572,14 +574,14 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
             )}
             <span
               data-testid="improvement-stats-sample-badge"
-              className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 telemetry-nums"
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 telemetry-nums"
             >
               {totalGamesConsidered} {totalGamesConsidered === 1 ? 'Game' : 'Games'} Considered
               {excludedInvalidDurationGames > 0 && ` (${excludedInvalidDurationGames} invalid duration excl.)`}
             </span>
             <span
               data-testid="improvement-stats-timeline-status"
-              className="text-[10px] font-bold px-2 py-0.5 rounded border bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 telemetry-nums"
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 telemetry-nums"
             >
               {sliceHasTimelineData
                 ? `Timeline Analyzed (${bountySummary.eligibleTimelineGames}/${totalGamesConsidered}G)`
@@ -610,7 +612,7 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
       {(roleEntries.length > 0 || championEntries.length > 0) && (
         <div
           data-testid="improvement-stats-filters"
-          className="flex flex-wrap items-center gap-1.5 pt-3 pb-1 text-xs"
+          className={`flex items-center gap-1 ${compact ? 'pt-1.5 pb-0.5 overflow-x-auto whitespace-nowrap no-scrollbar' : 'flex-wrap pt-3 pb-1'} text-xs`}
         >
           <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1">
             Slice:
