@@ -19,12 +19,22 @@ import {
   type ProRoleFilter,
   type RawProBenchmarkDataset,
 } from './proBenchmarkTypes';
+import ProfileProComparisonTab from './ProfileProComparisonTab';
+import {
+  RECORDED_REVIEW_PROFILES,
+  type RecordedReviewPlayerProfile,
+} from './recordedPlayerContractSample';
+import type { MatchDto } from '../../types/match';
+import type { MatchTimelineDto } from '../../types/timeline';
+
+export type PreviewSurface = 'standalone' | 'profile';
 
 export interface ProComparisonPreviewProps {
   dataset?: RawProBenchmarkDataset;
   initialRole?: ProRoleFilter;
   initialChampionId?: string;
   initialMode?: ComparisonMode;
+  initialSurface?: PreviewSurface;
 }
 
 const SYNTHETIC_DEMO_PRESETS: Record<ProRoleFilter, DemoCsInputMap> = {
@@ -36,12 +46,36 @@ const SYNTHETIC_DEMO_PRESETS: Record<ProRoleFilter, DemoCsInputMap> = {
   support: { 5: '6', 10: '14', 15: '21', 20: '26', 25: '30', 30: '34' },
 };
 
+function resolveDefaultSurface(propSurface?: PreviewSurface): PreviewSurface {
+  if (propSurface) return propSurface;
+  if (typeof window !== 'undefined' && window.location?.search) {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('surface') === 'profile') {
+      return 'profile';
+    }
+  }
+  return 'standalone';
+}
+
 export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
   dataset = DEFAULT_PRO_BENCHMARK_DATASET,
   initialRole = 'top',
   initialChampionId = 'KSante',
   initialMode = 'REFERENCE_ONLY',
+  initialSurface,
 }) => {
+  const [activeSurface, setActiveSurface] = useState<PreviewSurface>(() =>
+    resolveDefaultSurface(initialSurface)
+  );
+  const [selectedProfileKey, setSelectedProfileKey] = useState<string>('euw_top_specialist');
+  const [activeMockProfileTab, setActiveMockProfileTab] = useState<'overview' | 'pro_comparison'>(
+    'pro_comparison'
+  );
+  const [showJsonInspector, setShowJsonInspector] = useState<boolean>(false);
+  const [customJsonInput, setCustomJsonInput] = useState<string>('');
+  const [customJsonError, setCustomJsonError] = useState<string | null>(null);
+  const [customProfile, setCustomProfile] = useState<RecordedReviewPlayerProfile | null>(null);
+
   const [selectedRole, setSelectedRole] = useState<ProRoleFilter>(initialRole);
   const [selectedChampionId, setSelectedChampionId] = useState<string>(initialChampionId);
   const [championSearchText, setChampionSearchText] = useState<string>('');
@@ -268,6 +302,52 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
     );
   };
 
+  const activeReviewProfile: RecordedReviewPlayerProfile =
+    customProfile ??
+    RECORDED_REVIEW_PROFILES[selectedProfileKey] ??
+    RECORDED_REVIEW_PROFILES.euw_top_specialist;
+
+  const handleLoadCustomJson = () => {
+    setCustomJsonError(null);
+    try {
+      const parsed = JSON.parse(customJsonInput) as {
+        puuid?: string;
+        region?: string;
+        gameName?: string;
+        tagLine?: string;
+        visibleMatches?: MatchDto[];
+        timelinesByMatchId?: Record<string, MatchTimelineDto>;
+      };
+      if (!parsed.puuid || !Array.isArray(parsed.visibleMatches)) {
+        setCustomJsonError(
+          'JSON must include "puuid" (string) and "visibleMatches" (MatchDto[]), plus optional "timelinesByMatchId".'
+        );
+        return;
+      }
+      setCustomProfile({
+        key: 'custom_local_json',
+        puuid: parsed.puuid,
+        region: parsed.region || 'EUW1',
+        gameName: parsed.gameName || 'LocalPlayer',
+        tagLine: parsed.tagLine || 'JSON',
+        summonerLevel: 300,
+        profileIconId: 29,
+        tier: 'DIAMOND',
+        rank: 'I',
+        leaguePoints: 75,
+        wins: 50,
+        losses: 45,
+        visibleMatches: parsed.visibleMatches,
+        timelinesByMatchId: parsed.timelinesByMatchId ?? {},
+      });
+      setShowJsonInspector(false);
+    } catch (err) {
+      setCustomJsonError(
+        err instanceof Error ? `Invalid JSON: ${err.message}` : 'Invalid JSON payload.'
+      );
+    }
+  };
+
   return (
     <div
       data-testid="pro-comparison-preview-root"
@@ -300,22 +380,42 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
             <span
               data-testid="mode-status-badge"
               className={`px-2 py-0.5 rounded text-[11px] font-bold border ${
-                comparisonMode === 'REFERENCE_ONLY'
+                activeSurface === 'profile'
+                  ? 'bg-indigo-950/90 text-indigo-200 border-indigo-700/80'
+                  : comparisonMode === 'REFERENCE_ONLY'
                   ? 'bg-slate-900 text-slate-200 border-slate-700'
                   : 'bg-amber-950/90 text-amber-200 border-amber-700/80'
               }`}
             >
-              {comparisonMode === 'REFERENCE_ONLY'
+              {activeSurface === 'profile'
+                ? 'Searched Player Profile Tab (Contract Review)'
+                : comparisonMode === 'REFERENCE_ONLY'
                 ? 'Reference Only (No User Data)'
                 : 'Demo Input Mode (Not Live User Stats)'}
             </span>
             <button
               type="button"
-              data-testid="mode-btn-reference-only"
-              aria-pressed={comparisonMode === 'REFERENCE_ONLY'}
-              onClick={() => setComparisonMode('REFERENCE_ONLY')}
+              data-testid="mode-btn-profile-tab"
+              aria-pressed={activeSurface === 'profile'}
+              onClick={() => setActiveSurface('profile')}
               className={`px-2 py-1 rounded text-xs font-bold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
-                comparisonMode === 'REFERENCE_ONLY'
+                activeSurface === 'profile'
+                  ? 'bg-indigo-500 text-white border-indigo-400'
+                  : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
+              }`}
+            >
+              Searched Player Profile Tab
+            </button>
+            <button
+              type="button"
+              data-testid="mode-btn-reference-only"
+              aria-pressed={activeSurface === 'standalone' && comparisonMode === 'REFERENCE_ONLY'}
+              onClick={() => {
+                setActiveSurface('standalone');
+                setComparisonMode('REFERENCE_ONLY');
+              }}
+              className={`px-2 py-1 rounded text-xs font-bold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
+                activeSurface === 'standalone' && comparisonMode === 'REFERENCE_ONLY'
                   ? 'bg-sky-500 text-slate-950 border-sky-400'
                   : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
               }`}
@@ -325,17 +425,20 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
             <button
               type="button"
               data-testid="mode-btn-demo-input"
-              aria-pressed={comparisonMode === 'DEMO_INPUT'}
-              onClick={() => setComparisonMode('DEMO_INPUT')}
+              aria-pressed={activeSurface === 'standalone' && comparisonMode === 'DEMO_INPUT'}
+              onClick={() => {
+                setActiveSurface('standalone');
+                setComparisonMode('DEMO_INPUT');
+              }}
               className={`px-2 py-1 rounded text-xs font-bold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
-                comparisonMode === 'DEMO_INPUT'
+                activeSurface === 'standalone' && comparisonMode === 'DEMO_INPUT'
                   ? 'bg-amber-400 text-slate-950 border-amber-300'
                   : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
               }`}
             >
               Demo CS Input
             </button>
-            {comparisonMode === 'DEMO_INPUT' && (
+            {activeSurface === 'standalone' && comparisonMode === 'DEMO_INPUT' && (
               <>
                 <button
                   type="button"
@@ -360,6 +463,210 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
       </header>
 
       <main className="max-w-6xl mx-auto px-3 sm:px-5 py-3 space-y-3">
+        {activeSurface === 'profile' ? (
+          <div data-testid="profile-tab-review-surface" className="space-y-2.5">
+            {/* Compact Review Sandbox Switcher Bar */}
+            <section
+              aria-label="Searched Player Review Switcher"
+              data-testid="profile-review-sandbox-bar"
+              className="rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 flex flex-wrap items-center justify-between gap-2"
+            >
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                <span className="font-extrabold uppercase tracking-wider text-indigo-300">
+                  Searched Player Profile Preview:
+                </span>
+                <button
+                  type="button"
+                  data-testid="switch-review-player-euw"
+                  onClick={() => {
+                    setCustomProfile(null);
+                    setSelectedProfileKey('euw_top_specialist');
+                  }}
+                  className={`px-2 py-0.5 rounded text-xs font-bold border ${
+                    !customProfile && selectedProfileKey === 'euw_top_specialist'
+                      ? 'bg-sky-500 text-slate-950 border-sky-400'
+                      : 'bg-slate-950 text-slate-300 border-slate-700 hover:bg-slate-800'
+                  }`}
+                >
+                  BladeRunner#EUW (Top)
+                </button>
+                <button
+                  type="button"
+                  data-testid="switch-review-player-kr"
+                  onClick={() => {
+                    setCustomProfile(null);
+                    setSelectedProfileKey('kr_mid_specialist');
+                  }}
+                  className={`px-2 py-0.5 rounded text-xs font-bold border ${
+                    !customProfile && selectedProfileKey === 'kr_mid_specialist'
+                      ? 'bg-sky-500 text-slate-950 border-sky-400'
+                      : 'bg-slate-950 text-slate-300 border-slate-700 hover:bg-slate-800'
+                  }`}
+                >
+                  ArcaneWave#KR1 (Mid)
+                </button>
+                <button
+                  type="button"
+                  data-testid="toggle-local-json-inspector"
+                  onClick={() => setShowJsonInspector((prev) => !prev)}
+                  className="px-2 py-0.5 rounded text-xs font-bold bg-slate-950 text-amber-300 border border-amber-700/60 hover:bg-slate-800"
+                >
+                  {showJsonInspector ? 'Hide JSON Loader' : 'Load Local JSON'}
+                </button>
+              </div>
+              <span className="text-[11px] text-slate-400">
+                Offline contract review (paused backend 350/360 MiB guard untouched; zero live API calls)
+              </span>
+            </section>
+
+            {showJsonInspector && (
+              <section
+                aria-label="Local JSON Inspector"
+                data-testid="local-json-inspector-panel"
+                className="rounded-lg border border-slate-800 bg-slate-950 p-3 space-y-2"
+              >
+                <div className="text-xs font-bold text-slate-200">
+                  Client-Side Local JSON Inspector (100% In-Browser — Never Sent Over Network)
+                </div>
+                <textarea
+                  aria-label="Paste local MatchDto and MatchTimelineDto JSON"
+                  data-testid="local-json-textarea"
+                  rows={4}
+                  value={customJsonInput}
+                  onChange={(e) => setCustomJsonInput(e.target.value)}
+                  placeholder='{"puuid":"...","region":"EUW1","gameName":"Player","tagLine":"EUW","visibleMatches":[...],"timelinesByMatchId":{...}}'
+                  className="w-full rounded bg-slate-900 border border-slate-700 p-2 text-xs font-mono text-slate-200"
+                />
+                {customJsonError && (
+                  <p className="text-xs text-rose-400" role="alert">
+                    {customJsonError}
+                  </p>
+                )}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    data-testid="apply-local-json-btn"
+                    onClick={handleLoadCustomJson}
+                    className="px-3 py-1 rounded text-xs font-bold bg-sky-500 text-slate-950"
+                  >
+                    Apply Local JSON
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowJsonInspector(false)}
+                    className="px-3 py-1 rounded text-xs font-semibold bg-slate-800 text-slate-300"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </section>
+            )}
+
+            {/* Simulated SummonerInfo Profile Card with [ Profile Overview | Pro CS Comparison ] Tabs */}
+            <div
+              data-testid="mock-summoner-profile-card"
+              className="dark bg-[#111827] border border-slate-800 p-4 sm:p-5 rounded-lg shadow-xs"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-14 h-14 rounded-xl bg-slate-900 border-2 border-cyan-400 flex flex-col items-center justify-center shrink-0">
+                    <span className="text-xs font-extrabold text-cyan-300">
+                      Lv.{activeReviewProfile.summonerLevel}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-baseline gap-1.5">
+                      <h2
+                        data-testid="review-profile-riot-id"
+                        className="text-xl font-extrabold tracking-tight text-white"
+                      >
+                        {activeReviewProfile.gameName}{' '}
+                        <span className="text-slate-400 font-bold text-base">
+                          #{activeReviewProfile.tagLine}
+                        </span>
+                      </h2>
+                      <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded bg-cyan-950/60 text-cyan-300 border border-cyan-800/60">
+                        {activeReviewProfile.region}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-0.5 telemetry-nums">
+                      Ranked Solo/Duo: <strong className="text-white">{activeReviewProfile.tier} {activeReviewProfile.rank}</strong> ({activeReviewProfile.leaguePoints} LP · {activeReviewProfile.wins}W / {activeReviewProfile.losses}L)
+                    </p>
+                  </div>
+                </div>
+
+                {/* Profile-Level Tabs inside SummonerInfo */}
+                <div
+                  role="tablist"
+                  aria-label="Searched Player Profile Sections"
+                  data-testid="review-summoner-profile-tabs"
+                  className="flex flex-wrap items-center gap-1.5"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeMockProfileTab === 'overview'}
+                    data-testid="review-profile-tab-overview"
+                    onClick={() => setActiveMockProfileTab('overview')}
+                    className={`px-3 py-1.5 rounded-md text-xs font-extrabold transition-colors border ${
+                      activeMockProfileTab === 'overview'
+                        ? 'bg-cyan-500 text-slate-950 border-cyan-400'
+                        : 'bg-slate-800/80 hover:bg-slate-800 text-slate-300 border-slate-700'
+                    }`}
+                  >
+                    Profile Overview
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeMockProfileTab === 'pro_comparison'}
+                    data-testid="review-profile-tab-pro-comparison"
+                    onClick={() => setActiveMockProfileTab('pro_comparison')}
+                    className={`px-3 py-1.5 rounded-md text-xs font-extrabold transition-colors border ${
+                      activeMockProfileTab === 'pro_comparison'
+                        ? 'bg-cyan-500 text-slate-950 border-cyan-400'
+                        : 'bg-slate-800/80 hover:bg-slate-800 text-slate-300 border-slate-700'
+                    }`}
+                  >
+                    Pro CS Comparison
+                  </button>
+                </div>
+              </div>
+
+              {activeMockProfileTab === 'overview' ? (
+                <div
+                  data-testid="review-profile-overview-placeholder"
+                  className="mt-4 rounded-lg border border-slate-800 bg-[#0b101d] p-4 text-xs text-slate-300"
+                >
+                  Standard <code className="text-cyan-300">SummonerInfo</code> Overview tab (renders{' '}
+                  <code className="text-slate-200">RankedInfo</code> &amp;{' '}
+                  <code className="text-slate-200">ImprovementStatsSection</code>). Switch to the{' '}
+                  <button
+                    type="button"
+                    onClick={() => setActiveMockProfileTab('pro_comparison')}
+                    className="underline font-bold text-cyan-400"
+                  >
+                    Pro CS Comparison
+                  </button>{' '}
+                  tab to view searched-player CS vs same champion/role Worlds 2026 pro reference.
+                </div>
+              ) : (
+                <ProfileProComparisonTab
+                  key={`${activeReviewProfile.region}::${activeReviewProfile.puuid}`}
+                  puuid={activeReviewProfile.puuid}
+                  region={activeReviewProfile.region}
+                  gameName={activeReviewProfile.gameName}
+                  tagLine={activeReviewProfile.tagLine}
+                  visibleMatches={activeReviewProfile.visibleMatches}
+                  initialTimelinesByMatchId={activeReviewProfile.timelinesByMatchId}
+                  dataSourceMode="contract_review"
+                  dataset={dataset}
+                />
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
         {/* Controls Bar: Role Pills + Champion Dropdown + Quick Filter */}
         <section
           aria-label="Role and Champion Filter"
@@ -841,6 +1148,8 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
               </div>
             )}
           </section>
+        )}
+          </>
         )}
       </main>
     </div>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { SummonerData } from '../types/summoner';
 import type { MatchDto } from '../types/match';
 import RankedInfo from './RankedInfo';
@@ -10,9 +10,12 @@ import LiveGameDisplay, { type CurrentGameInfo } from './LiveGameDisplay';
 import { buildAiContext } from '../utils/aiContextBuilder';
 import { analyzeTimelines } from '../api/timeline';
 import TimelineAnalysisModal from './TimelineAnalysisModal';
-import type { TimelineAnalysisDto } from '../types/timeline';
+import type { MatchTimelineDto, TimelineAnalysisDto } from '../types/timeline';
 import ImprovementStatsSection from './ImprovementStatsSection';
 import { resolveImprovementStats } from '../utils/improvementStatsHelper';
+import ProfileProComparisonTab from '../prototype/pro-benchmark/ProfileProComparisonTab';
+
+export type SummonerProfileTab = 'overview' | 'pro_comparison';
 
 /**
  * Props for the SummonerInfo component.
@@ -34,6 +37,12 @@ interface SummonerInfoProps {
   onViewProfile: () => void;
   /** Boolean indicating if the full profile is currently shown. */
   showFullProfile: boolean;
+  /** Optional initial profile tab ('overview' by default, or 'pro_comparison' in review preview). */
+  initialProfileTab?: SummonerProfileTab;
+  /** Optional pre-loaded raw MatchTimelineDto map keyed by matchId for deterministic review/testing. */
+  initialProTimelinesByMatchId?: Record<string, MatchTimelineDto | null | undefined>;
+  /** Optional data source label mode for the Pro CS Comparison tab. */
+  proComparisonDataSourceMode?: 'live_profile' | 'contract_review';
 }
 
 /**
@@ -41,7 +50,19 @@ interface SummonerInfoProps {
  * It includes their profile icon, Riot ID, level, and a "Refresh" button.
  * It also contains the `RankedInfo` component to show ranked statistics.
  */
-const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh, loading, refreshing, visibleMatches, onPlayerClick, onViewProfile, showFullProfile }) => {
+const SummonerInfo: React.FC<SummonerInfoProps> = ({
+  summonerData,
+  handleRefresh,
+  loading,
+  refreshing,
+  visibleMatches,
+  onPlayerClick,
+  onViewProfile,
+  showFullProfile,
+  initialProfileTab = 'overview',
+  initialProTimelinesByMatchId,
+  proComparisonDataSourceMode = 'live_profile',
+}) => {
   const [timeAgo, ref] = useTimeAgo(new Date(summonerData.lastUpdated).getTime());
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
   const [showAiModal, setShowAiModal] = useState(false);
@@ -49,12 +70,22 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
   const [loadingLiveGame, setLoadingLiveGame] = useState(false);
   const [showLiveGame, setShowLiveGame] = useState(false);
   const [liveGameError, setLiveGameError] = useState<string | null>(null);
+  const [activeProfileTab, setActiveProfileTab] = useState<SummonerProfileTab>(initialProfileTab);
 
   // Timeline analysis state — must be declared before buildAiContext so it can be merged in
   const [timelineAnalysis, setTimelineAnalysis] = useState<TimelineAnalysisDto | null>(null);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [showTimelineModal, setShowTimelineModal] = useState(false);
   const [aiInitialMessage, setAiInitialMessage] = useState<string | undefined>(undefined);
+
+  // Clear per-player cached modal/timeline state when searched player identity changes
+  useEffect(() => {
+    setTimelineAnalysis(null);
+    setShowTimelineModal(false);
+    setLiveGameData(null);
+    setShowLiveGame(false);
+    setLiveGameError(null);
+  }, [summonerData.puuid, summonerData.region]);
 
   // Build comprehensive AI context from all loaded matches.
   // If timeline has been analyzed by the user, buildAiContext merges its aggregate summary
@@ -250,22 +281,74 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
         <LiveGameDisplay gameData={liveGameData} onPlayerClick={onPlayerClick} />
       )}
 
-      {summonerData.soloQueueRank ? (
-        <RankedInfo 
-          rankedData={summonerData.soloQueueRank} 
-          summonerData={summonerData} 
-          matches={visibleMatches} 
-        />
-      ) : (
-        <p className="text-center text-slate-500 dark:text-slate-400 mt-4 text-sm">No ranked data available for this summoner.</p>
-      )}
+      {/* Searched Player Profile Tabs (Overview vs Pro CS Comparison) */}
+      <div
+        role="tablist"
+        aria-label="Searched Player Profile Sections"
+        data-testid="summoner-profile-tabs"
+        className="mt-4 flex flex-wrap items-center gap-1.5 border-b border-slate-200 dark:border-slate-800 pb-2.5"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeProfileTab === 'overview'}
+          data-testid="profile-tab-overview"
+          onClick={() => setActiveProfileTab('overview')}
+          className={`px-3 py-1.5 rounded-md text-xs font-extrabold transition-colors border ${
+            activeProfileTab === 'overview'
+              ? 'bg-sky-600 text-white border-sky-500 dark:bg-cyan-500 dark:text-slate-950 dark:border-cyan-400'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300 dark:bg-slate-800/80 dark:hover:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+          }`}
+        >
+          Profile Overview
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeProfileTab === 'pro_comparison'}
+          data-testid="profile-tab-pro-comparison"
+          onClick={() => setActiveProfileTab('pro_comparison')}
+          className={`px-3 py-1.5 rounded-md text-xs font-extrabold transition-colors border ${
+            activeProfileTab === 'pro_comparison'
+              ? 'bg-sky-600 text-white border-sky-500 dark:bg-cyan-500 dark:text-slate-950 dark:border-cyan-400'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300 dark:bg-slate-800/80 dark:hover:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+          }`}
+        >
+          Pro CS Comparison
+        </button>
+      </div>
 
-      <ImprovementStatsSection
-        stats={resolvedImprovement.stats}
-        hasTimelineAnalysis={resolvedImprovement.hasTimelineAnalysis}
-        onAnalyzeTimeline={handleAnalyzeTimeline}
-        loadingTimeline={loadingTimeline}
-      />
+      {activeProfileTab === 'overview' ? (
+        <>
+          {summonerData.soloQueueRank ? (
+            <RankedInfo 
+              rankedData={summonerData.soloQueueRank} 
+              summonerData={summonerData} 
+              matches={visibleMatches} 
+            />
+          ) : (
+            <p className="text-center text-slate-500 dark:text-slate-400 mt-4 text-sm">No ranked data available for this summoner.</p>
+          )}
+
+          <ImprovementStatsSection
+            stats={resolvedImprovement.stats}
+            hasTimelineAnalysis={resolvedImprovement.hasTimelineAnalysis}
+            onAnalyzeTimeline={handleAnalyzeTimeline}
+            loadingTimeline={loadingTimeline}
+          />
+        </>
+      ) : (
+        <ProfileProComparisonTab
+          key={`${summonerData.region}::${summonerData.puuid}`}
+          puuid={summonerData.puuid}
+          region={summonerData.region}
+          gameName={summonerData.gameName}
+          tagLine={summonerData.tagLine}
+          visibleMatches={visibleMatches}
+          initialTimelinesByMatchId={initialProTimelinesByMatchId}
+          dataSourceMode={proComparisonDataSourceMode}
+        />
+      )}
       
       <AiAnalysisModal 
         isOpen={showAiModal}

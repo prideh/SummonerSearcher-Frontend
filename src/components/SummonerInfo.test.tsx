@@ -242,4 +242,48 @@ describe('SummonerInfo', () => {
     expect(screen.getByTestId('phase-window-10-20m')).toHaveTextContent('9.15/m');
     expect(screen.getByTestId('card-death-cost')).toHaveTextContent('750g');
   });
+
+  it('switches between Profile Overview and Pro CS Comparison tabs inside SummonerInfo and binds to searched player identity', () => {
+    const { rerender } = render(<SummonerInfo {...defaultProps} />);
+
+    expect(screen.getByTestId('profile-tab-overview')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('profile-tab-pro-comparison')).toHaveAttribute(
+      'aria-selected',
+      'false'
+    );
+    expect(screen.getByTestId('ranked-info')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('profile-tab-pro-comparison'));
+    expect(screen.getByTestId('profile-tab-pro-comparison')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    const proTab = screen.getByTestId('profile-pro-comparison-tab');
+    expect(proTab).toHaveAttribute('data-bound-puuid', '123');
+    expect(proTab).toHaveAttribute('data-bound-region', 'EUW1');
+    expect(screen.getByTestId('pro-comparison-identity-badge')).toHaveTextContent(
+      'TestUser#EUW (EUW1)'
+    );
+    expect(analyzeTimelines).not.toHaveBeenCalled();
+
+    // Changing searched player updates bound identity immediately
+    rerender(
+      <SummonerInfo
+        {...defaultProps}
+        summonerData={{
+          ...mockSummonerData,
+          puuid: 'puuid-new-player-999',
+          gameName: 'NewPlayer',
+          tagLine: 'KR1',
+          region: 'KR',
+        }}
+      />
+    );
+    const updatedTab = screen.getByTestId('profile-pro-comparison-tab');
+    expect(updatedTab).toHaveAttribute('data-bound-puuid', 'puuid-new-player-999');
+    expect(updatedTab).toHaveAttribute('data-bound-region', 'KR');
+    expect(screen.getByTestId('pro-comparison-identity-badge')).toHaveTextContent(
+      'NewPlayer#KR1 (KR)'
+    );
+  });
 });
