@@ -597,30 +597,30 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
         ) : (
           <p className="text-center text-slate-500 dark:text-slate-400 mt-4 text-sm">No ranked data available for this summoner.</p>
         )}
-
-        <AiAnalysisModal 
-          isOpen={showAiModal}
-          onClose={() => { setShowAiModal(false); setAiInitialMessage(undefined); }}
-          summonerName={`${summonerData.gameName}#${summonerData.tagLine}`}
-          context={aiContext}
-          initialMessage={aiInitialMessage}
-          improvementStats={resolvedImprovement.stats}
-          hasTimelineAnalysis={resolvedImprovement.hasTimelineAnalysis}
-          onAnalyzeTimeline={handleAnalyzeTimeline}
-          loadingTimeline={loadingTimeline}
-          matches={visibleMatches}
-          puuid={summonerData.puuid}
-        />
-        {timelineAnalysis && (
-          <TimelineAnalysisModal
-            isOpen={showTimelineModal}
-            onClose={() => setShowTimelineModal(false)}
-            analysis={timelineAnalysis}
-            summonerName={`${summonerData.gameName}#${summonerData.tagLine}`}
-            onOpenAiCoach={handleAiCoachFromTimeline}
-          />
-        )}
       </div>
+
+      <AiAnalysisModal 
+        isOpen={showAiModal}
+        onClose={() => { setShowAiModal(false); setAiInitialMessage(undefined); }}
+        summonerName={`${summonerData.gameName}#${summonerData.tagLine}`}
+        context={aiContext}
+        initialMessage={aiInitialMessage}
+        improvementStats={resolvedImprovement.stats}
+        hasTimelineAnalysis={resolvedImprovement.hasTimelineAnalysis}
+        onAnalyzeTimeline={handleAnalyzeTimeline}
+        loadingTimeline={loadingTimeline}
+        matches={visibleMatches}
+        puuid={summonerData.puuid}
+      />
+      {timelineAnalysis && (
+        <TimelineAnalysisModal
+          isOpen={showTimelineModal}
+          onClose={() => setShowTimelineModal(false)}
+          analysis={timelineAnalysis}
+          summonerName={`${summonerData.gameName}#${summonerData.tagLine}`}
+          onOpenAiCoach={handleAiCoachFromTimeline}
+        />
+      )}
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import { chatWithAi, submitFeedback } from '../api/ai';
 import ImprovementStatsSection from './ImprovementStatsSection';
@@ -259,9 +260,10 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
   const timelineAnalyzedInContext =
     context.timelineStatus === 'ANALYZED' || Boolean(imp?.hasTimelineAnalysis);
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-stretch justify-end bg-slate-950/55 dark:bg-black/65 backdrop-blur-xs transition-all"
+      data-testid="ai-coach-modal-backdrop"
+      className="fixed inset-0 z-[70] flex items-stretch justify-end bg-slate-950/55 dark:bg-black/65 backdrop-blur-xs transition-all"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -579,6 +581,8 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };
 
 export default AiAnalysisModal;
