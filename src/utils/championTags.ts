@@ -254,8 +254,8 @@ export const CHAMPION_TAGS: Record<string, string[]> = {
     "Mage"
   ],
   "Kayle": [
-    "Mage",
-    "Marksman"
+    "Marksman",
+    "Mage"
   ],
   "Kayn": [
     "Fighter",
@@ -317,6 +317,10 @@ export const CHAMPION_TAGS: Record<string, string[]> = {
     "Mage"
   ],
   "Lissandra": [
+    "Mage"
+  ],
+  "Locke": [
+    "Assassin",
     "Mage"
   ],
   "Lucian": [
@@ -524,7 +528,7 @@ export const CHAMPION_TAGS: Record<string, string[]> = {
   ],
   "Shyvana": [
     "Fighter",
-    "Mage"
+    "Tank"
   ],
   "Singed": [
     "Tank",
@@ -703,8 +707,7 @@ export const CHAMPION_TAGS: Record<string, string[]> = {
     "Mage"
   ],
   "Zaahen": [
-    "Fighter",
-    "Assassin"
+    "Fighter"
   ],
   "Zac": [
     "Tank",
@@ -770,4 +773,3 @@ export const getChampionTags = (championName: string): string[] => {
 export const hasTag = (championName: string, tag: string): boolean => {
   return getChampionTags(championName).includes(tag);
 };
-

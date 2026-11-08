@@ -3,6 +3,7 @@ import type { LeagueEntryDto, SummonerData } from '../types/summoner';
 import type { MatchDto } from '../types/match';
 import ConsistencyStats from './ConsistencyStats';
 import RecentChampionStats from './RecentChampionStats';
+import PlaystyleRadar from './ui/PlaystyleRadar';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import { calculateStatsFromMatches } from '../utils/statsCalculator';
 import { getWinRateColorClass } from '../utils/colorUtils';
@@ -21,7 +22,7 @@ interface RankedInfoProps {
 
 /**
  * Displays a summoner's ranked information, including their tier emblem, rank, LP, and win/loss record.
- * It also includes the `RecentChampionStats` component to show performance on recently played champions.
+ * It also includes the `RecentChampionStats`, `ConsistencyStats`, and 5-Axis `PlaystyleRadar`.
  */
 const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData, matches }) => {
   const communityDragonUrl = useDataDragonStore(state => state.communityDragonUrl);
@@ -40,10 +41,10 @@ const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData, match
     : 'N/A';
 
   return (
-    <div className="bg-slate-50/70 dark:bg-[#0b101d] rounded-lg mt-4 border border-slate-200 dark:border-slate-800 overflow-hidden">
-      <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-slate-200 dark:divide-slate-800">
+    <div className="bg-slate-50/80 dark:bg-[#0b101d] rounded-xl mt-4 border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-800">
         <div className="p-4 flex flex-col justify-center">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2.5">
             <h3 className="text-[11px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ranked Solo/Duo</h3>
             {(() => {
               if (!matches || matches.length === 0) return null;
@@ -67,19 +68,19 @@ const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData, match
               const [bestRole, count] = sortedRoles[0];
               
               if (sortedRoles.length > 1 && sortedRoles[1][1] === count) {
-                  return <p className="text-[10px] px-2 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider">Multirole</p>;
+                  return <p className="text-[10px] px-2 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider telemetry-nums">Multirole</p>;
               }
 
               const roleName = bestRole === 'UTILITY' ? 'Support' : 
                                bestRole === 'BOTTOM' ? 'ADC' : 
                                bestRole === 'MIDDLE' ? 'Mid' : 
                                bestRole.charAt(0) + bestRole.slice(1).toLowerCase();
-              return <p className="text-[10px] px-2 py-0.5 rounded bg-sky-50 dark:bg-cyan-950/60 border border-sky-200 dark:border-cyan-800/60 text-sky-700 dark:text-cyan-300 font-bold uppercase tracking-wider">{roleName} Main</p>;
+              return <p className="text-[10px] px-2 py-0.5 rounded bg-sky-50 dark:bg-cyan-950/60 border border-sky-200 dark:border-cyan-800/60 text-sky-700 dark:text-cyan-300 font-bold uppercase tracking-wider telemetry-nums">{roleName} Main</p>;
             })()}
           </div>
           <div className="flex items-center space-x-3.5">
             {rankedData.tier && (
-              <div className="w-16 h-16 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center p-1 shrink-0">
+              <div className="w-16 h-16 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center p-1 shrink-0 shadow-xs">
                 <img
                   src={`${communityDragonUrl}/rcp-fe-lol-shared-components/global/default/images/${rankedData.tier.toLowerCase()}.png`}
                   alt={rankedData.tier}
@@ -99,9 +100,9 @@ const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData, match
                 </span>
               </div>
               {totalGames > 0 && (
-                <div className="w-full h-1.5 bg-rose-500/30 dark:bg-rose-500/30 rounded-full overflow-hidden mt-2">
+                <div className="w-full h-1.5 bg-rose-500/30 dark:bg-rose-500/30 rounded-full overflow-hidden mt-2.5">
                   <div
-                    className="h-full bg-emerald-500 rounded-l-full"
+                    className="h-full bg-emerald-500 rounded-l-full transition-all duration-500"
                     style={{ width: `${Math.min(100, Math.max(0, (wins / totalGames) * 100))}%` }}
                   />
                 </div>
@@ -119,9 +120,15 @@ const RankedInfo: React.FC<RankedInfoProps> = ({ rankedData, summonerData, match
           {/* Display consistent stats (best and worst). */}
           {summonerData && <ConsistencyStats matches={matches} puuid={summonerData.puuid} />}
         </div>
+
+        <div className="p-4">
+          {/* 5-Axis Playstyle Telemetry Radar */}
+          {summonerData && <PlaystyleRadar matches={matches} puuid={summonerData.puuid} />}
+        </div>
       </div>
     </div>
   );
 };
 
 export default RankedInfo;
+

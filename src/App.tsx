@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
+import { Toaster } from 'sonner';
 import NavigationLayout from './nav/NavigationLayout';
 import RateLimitBanner from './components/RateLimitBanner';
 import { useDataDragonStore } from './store/dataDragonStore';
+import CommandPalette from './components/ui/CommandPalette';
 
 import AuthModal from './components/AuthModal';
 
@@ -33,8 +35,11 @@ function App() {
         <RateLimitBanner />
         <NavigationLayout />
         <AuthModal />
+        <CommandPalette />
+        <Toaster position="bottom-right" richColors closeButton />
     </div>
   );
 }
 
 export default App;
+

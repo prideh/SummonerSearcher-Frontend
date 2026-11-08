@@ -105,7 +105,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
         
         {/* Input Section */}
         <div 
-          className="relative flex-grow"
+          className="relative flex-grow flex items-center"
           onMouseEnter={handleMouseEnter} 
           onMouseLeave={handleMouseLeave}
         >
@@ -123,8 +123,16 @@ const SearchBar: React.FC<SearchBarProps> = ({
               setShowRecent(false);
             }}
             onKeyDown={handleKeyDown}
-            className="w-full h-full bg-transparent border-none px-4 py-3.5 text-base font-medium text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-0 focus:outline-none rounded-l-lg"
+            className="w-full h-full bg-transparent border-none pl-4 pr-16 py-3.5 text-base font-medium text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-0 focus:outline-none rounded-l-lg"
           />
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
+            title="Open Command Palette (⌘K)"
+            className="hidden sm:inline-flex items-center px-1.5 py-0.5 mr-3 rounded bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-400 dark:text-slate-400 hover:text-sky-600 dark:hover:text-cyan-400 transition-colors telemetry-nums shrink-0"
+          >
+            ⌘K
+          </button>
 
           {/* Dropdown Container */}
           {showRecent && (suggestions.length > 0 || searchInput.length >= 2 || filteredRecentSearches.length > 0) && (

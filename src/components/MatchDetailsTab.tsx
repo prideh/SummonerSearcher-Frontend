@@ -171,6 +171,26 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
     return [1, 2, 3].sort((a, b) => counts[b] - counts[a]);
   }, [skillUps]);
 
+  const [diffMetric, setDiffMetric] = useState<'gold' | 'xp'>('gold');
+
+  // Compute per-minute lane Gold & XP differential curve when participantFrames are available
+  const diffPoints = React.useMemo(() => {
+    if (!timeline?.info?.frames || !playerPid || !opponentPid) return [];
+    const pts: { minute: number; goldDiff: number; xpDiff: number }[] = [];
+    for (const frame of timeline.info.frames) {
+      const pFrame = frame.participantFrames?.[String(playerPid)];
+      const oFrame = frame.participantFrames?.[String(opponentPid)];
+      if (pFrame && oFrame) {
+        pts.push({
+          minute: Math.round((frame.timestamp || 0) / 60000),
+          goldDiff: (pFrame.totalGold ?? 0) - (oFrame.totalGold ?? 0),
+          xpDiff: (pFrame.xp ?? 0) - (oFrame.xp ?? 0),
+        });
+      }
+    }
+    return pts;
+  }, [timeline, playerPid, opponentPid]);
+
   // Group build items by minute (within tolerance) to create "purchase groups"
   const buildGroups = React.useMemo(() => {
     const groups: { minute: number; items: BuildItem[] }[] = [];
@@ -209,6 +229,67 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
 
   return (
     <div className="w-full max-w-full min-w-0 p-3 sm:p-4 space-y-6 telemetry-nums overflow-hidden">
+
+      {/* ── Lane Gold / XP Differential Area Chart ── */}
+      {diffPoints.length >= 2 && (() => {
+        const values = diffPoints.map(d => diffMetric === 'gold' ? d.goldDiff : d.xpDiff);
+        const maxAbs = Math.max(...values.map(v => Math.abs(v)), 1000);
+        const w = 640;
+        const h = 150;
+        const midY = h / 2;
+        const coords = diffPoints.map((d, idx) => {
+          const val = diffMetric === 'gold' ? d.goldDiff : d.xpDiff;
+          const x = 44 + (idx / Math.max(1, diffPoints.length - 1)) * (w - 64);
+          const y = midY - (val / maxAbs) * (midY - 18);
+          return { x, y, val, minute: d.minute };
+        });
+        const linePath = coords.map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+        const areaPath = `${linePath} L${coords[coords.length - 1].x.toFixed(1)},${midY} L${coords[0].x.toFixed(1)},${midY} Z`;
+        const endPositive = coords[coords.length - 1].val >= 0;
+        const strokeColor = endPositive ? '#22d3ee' : '#fb7185';
+
+        return (
+          <section className="min-w-0 p-3.5 rounded-xl bg-slate-50/80 dark:bg-[#0b101d] border border-slate-200 dark:border-slate-800 space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Lane Differential vs {opponentParticipant?.championName || 'Opponent'}
+              </h3>
+              <div className="inline-flex rounded-lg bg-white dark:bg-[#090d16] p-0.5 border border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setDiffMetric('gold')}
+                  className={`px-2.5 py-0.5 rounded text-[11px] font-bold transition-colors ${
+                    diffMetric === 'gold'
+                      ? 'bg-sky-600 text-white dark:bg-cyan-400 dark:text-slate-950'
+                      : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  Gold Diff
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDiffMetric('xp')}
+                  className={`px-2.5 py-0.5 rounded text-[11px] font-bold transition-colors ${
+                    diffMetric === 'xp'
+                      ? 'bg-sky-600 text-white dark:bg-cyan-400 dark:text-slate-950'
+                      : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  XP Diff
+                </button>
+              </div>
+            </div>
+            <svg className="w-full h-36 overflow-visible" viewBox={`0 0 ${w} ${h}`}>
+              <line x1="44" y1={midY} x2={w - 20} y2={midY} stroke="#475569" strokeDasharray="4 4" strokeWidth="1" />
+              <text x="4" y="20" className="fill-sky-600 dark:fill-cyan-400 text-[10px] font-bold">+{maxAbs}</text>
+              <text x="4" y={midY + 3} className="fill-slate-400 text-[10px]">0</text>
+              <text x="4" y={h - 8} className="fill-rose-500 text-[10px] font-bold">-{maxAbs}</text>
+              <path d={areaPath} fill={strokeColor} fillOpacity="0.18" />
+              <path d={linePath} fill="none" stroke={strokeColor} strokeWidth="2.2" />
+            </svg>
+          </section>
+        );
+      })()}
 
       {/* ── Build Order ── */}
       <section className="min-w-0">

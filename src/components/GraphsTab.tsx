@@ -211,32 +211,58 @@ const GraphsTab: React.FC<GraphsTabProps> = ({ match, puuid, onPlayerClick }) =>
     return <p className="p-4 text-gray-500 dark:text-gray-400">No participant data available for analysis.</p>;
   }
 
+  const quickMetrics: { id: GraphType; label: string }[] = [
+    { id: 'damage', label: 'Damage' },
+    { id: 'gold', label: 'Gold' },
+    { id: 'cs', label: 'CS' },
+    { id: 'vision', label: 'Vision' },
+    { id: 'objectiveDamage', label: 'Objectives' },
+    { id: 'damageTaken', label: 'Tanked' },
+  ];
+
   return (
     <div className="p-4 space-y-4 telemetry-nums">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-        <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-          {/* Dynamically set the title based on the selected graph type */}
-          {
-            selectedGraph === 'damage' ? 'Damage to Champions' :
-            selectedGraph === 'damageTaken' ? 'Damage Taken' :
-            selectedGraph === 'damageMitigated' ? 'Damage Self-Mitigated' :
-            selectedGraph === 'healing' ? 'Total Healing' :
-            selectedGraph === 'shielding' ? 'Damage Shielded' :
-            selectedGraph === 'objectiveDamage' ? 'Damage to Objectives' :
-            selectedGraph === 'dpm' ? 'Damage Per Minute' :
-            selectedGraph === 'gold' ? 'Gold Earned' :
-            selectedGraph === 'vision' ? 'Vision Score' :
-            selectedGraph === 'cc' ? 'CC Score' :
-            selectedGraph === 'wardsPlaced' ? 'Wards Placed' :
-            selectedGraph === 'controlWardsPlaced' ? 'Control Wards Placed' :
-            selectedGraph === 'turretPlates' ? 'Turret Platings' :
-            selectedGraph === 'turretDamage' ? 'Damage to Turrets' :
-            selectedGraph === 'healsOnTeammates' ? 'Heals on Teammates' :
-            selectedGraph === 'soloKills' ? 'Solo Kills' :
-            selectedGraph === 'wardsKilled' ? 'Wards Killed' :
-            'Total CS' // Fallback
-          }
-        </h3>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100 mr-2">
+            {
+              selectedGraph === 'damage' ? 'Damage to Champions' :
+              selectedGraph === 'damageTaken' ? 'Damage Taken' :
+              selectedGraph === 'damageMitigated' ? 'Damage Self-Mitigated' :
+              selectedGraph === 'healing' ? 'Total Healing' :
+              selectedGraph === 'shielding' ? 'Damage Shielded' :
+              selectedGraph === 'objectiveDamage' ? 'Damage to Objectives' :
+              selectedGraph === 'dpm' ? 'Damage Per Minute' :
+              selectedGraph === 'gold' ? 'Gold Earned' :
+              selectedGraph === 'vision' ? 'Vision Score' :
+              selectedGraph === 'cc' ? 'CC Score' :
+              selectedGraph === 'wardsPlaced' ? 'Wards Placed' :
+              selectedGraph === 'controlWardsPlaced' ? 'Control Wards Placed' :
+              selectedGraph === 'turretPlates' ? 'Turret Platings' :
+              selectedGraph === 'turretDamage' ? 'Damage to Turrets' :
+              selectedGraph === 'healsOnTeammates' ? 'Heals on Teammates' :
+              selectedGraph === 'soloKills' ? 'Solo Kills' :
+              selectedGraph === 'wardsKilled' ? 'Wards Killed' :
+              'Total CS'
+            }
+          </h3>
+          <div className="hidden md:inline-flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-[#090d16] p-0.5 border border-slate-200 dark:border-slate-800">
+            {quickMetrics.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setSelectedGraph(m.id)}
+                className={`px-2 py-0.5 rounded text-[11px] font-bold transition-colors ${
+                  selectedGraph === m.id
+                    ? 'bg-sky-600 text-white dark:bg-cyan-400 dark:text-slate-950'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <select
           value={selectedGraph}
           onChange={(e) => setSelectedGraph(e.target.value as GraphType)}

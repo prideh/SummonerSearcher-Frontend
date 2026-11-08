@@ -320,15 +320,20 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
     context.timelineStatus === 'ANALYZED' || Boolean(imp?.hasTimelineAnalysis);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm p-1.5 sm:p-4 transition-all">
+    <div
+      className="fixed inset-0 z-50 flex items-stretch justify-end bg-slate-950/55 dark:bg-black/65 backdrop-blur-xs transition-all"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div
         data-testid="ai-coach-modal-dialog"
-        className="bg-white/95 dark:bg-slate-900/90 backdrop-blur-xl w-full max-w-3xl h-[calc(100dvh-0.75rem)] max-h-[calc(100dvh-0.75rem)] sm:h-[min(86dvh,52rem)] sm:max-h-[calc(100dvh-2rem)] min-h-0 rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-gray-200/50 dark:border-white/10"
+        className="bg-white/98 dark:bg-[#0d1322]/98 backdrop-blur-xl w-full max-w-2xl h-[100dvh] max-h-[100dvh] min-h-0 shadow-2xl flex flex-col overflow-hidden border-l border-slate-200 dark:border-slate-800"
       >
         {/* Header */}
         <div
           data-testid="ai-coach-modal-header"
-          className="px-2.5 py-2 sm:px-5 sm:py-3.5 border-b border-gray-200/50 dark:border-white/5 flex justify-between items-center gap-1.5 sm:gap-2 shrink-0 min-w-0"
+          className="px-2.5 py-2 sm:px-5 sm:py-3.5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center gap-1.5 sm:gap-2 shrink-0 min-w-0 bg-slate-50/70 dark:bg-[#090d16]/70"
         >
           <h2 className="text-xs sm:text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1">
             <div className="w-6 h-6 sm:w-9 sm:h-9 rounded-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-cyan-500/30 flex items-center justify-center shadow-sm p-1 sm:p-1.5 overflow-hidden shrink-0">

@@ -88,12 +88,17 @@ const Navbar: React.FC = () => {
           {/* Brand + Desktop Navigation */}
           <div className="flex items-center space-x-8">
             <Link to="/search" className="flex items-center space-x-2.5 group">
-              <div className="w-8 h-8 rounded-md bg-slate-900 dark:bg-slate-800 border border-slate-700 dark:border-cyan-500/40 flex items-center justify-center p-1.5 shadow-xs">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-slate-800/90 border border-slate-700 dark:border-cyan-500/40 flex items-center justify-center p-1.5 shadow-xs">
                 <img src="/lol.svg" alt="Summoner Searcher" className="w-full h-full object-contain" />
               </div>
-              <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 dark:text-slate-100 group-hover:text-sky-600 dark:group-hover:text-cyan-400 transition-colors">
-                Summoner Searcher
-              </span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 dark:text-slate-100 group-hover:text-sky-600 dark:group-hover:text-cyan-400 transition-colors">
+                  Summoner Searcher
+                </span>
+                <span className="hidden sm:inline-block text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-sky-500/10 dark:bg-cyan-500/15 text-sky-600 dark:text-cyan-400 border border-sky-500/20 dark:border-cyan-500/30 telemetry-nums">
+                  TELEMETRY
+                </span>
+              </div>
             </Link>
 
             <div className="hidden md:flex items-baseline space-x-6">
@@ -117,7 +122,20 @@ const Navbar: React.FC = () => {
           </div>
 
           {/* Right Side Actions */}
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden md:flex items-center space-x-3">
+            {/* Command Palette Trigger */}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#111827] text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:border-sky-500/50 dark:hover:border-cyan-400/50 transition-colors"
+              title="Open Command Palette (⌘K)"
+            >
+              <span>Quick Search</span>
+              <kbd className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-cyan-400 telemetry-nums">
+                ⌘K
+              </kbd>
+            </button>
+
             {/* Theme Toggle */}
             <button
               onClick={handleThemeToggle}
