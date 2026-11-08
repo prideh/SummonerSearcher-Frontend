@@ -220,8 +220,32 @@ describe('SummonerInfo', () => {
       />
     );
 
-    // Must not auto-call analyzeTimelines on mount
+    // Must not auto-call analyzeTimelines on mount or render standalone stats on the profile page
     expect(analyzeTimelines).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('improvement-stats-section')).not.toBeInTheDocument();
+
+    // Opening AI Coach modal shows plain-language greeting; evidence stays hidden until Show Evidence is toggled
+    Element.prototype.scrollIntoView = vi.fn();
+    fireEvent.click(screen.getByText('AI Coach'));
+    expect(screen.queryByText(/I've analyzed/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/Match summaries from .* recent game.* are loaded \(deep timeline analysis not run yet\)/i)
+    ).toBeInTheDocument();
+    const evidenceToggle = screen.getByTestId('ai-coach-evidence-toggle');
+    expect(evidenceToggle).toHaveTextContent('Show Evidence');
+    expect(evidenceToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('ai-coach-evidence-drawer')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('improvement-stats-section')).not.toBeInTheDocument();
+
+    // Toggling Show Evidence inside AI Coach reveals the in-coach evidence surface
+    fireEvent.click(evidenceToggle);
+    expect(evidenceToggle).toHaveTextContent('Hide Evidence');
+    expect(evidenceToggle).toHaveAttribute('aria-expanded', 'true');
+    const preDrawer = screen.getByTestId('ai-coach-evidence-drawer');
+    expect(preDrawer).toHaveTextContent('What Your Coach Sees (Observed Stats & Guardrails)');
+    expect(preDrawer).toHaveTextContent('Match summaries only (timeline not run)');
+    expect(preDrawer.textContent).not.toContain('NOT_ANALYZED');
+    expect(preDrawer.textContent).not.toContain('Structured Coach Evidence Sent in Context');
     expect(screen.getByTestId('improvement-stats-timeline-status')).toHaveTextContent(
       'Match-Level Only (Timeline Not Analyzed · 4G)'
     );
@@ -230,24 +254,7 @@ describe('SummonerInfo', () => {
       'Unavailable (Analyze Timeline required)'
     );
 
-    // Before timeline analysis, opening AI Coach modal must not claim completed AI/timeline analysis or show internal NOT_ANALYZED status
-    Element.prototype.scrollIntoView = vi.fn();
-    fireEvent.click(screen.getByText('AI Coach'));
-    expect(screen.queryByText(/I've analyzed/i)).not.toBeInTheDocument();
-    expect(
-      screen.getByText(/Match summaries from .* recent game.* are loaded \(deep timeline analysis not run yet\)/i)
-    ).toBeInTheDocument();
-    const evidenceToggle = screen.getByTestId('ai-coach-evidence-toggle');
-    expect(evidenceToggle).toHaveAttribute('aria-expanded', 'false');
-    fireEvent.click(evidenceToggle);
-    expect(evidenceToggle).toHaveAttribute('aria-expanded', 'true');
-    const preDrawer = screen.getByTestId('ai-coach-evidence-drawer');
-    expect(preDrawer).toHaveTextContent('What Your Coach Sees (Observed Stats & Guardrails)');
-    expect(preDrawer).toHaveTextContent('Match summaries only (timeline not run)');
-    expect(preDrawer.textContent).not.toContain('NOT_ANALYZED');
-    expect(preDrawer.textContent).not.toContain('Structured Coach Evidence Sent in Context');
-
-    // Manual click triggers analyzeTimelines and upgrades ImprovementStatsSection + AI Coach drawer to TimelineAnalysisDto.improvementStats
+    // Manual click inside AI Coach evidence drawer triggers analyzeTimelines and upgrades to TimelineAnalysisDto.improvementStats
     fireEvent.click(screen.getByTestId('improvement-stats-analyze-cta'));
     expect(analyzeTimelines).toHaveBeenCalledTimes(1);
 
@@ -264,9 +271,9 @@ describe('SummonerInfo', () => {
     expect(drawer).toHaveTextContent('What Your Coach Sees (Observed Stats & Guardrails)');
     expect(drawer).toHaveTextContent('Observed: 4 matches · 10m/20m timelines loaded');
     expect(drawer).toHaveTextContent('Guardrails: Target ≠ missed CS · No guessed wave states');
-    expect(drawer).toHaveTextContent('10–20m: 9.15/m (2G)');
-    expect(drawer).toHaveTextContent('Bounty: 750g');
-    expect(drawer).toHaveTextContent('Unspent med: 800g (11 1m checks, neutral)');
+    expect(drawer).toHaveTextContent('9.15/m (2G)');
+    expect(drawer).toHaveTextContent('750g (3D)');
+    expect(drawer).toHaveTextContent('800.0g / 854.5g');
   });
 });
 

@@ -562,12 +562,14 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
       className={`bg-slate-50/70 dark:bg-[#0b101d] rounded-lg ${compact ? 'mt-0' : 'mt-4'} border border-slate-200 dark:border-slate-800 p-4`}
     >
       {/* Section Header + Filter Pills */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-200 dark:border-slate-800">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-              5-Stat Improvement Summary
-            </h3>
+            {!compact && (
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
+                5-Stat Improvement Summary
+              </h3>
+            )}
             <span
               data-testid="improvement-stats-sample-badge"
               className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 telemetry-nums"
@@ -584,9 +586,11 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
                 : `Match-Level Only (Timeline Not Analyzed · ${excludedMissingTimelineGames}G)`}
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            Mid/late CS per minute, 10m &amp; 20m lane leads, death time &amp; bounty gold, 1-minute gold-in-hand snapshots, and team vs personal objectives.
-          </p>
+          {!compact && (
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+              Mid/late CS per minute, 10m &amp; 20m lane leads, death time &amp; bounty gold, 1-minute gold-in-hand snapshots, and team vs personal objectives.
+            </p>
+          )}
         </div>
 
         {!sliceHasTimelineData && onAnalyzeTimeline && (
@@ -689,7 +693,10 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
                 </span>
               </div>
               <div className="space-y-0.5 text-[11px]">
-                <div className="flex justify-between gap-1">
+                <div
+                  data-testid="summary-lane-cs-10-actual"
+                  className="flex justify-between gap-1"
+                >
                   <span className="text-slate-500 dark:text-slate-400">Avg @10m:</span>
                   <span className="font-bold text-slate-800 dark:text-slate-100">
                     {laneCs10Evidence.summary
@@ -697,7 +704,10 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
                       : 'Unavailable (0G)'}
                   </span>
                 </div>
-                <div className="flex justify-between gap-1">
+                <div
+                  data-testid="summary-lane-cs-10-target"
+                  className="flex justify-between gap-1"
+                >
                   <span className="text-slate-500 dark:text-slate-400">
                     Target (&ne; missed CS):
                   </span>
@@ -705,12 +715,29 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
                     {laneCs10Evidence.summary?.avgTarget !== null &&
                     laneCs10Evidence.summary?.avgTarget !== undefined
                       ? `${laneCs10Evidence.summary.avgTarget} CS (${laneCs10Evidence.summary.targetMatchCount}G)`
-                      : laneCs10Evidence.summary?.avgSupportedActual !== null &&
-                        laneCs10Evidence.summary?.avgSupportedActual !== undefined
-                      ? `${laneCs10Evidence.summary.avgSupportedActual} CS in ${laneCs10Evidence.summary.targetMatchCount}G (mixed patch)`
-                      : 'Pre-26.1 (no target)'}
+                      : laneCs10Evidence.summary?.targetMatchCount &&
+                        laneCs10Evidence.summary.targetMatchCount > 0
+                      ? 'Unavailable (mixed patch)'
+                      : laneCs10Evidence.summary
+                      ? 'Unavailable (pre-26.1)'
+                      : 'Unavailable'}
                   </span>
                 </div>
+                {laneCs10Evidence.summary?.avgTarget === null &&
+                  laneCs10Evidence.summary?.avgSupportedActual !== null &&
+                  laneCs10Evidence.summary?.avgSupportedActual !== undefined &&
+                  laneCs10Evidence.summary.targetMatchCount > 0 && (
+                    <div
+                      data-testid="summary-lane-cs-10-supported-actual"
+                      className="flex justify-between gap-1"
+                    >
+                      <span className="text-slate-500 dark:text-slate-400">26.1+ actual:</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-100 text-right">
+                        {laneCs10Evidence.summary.avgSupportedActual} CS (
+                        {laneCs10Evidence.summary.targetMatchCount}G)
+                      </span>
+                    </div>
+                  )}
               </div>
             </div>
             <button

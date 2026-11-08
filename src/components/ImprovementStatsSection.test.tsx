@@ -553,9 +553,16 @@ describe('ImprovementStatsSection', () => {
 
     const summaryLaneCs10 = screen.getByTestId('summary-lane-cs-10');
     expect(summaryLaneCs10).toHaveTextContent('2G laner · 1 excl.');
-    expect(summaryLaneCs10).toHaveTextContent('79 CS (2G)');
-    expect(summaryLaneCs10).toHaveTextContent('Target (≠ missed CS):');
-    expect(summaryLaneCs10).toHaveTextContent('82 CS in 1G (mixed patch)');
+    expect(screen.getByTestId('summary-lane-cs-10-actual')).toHaveTextContent('Avg @10m:');
+    expect(screen.getByTestId('summary-lane-cs-10-actual')).toHaveTextContent('79 CS (2G)');
+    const summaryTargetRow = screen.getByTestId('summary-lane-cs-10-target');
+    expect(summaryTargetRow).toHaveTextContent('Target (≠ missed CS):');
+    expect(summaryTargetRow).toHaveTextContent('Unavailable (mixed patch)');
+    // Regression guard: supported actual (82 CS) must NEVER be rendered under the Target row
+    expect(summaryTargetRow).not.toHaveTextContent('82');
+    const summarySupportedActualRow = screen.getByTestId('summary-lane-cs-10-supported-actual');
+    expect(summarySupportedActualRow).toHaveTextContent('26.1+ actual:');
+    expect(summarySupportedActualRow).toHaveTextContent('82 CS (1G)');
     expect(summaryLaneCs10).toHaveTextContent('Inspect evidence (4G) →');
 
     const toggleBtn = screen.getByTestId('inspect-evidence-cards-toggle');

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { chatWithAi, submitFeedback } from '../api/ai';
+import ImprovementStatsSection from './ImprovementStatsSection';
+import type { ImprovementStatsDto } from '../types/improvementStats';
+import type { MatchDto } from '../types/match';
 
 interface AiContextData {
   summonerName: string;
@@ -16,6 +19,12 @@ interface AiAnalysisModalProps {
   context: AiContextData;
   /** If provided, automatically sends this message when the modal first opens. */
   initialMessage?: string;
+  improvementStats?: ImprovementStatsDto;
+  hasTimelineAnalysis?: boolean;
+  onAnalyzeTimeline?: () => void;
+  loadingTimeline?: boolean;
+  matches?: MatchDto[];
+  puuid?: string;
 }
 
 interface Message {
@@ -67,7 +76,19 @@ const generatePersonalizedSuggestions = (context: AiContextData): string[] => {
   return suggestions.slice(0, 5);
 };
 
-const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summonerName, context, initialMessage }) => {
+const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
+  isOpen,
+  onClose,
+  summonerName,
+  context,
+  initialMessage,
+  improvementStats,
+  hasTimelineAnalysis = false,
+  onAnalyzeTimeline,
+  loadingTimeline = false,
+  matches,
+  puuid,
+}) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -313,7 +334,7 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
                   : 'text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/50'
               }`}
             >
-              {showEvidenceDrawer ? 'Hide Evidence' : 'Inspect Evidence'}
+              {showEvidenceDrawer ? 'Hide Evidence' : 'Show Evidence'}
             </button>
             <button
               type="button"
@@ -334,12 +355,12 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
           </div>
         </div>
 
-        {/* Collapsible Coach Evidence Drawer */}
+        {/* Collapsible In-Coach Evidence Surface */}
         {showEvidenceDrawer && (
           <div
             id="ai-coach-evidence-drawer"
             data-testid="ai-coach-evidence-drawer"
-            className="px-4 py-3 sm:px-6 bg-slate-50/95 dark:bg-slate-950/90 border-b border-indigo-200/70 dark:border-indigo-900/60 max-h-60 overflow-y-auto text-xs space-y-2 shrink-0"
+            className="px-4 py-3 sm:px-6 bg-slate-50/95 dark:bg-slate-950/90 border-b border-indigo-200/70 dark:border-indigo-900/60 max-h-[65vh] overflow-y-auto text-xs space-y-2.5 shrink-0"
           >
             <div className="flex flex-wrap items-center justify-between gap-1.5">
               <span className="font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
@@ -358,79 +379,91 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 telemetry-nums">
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2">
-                <div className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
-                  Early 10m Lane CS
+            {improvementStats ? (
+              <ImprovementStatsSection
+                stats={improvementStats}
+                hasTimelineAnalysis={hasTimelineAnalysis}
+                onAnalyzeTimeline={onAnalyzeTimeline}
+                loadingTimeline={loadingTimeline}
+                matches={matches}
+                puuid={puuid}
+                compact={true}
+              />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 telemetry-nums">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2">
+                  <div className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
+                    Early 10m Lane CS
+                  </div>
+                  <div className="mt-0.5 text-slate-800 dark:text-slate-100 font-semibold">
+                    {avgLaneCs10
+                      ? `Avg ${avgLaneCs10.avgActual} CS (${avgLaneCs10.matchCount}G) · ${
+                          avgLaneCs10.avgTarget !== null && avgLaneCs10.avgTarget !== undefined
+                            ? `Target ${avgLaneCs10.avgTarget} CS (${avgLaneCs10.targetMatchCount}G)`
+                            : avgLaneCs10.targetMatchCount
+                            ? `Target: Unavailable (mixed patch) · 26.1+ actual: ${avgLaneCs10.avgSupportedActual ?? avgLaneCs10.avgActual} CS (${avgLaneCs10.targetMatchCount}G)`
+                            : 'Target: Unavailable (pre-26.1)'
+                        }`
+                      : 'No eligible laner games'}
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                    {missingCs10 > 0 ? `${missingCs10}G short/missing excl. · ` : ''}Role target &ne; missed CS
+                  </div>
                 </div>
-                <div className="mt-0.5 text-slate-800 dark:text-slate-100 font-semibold">
-                  {avgLaneCs10
-                    ? `Avg ${avgLaneCs10.avgActual} CS (${avgLaneCs10.matchCount}G) · ${
-                        avgLaneCs10.avgTarget !== null && avgLaneCs10.avgTarget !== undefined
-                          ? `Target ${avgLaneCs10.avgTarget} CS (${avgLaneCs10.targetMatchCount}G)`
-                          : avgLaneCs10.targetMatchCount
-                          ? `${avgLaneCs10.avgSupportedActual ?? avgLaneCs10.avgActual} CS in ${avgLaneCs10.targetMatchCount}G w/ target (mixed patch)`
-                          : 'No target (pre-26.1)'
-                      }`
-                    : 'No eligible laner games'}
-                </div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                  {missingCs10 > 0 ? `${missingCs10}G short/missing excl. · ` : ''}Role target &ne; missed CS
-                </div>
+
+                {imp && (
+                  <>
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2">
+                      <div className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
+                        1. Mid &amp; Late CS/m
+                      </div>
+                      <div className="mt-0.5 text-slate-800 dark:text-slate-100 font-semibold">
+                        10–20m: {imp.phaseFarming?.min10To20?.avgTotalCsPerMin ?? 'Unavailable'}/m ({imp.phaseFarming?.min10To20?.eligibleGames ?? 0}G)
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                        20m+: {imp.phaseFarming?.min20ToEnd?.avgTotalCsPerMin ?? 'Unavailable'}/m ({imp.phaseFarming?.min20ToEnd?.eligibleGames ?? 0}G) · Short games excluded
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2">
+                      <div className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
+                        2. 10m &amp; 20m Lane Leads
+                      </div>
+                      <div className="mt-0.5 text-slate-800 dark:text-slate-100 font-semibold">
+                        @10m: {imp.leadRetention?.avgGoldLeadAt10 ?? 'Unavailable'}g ({imp.leadRetention?.eligibleGamesAt10 ?? 0}G) · @20m: {imp.leadRetention?.avgGoldLeadAt20 ?? 'Unavailable'}g ({imp.leadRetention?.eligibleGamesAt20 ?? 0}G)
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                        10–20m events are timing context, not proof of a throw
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2">
+                      <div className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
+                        3. Death Cost &amp; 4. Unspent Gold
+                      </div>
+                      <div className="mt-0.5 text-slate-800 dark:text-slate-100 font-semibold">
+                        Dead: {imp.deathCost?.avgTimeSpentDeadSeconds ?? 'Unavailable'}s/g ({imp.deathCost?.eligibleTimeDeadGames ?? 0}G) · Bounty: {imp.deathCost?.bounty?.totalCombinedBountyGold ?? 'Unavailable'}g
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                        Unspent med: {imp.unspentGold?.medianCurrentGold ?? 'Unavailable'}g ({imp.unspentGold?.sampleCount ?? 0} 1m checks, neutral)
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2 sm:col-span-2">
+                      <div className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
+                        5. Objectives ({imp.teamObjectives?.eligibleTeamObjectiveGames ?? 0}G)
+                      </div>
+                      <div className="mt-0.5 text-slate-800 dark:text-slate-100 font-semibold">
+                        Towers: {imp.teamObjectives?.tower?.teamAvg ?? '—'} vs {imp.teamObjectives?.tower?.enemyAvg ?? '—'} · Dragons: {imp.teamObjectives?.dragon?.teamAvg ?? '—'} vs {imp.teamObjectives?.dragon?.enemyAvg ?? '—'}
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                        5v5 team totals kept separate from personal takedowns; missing stats stay Unavailable
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
-
-              {imp && (
-                <>
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2">
-                    <div className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
-                      1. Mid &amp; Late CS/m
-                    </div>
-                    <div className="mt-0.5 text-slate-800 dark:text-slate-100 font-semibold">
-                      10–20m: {imp.phaseFarming?.min10To20?.avgTotalCsPerMin ?? 'Unavailable'}/m ({imp.phaseFarming?.min10To20?.eligibleGames ?? 0}G)
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                      20m+: {imp.phaseFarming?.min20ToEnd?.avgTotalCsPerMin ?? 'Unavailable'}/m ({imp.phaseFarming?.min20ToEnd?.eligibleGames ?? 0}G) · Short games excluded
-                    </div>
-                  </div>
-
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2">
-                    <div className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
-                      2. 10m &amp; 20m Lane Leads
-                    </div>
-                    <div className="mt-0.5 text-slate-800 dark:text-slate-100 font-semibold">
-                      @10m: {imp.leadRetention?.avgGoldLeadAt10 ?? 'Unavailable'}g ({imp.leadRetention?.eligibleGamesAt10 ?? 0}G) · @20m: {imp.leadRetention?.avgGoldLeadAt20 ?? 'Unavailable'}g ({imp.leadRetention?.eligibleGamesAt20 ?? 0}G)
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                      10–20m events are timing context, not proof of a throw
-                    </div>
-                  </div>
-
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2">
-                    <div className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
-                      3. Death Cost &amp; 4. Unspent Gold
-                    </div>
-                    <div className="mt-0.5 text-slate-800 dark:text-slate-100 font-semibold">
-                      Dead: {imp.deathCost?.avgTimeSpentDeadSeconds ?? 'Unavailable'}s/g ({imp.deathCost?.eligibleTimeDeadGames ?? 0}G) · Bounty: {imp.deathCost?.bounty?.totalCombinedBountyGold ?? 'Unavailable'}g
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                      Unspent med: {imp.unspentGold?.medianCurrentGold ?? 'Unavailable'}g ({imp.unspentGold?.sampleCount ?? 0} 1m checks, neutral)
-                    </div>
-                  </div>
-
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2 sm:col-span-2">
-                    <div className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
-                      5. Objectives ({imp.teamObjectives?.eligibleTeamObjectiveGames ?? 0}G)
-                    </div>
-                    <div className="mt-0.5 text-slate-800 dark:text-slate-100 font-semibold">
-                      Towers: {imp.teamObjectives?.tower?.teamAvg ?? '—'} vs {imp.teamObjectives?.tower?.enemyAvg ?? '—'} · Dragons: {imp.teamObjectives?.dragon?.teamAvg ?? '—'} vs {imp.teamObjectives?.dragon?.enemyAvg ?? '—'}
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                      5v5 team totals kept separate from personal takedowns; missing stats stay Unavailable
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
+            )}
           </div>
         )}
 
