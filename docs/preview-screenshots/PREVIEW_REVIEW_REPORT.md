@@ -1,48 +1,32 @@
 # Pro CS Comparison — Searched Player Profile Tab & Standalone Preview Review
 
-## 1. Narrow Integration Plan & Backend Memory-Guard Audit
+## 1. Data-Path Status: Synthetic Test Profiles vs. In-App PUUID Wiring (Unverified Live)
 
-### Where It Lives in the UI
-- **Searched Player Profile Tab (`SummonerInfo.tsx`)**: Added an inline profile tab bar (`Profile Overview` | `Pro CS Comparison`) inside the searched player's profile card (`SummonerInfo.tsx`). Top-level navigation (`NavigationLayout.tsx`) and production routes remain untouched.
-- **Review Surface (`/?preview=pro-comparison&surface=profile` & `/pro-comparison-preview.html`)**: Opens the Searched Player Profile Tab directly for side-by-side review, with an instant toggle between:
-  - **`Searched Player Profile Tab`** (contract review using recorded `MatchDto` + `MatchTimelineDto` payloads for `BladeRunner#EUW` and `ArcaneWave#KR1`, plus a client-side **`Load Local JSON`** inspector for any exported `{ puuid, region, matches, timelines }` bundle),
-  - **`Reference`** (standalone 8-game / 80-player-game / 53-pair Worlds 2026 catalog), and
-  - **`Demo CS Input`** (clearly labeled manual fallback).
-
-### Existing Data Flow Audit & Why `powerSpikeTimelines` Is Not Used
-- **Audited Frontend State**: `SearchPage.tsx` passes `summoner` (`puuid`, `gameName`, `tagLine`), `region`, `matches` (`visibleMatches: MatchDto[]`), and `improvementStats` into `SummonerInfo.tsx`.
-- **Audited Backend Endpoints (Read-Only Inspection)**:
-  1. `GET /api/riot/timeline/analyze/{region}/{puuid}` (`TimelineController.kt:44` -> `TimelineAnalysisService.analyzeRecentMatches`):
-     - Fetches up to **20 match IDs**, loads up to **20 full `MatchTimelineDto` + 20 `MatchDto` payloads concurrently** in memory (`TimelineAnalysisService.kt:64-97`), and computes `powerSpikeTimelines`.
-     - **Lossy CS Points (`TimelineAnalysisService.kt:1647-1651`)**: `buildPowerSpikePoints` computes `val minute = ((frame.timestamp ?: 0) / 60000).toInt()` (flooring timestamps without a checkpoint tolerance window) and `val pcs = (playerFrame.minionsKilled ?: 0) + (playerFrame.jungleMinionsKilled ?: 0)` (silently defaulting missing/null counters to `0`).
-     - **Incomplete Phase Farming (`TimelineAnalysisService.kt:639-676`)**: `MatchPhaseFarmingDto` only exports `10m`, `20m`, and `End` (omitting `5m`, `15m`, `25m`, `30m`).
-     - **Memory Risk**: Because `analyzeTimelines` hydrates up to 20 timelines at once, triggering it automatically for Pro CS comparison would create avoidable heap pressure against the paused production instance (`350 MiB` admission / `360 MiB` stop guard).
-  2. `GET /api/riot/timeline/{region}/{matchId}` (`TimelineController.kt:23` -> `TimelineService.getMatchTimeline`):
-     - Single-match lookup backed by a **24-hour Redis cache** (`match-timeline:{region}:{matchId}` in `TimelineService.kt:25-39`) returning raw `MatchTimelineDto` frames with timestamped `ParticipantFrameDto.minionsKilled` and `jungleMinionsKilled`.
-- **Chosen Bounded Path**:
-  - **Zero automatic background/mount requests**: Opening a player profile or switching to the `Pro CS Comparison` tab makes **0** automatic network calls when timelines are already provided or cached, and never calls `analyzeTimelines`.
-  - **Bounded On-Demand Single-Match Fetch (`MAX_BOUNDED_TIMELINE_FETCHES = 5`)**: When a live searched player clicks `Load Timelines (up to 5G)` for their selected `(champion, role)` slice, `ProfileProComparisonTab` fetches at most 5 single-match timelines via `getMatchTimeline(region, matchId)` and caches them by `${region}::${matchId}`.
-  - **Zero Live Probes / Zero Backend Changes**: No live production or Riot API calls, collector starts, or backend changes were made.
-
-### Strict Extraction & Comparison Contract (`searchedPlayerProAdapter.ts`)
-- **Explicit Identity & Participant Mapping**:
-  - Resolves the searched player in `MatchDto.info.participants` strictly by `p.puuid === puuid` (never by array index).
-  - Resolves the timeline `participantId` in `MatchTimelineDto` strictly via `info.participants[].puuid` and cross-validates `metadata.participants` and the `MatchDto` `participantId`. Mismatched PUUIDs or missing participant mappings are rejected (`'participant_not_found'`).
-- **Timestamped Raw Counter Extraction ($\pm 30\text{s}$ Window)**:
-  - Evaluates checkpoints at `5m`, `10m`, `15m`, `20m`, `25m`, `30m` using `findTimestampedCheckpointFrame(frames, minute, gameDurationSeconds, 30_000)` (closest frame to `minute * 60_000` within $\pm 30,000\text{ms}$ and `<= (gameDurationSeconds + 30) * 1000`).
-  - **Short Games Excluded**: If `gameDurationSeconds < minute * 60`, the checkpoint is marked `'game_ended_before_checkpoint'` (`totalCs: null`) and excluded from the mean denominator—never filled with `0`.
-  - **Nullable Counter Guard**: If either `minionsKilled` or `jungleMinionsKilled` is `null`, `undefined`, or non-finite, the checkpoint is marked `'missing_counter'` (`totalCs: null`) and excluded from the mean denominator—never defaulted to `0`.
+1. **`recordedPlayerContractSample.ts` Is Synthetic (`Synthetic test profile / Not real player data`)**:
+   - The preview profiles (`BladeRunner#EUW` and `ArcaneWave#KR1`) in `src/prototype/pro-benchmark/recordedPlayerContractSample.ts` are **synthetic test fixtures** with fabricated PUUIDs (`puuid-synthetic-euw-top-001`, `puuid-synthetic-kr-mid-002`), profile/rank metadata, match IDs, gold/XP, and timeline frames constructed to exercise the `MatchDto` + `MatchTimelineDto` TypeScript contract and edge cases (non-index PUUID mapping, short 23:00 game, `30m` unavailable in pro export, and unsupported `Garen · Top`).
+   - They are **not** real Riot accounts or recorded production payloads, and are visibly badged **`Synthetic test profile / Not real player data`** in the UI.
+2. **Exact Data-Path Limitation**:
+   - **Standalone Preview (`pro-comparison-preview.html` / `/?preview=pro-comparison&surface=profile`)**: Operates strictly on **synthetic test profiles** or user-pasted **client-side local JSON** (`Review Controls` -> `Load Local JSON`). Zero network requests are made.
+   - **In-App Searched Player Integration (`SearchPage.tsx` -> `SummonerInfo.tsx` -> `ProfileProComparisonTab.tsx`)**: Actual PUUID, region, `visibleMatches` (`MatchDto[]`), and on-demand `getMatchTimeline(region, matchId)` wiring is implemented in code, **but live runtime calls against the backend / Riot API are unverified**.
+3. **Current Auth / CORS / Memory-Guard Blockers**:
+   - **Memory Guard Blocker**: Pinned production is paused under the `350 MiB` admission / `360 MiB` stop guard, and no live production requests, restarts, or Riot API probes are authorized.
+   - **Frontend `apiClient` + Backend CORS (`apiClient.ts` & `SecurityConfig.kt`)**:
+     - Backend `SecurityConfig.kt:60` configures `.requestMatchers("/api/riot/**").permitAll()`, so `/api/riot/summoner/{region}/{gameName}/{tagLine}` and `/api/riot/timeline/{region}/{matchId}` do **not** require a logged-in user JWT.
+     - However, frontend `apiClient.ts:9-12` requires `VITE_API_BASE_URL` and sets `withCredentials: true`, while backend `SecurityConfig.kt:34,104-119` restricts `Access-Control-Allow-Origin` to `cors.allowed-origins` (`http://localhost:5173` locally). Any preview origin not listed in `cors.allowed-origins` is blocked by browser CORS when `withCredentials: true` is sent.
+4. **Smallest Safe Path for Real-Data Review (Zero Production Risk)**:
+   - **Path A — Zero-Backend Offline Real-JSON Inspection (0 MiB backend heap)**: Export 1 real cached `MatchDto` + 1 `MatchTimelineDto` JSON payload (from a local dev cache or saved Riot `match-v5` response) into `{"puuid":"...","region":"EUW1","gameName":"...","tagLine":"...","visibleMatches":[...],"timelinesByMatchId":{"...":...}}` and paste it into `Review Controls` -> `Load Local JSON` (100% in-browser).
+   - **Path B — Local Single-Match Timeline Verification (1 match = 1 timeline call)**: Against a local dev backend (`VITE_API_BASE_URL=http://localhost:8080`, `cors.allowed-origins=http://localhost:5173`), search 1 real Riot ID, open the `Pro CS Comparison` tab inside `SummonerInfo`, select **1 specific match** in `Match Scope` (which scopes `unloadedMatchIdsForSelectedPair` to `1G`), and click `Load Timelines (1G)`—issuing exactly **1** `GET /api/riot/timeline/{region}/{matchId}` request (24h Redis TTL) and never calling the 20-match `analyzeTimelines` endpoint.
 
 ## 2. Viewport & Runtime Verification Metrics
 
 | Surface & Viewport | `scrollWidth === innerWidth` | Total Page Height | Top of `5m` Checkpoint Card | Console / Page Errors | External Network Calls |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Profile Tab — Desktop (`1280×900`)** | `1280 === 1280` (0 overflow) | `900px` | **`403px`** | `0` | `0` |
-| **Profile Tab — Mobile (`390×844`)** | `390 === 390` (0 overflow) | `1660px` | **`874px`** | `0` | `0` |
-| **Profile Tab — Mobile (`320×568`)** | `320 === 320` (0 overflow) | `1928px` | **`1072px`** | `0` | `0` |
-| **Standalone Reference — Desktop (`1280×900`)** | `1280 === 1280` (0 overflow) | `900px` | **`263px`** | `0` | `0` |
-| **Standalone Reference — Mobile (`390×844`)** | `390 === 390` (0 overflow) | `991px` | **`500px`** | `0` | `0` |
-| **Standalone Reference — Mobile (`320×568`)** | `320 === 320` (0 overflow) | `1099px` | **`532px`** | `0` | `0` |
+| **Profile Tab — Desktop (`1280×900`)** | `1280 === 1280` (0 overflow) | `900px` | **`151px`** (down from `403px`) | `0` | `0` |
+| **Profile Tab — Mobile (`390×844`)** | `390 === 390` (0 overflow) | `1019px` | **`280px`** (down from `874px`; beats `b247`'s `472px`) | `0` | `0` |
+| **Profile Tab — Mobile (`320×568`)** | `320 === 320` (0 overflow) | `1069px` | **`315px`** (down from `1072px`; beats `b247`'s `500px`) | `0` | `0` |
+| **Standalone Reference — Desktop (`1280×900`)** | `1280 === 1280` (0 overflow) | `900px` | **`259px`** | `0` | `0` |
+| **Standalone Reference — Mobile (`390×844`)** | `390 === 390` (0 overflow) | `957px` | **`468px`** | `0` | `0` |
+| **Standalone Reference — Mobile (`320×568`)** | `320 === 320` (0 overflow) | `1093px` | **`528px`** | `0` | `0` |
 
 ## 3. Screenshots & Standalone Artifact in Repository (`docs/preview-screenshots/`)
 

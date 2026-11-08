@@ -37,10 +37,10 @@ export interface ProfileProComparisonTabProps {
    */
   initialTimelinesByMatchId?: Record<string, MatchTimelineDto | null | undefined>;
   /**
-   * Distinguishes live profile integration from recorded contract samples in the standalone review preview.
-   * Fixtures / recorded samples are never labelled as a live connected backend.
+   * Distinguishes live profile integration from synthetic test profiles or local JSON in review preview.
+   * Synthetic test profiles are never labelled as real player data or a live connected backend.
    */
-  dataSourceMode?: 'live_profile' | 'contract_review';
+  dataSourceMode?: 'live_profile' | 'synthetic_test_profile' | 'local_json';
   /**
    * Optional timeline fetcher override (defaults to `getMatchTimeline(region, matchId)`).
    */
@@ -255,79 +255,13 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
       data-testid="profile-pro-comparison-tab"
       data-bound-puuid={puuid}
       data-bound-region={region}
-      className="mt-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-[#0b101d] p-3 text-slate-900 dark:text-slate-100 telemetry-nums"
+      data-bound-identity={`${gameName}#${tagLine} (${region.toUpperCase()})`}
+      data-source-mode={dataSourceMode}
+      className="mt-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-[#0b101d] p-2.5 text-slate-900 dark:text-slate-100 telemetry-nums"
     >
-      {/* Single Compact Mode & Identity Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-1.5 pb-2.5 border-b border-slate-200 dark:border-slate-800">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span
-            data-testid="pro-comparison-identity-badge"
-            className="px-2 py-0.5 rounded text-[11px] font-bold bg-sky-100 text-sky-800 dark:bg-cyan-950/70 dark:text-cyan-300 border border-sky-300 dark:border-cyan-800/60"
-          >
-            {gameName}#{tagLine} ({region.toUpperCase()})
-          </span>
-          <span
-            data-testid="pro-comparison-datasource-badge"
-            className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-              dataSourceMode === 'contract_review'
-                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'
-                : 'bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700'
-            }`}
-          >
-            {dataSourceMode === 'contract_review'
-              ? 'Recorded Contract Sample (Not Live API)'
-              : 'Profile Match & Timeline Data'}
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1">
-          <button
-            type="button"
-            data-testid="surface-mode-player-btn"
-            onClick={() => setSurfaceMode('player_vs_pro')}
-            className={`px-2 py-1 rounded text-[11px] font-bold border transition-colors ${
-              surfaceMode === 'player_vs_pro'
-                ? 'bg-sky-600 text-white border-sky-500 dark:bg-cyan-500 dark:text-slate-950 dark:border-cyan-400'
-                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            Player vs Pro ({comparison.pairOptions.length})
-          </button>
-          <button
-            type="button"
-            data-testid="surface-mode-catalog-btn"
-            onClick={() => setSurfaceMode('pro_catalog')}
-            className={`px-2 py-1 rounded text-[11px] font-bold border transition-colors ${
-              surfaceMode === 'pro_catalog'
-                ? 'bg-sky-600 text-white border-sky-500 dark:bg-cyan-500 dark:text-slate-950 dark:border-cyan-400'
-                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            Pro Catalog ({allSupportedProPairs.length})
-          </button>
-          <button
-            type="button"
-            data-testid="surface-mode-demo-btn"
-            onClick={() => {
-              setSurfaceMode('manual_demo');
-              if (Object.keys(demoInputs).length === 0) {
-                setDemoInputs(DEFAULT_DEMO_INPUTS);
-              }
-            }}
-            className={`px-2 py-1 rounded text-[11px] font-bold border transition-colors ${
-              surfaceMode === 'manual_demo'
-                ? 'bg-amber-500 text-slate-950 border-amber-400'
-                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            Demo Fallback
-          </button>
-        </div>
-      </div>
-
-      {/* MODE 1: SEARCHED PLAYER VS PRO REFERENCE */}
+      {/* MODE 1: SEARCHED PLAYER VS PRO REFERENCE (Default Essentials View) */}
       {surfaceMode === 'player_vs_pro' && (
-        <div className="mt-2.5 space-y-2.5">
+        <div className="space-y-2">
           {comparison.pairOptions.length === 0 ? (
             <div
               data-testid="no-positional-matches-state"
@@ -349,14 +283,14 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
             </div>
           ) : (
             <>
-              {/* Compact Controls Row: Champion+Role Select + Match Scope Select + Timeline Action */}
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
-                <div className="sm:col-span-5">
+              {/* Compact 2-Column Essentials Filter Row: Champion·Role + Match Scope */}
+              <div className="grid grid-cols-2 gap-1.5 items-end">
+                <div className="min-w-0">
                   <label
                     htmlFor="player-pair-select"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5"
+                    className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5 truncate"
                   >
-                    Played Champion · Role
+                    Champion · Role
                   </label>
                   <select
                     id="player-pair-select"
@@ -367,7 +301,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                       setSelectedMatchId('ALL');
                       setTimelineFetchError(null);
                     }}
-                    className="w-full rounded bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                    className="w-full min-w-0 truncate rounded bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                   >
                     {comparison.pairOptions.map((opt) => (
                       <option key={opt.pairKey} value={opt.pairKey}>
@@ -381,10 +315,10 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                   </select>
                 </div>
 
-                <div className="sm:col-span-5">
+                <div className="min-w-0">
                   <label
                     htmlFor="player-match-scope-select"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5"
+                    className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5 truncate"
                   >
                     Match Scope
                   </label>
@@ -393,44 +327,18 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                     data-testid="player-match-scope-select"
                     value={comparison.selectedMatchId}
                     onChange={(e) => setSelectedMatchId(e.target.value)}
-                    className="w-full rounded bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                    className="w-full min-w-0 truncate rounded bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                   >
                     <option value="ALL">
-                      All {selectedPair?.championId} · {selectedPair?.roleDisplay} Matches (
+                      All {selectedPair?.championId} · {selectedPair?.roleDisplay} (
                       {selectedPair?.playerGameCount ?? 0}G Mean)
                     </option>
                     {selectedPair?.matches.map((m) => (
                       <option key={m.matchId} value={m.matchId}>
-                        {m.matchId} · {m.gameDurationFormatted} · {m.win ? 'Win' : 'Loss'} · Patch{' '}
-                        {m.patch}
-                        {m.endTotalCsFromMatchDto !== null ? ` (End ${m.endTotalCsFromMatchDto} CS)` : ''}
+                        {m.matchId} ({m.gameDurationFormatted} · {m.win ? 'W' : 'L'} · {m.patch})
                       </option>
                     ))}
                   </select>
-                </div>
-
-                <div className="sm:col-span-2 flex sm:justify-end">
-                  {comparison.unloadedMatchIdsForSelectedPair.length > 0 ? (
-                    <button
-                      type="button"
-                      data-testid="load-pair-timelines-btn"
-                      disabled={loadingTimelines}
-                      onClick={handleLoadTimelinesForSelectedPair}
-                      className="w-full sm:w-auto px-2.5 py-1.5 rounded text-xs font-extrabold bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500 transition-colors disabled:opacity-60"
-                    >
-                      {loadingTimelines
-                        ? 'Loading...'
-                        : `Load Timelines (${comparison.unloadedMatchIdsForSelectedPair.length}G)`}
-                    </button>
-                  ) : (
-                    <span
-                      data-testid="timelines-loaded-indicator"
-                      className="inline-flex items-center px-2 py-1.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 whitespace-nowrap"
-                    >
-                      Timelines ({selectedPair?.loadedTimelineCount ?? 0}/
-                      {selectedPair?.playerGameCount ?? 0}G)
-                    </span>
-                  )}
                 </div>
               </div>
 
@@ -438,54 +346,76 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                 <div
                   role="alert"
                   data-testid="timeline-fetch-error"
-                  className="rounded border border-rose-500/40 bg-rose-500/10 px-2.5 py-1.5 text-xs text-rose-700 dark:text-rose-200"
+                  className="rounded border border-rose-500/40 bg-rose-500/10 px-2.5 py-1 text-xs text-rose-700 dark:text-rose-200"
                 >
                   {timelineFetchError}
                 </div>
               )}
 
-              {/* Context Summary Bar */}
+              {/* Single-Line Context Strip */}
               {selectedPair && (
                 <div
                   data-testid="comparison-context-bar"
-                  className="flex flex-wrap items-center justify-between gap-1.5 text-xs"
+                  className="flex flex-wrap items-center justify-between gap-1 text-[11px]"
                 >
-                  <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1">
                     <span
                       data-testid="paired-selection-title"
-                      className="font-extrabold text-sm text-slate-900 dark:text-white"
+                      className="font-extrabold text-xs text-slate-900 dark:text-white mr-0.5"
                     >
                       {selectedPair.roleDisplay} · {selectedPair.championId}
                     </span>
-                    <span className="px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-700 dark:text-cyan-300 border border-sky-500/30 font-semibold text-[11px]">
-                      Player: {comparison.activeMatches.length}G (
-                      {selectedPair.queueLabels.join(', ') || 'Matchmade'} · Patch{' '}
+                    <span className="px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-700 dark:text-cyan-300 border border-sky-500/30 font-semibold text-[10px]">
+                      Player {comparison.activeMatches.length}G (
+                      {selectedPair.queueLabels.join(', ') || 'Matchmade'} ·{' '}
                       {selectedPair.patches.join(', ') || 'Unknown'})
                     </span>
                     {selectedPair.proReferenceAvailable && comparison.proSlice ? (
                       <span
                         data-testid="pro-reference-context-badge"
-                        className="px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 font-semibold text-[11px]"
+                        className="px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 font-semibold text-[10px]"
                       >
-                        Pro Ref: {comparison.proSlice.matchingObservationCount}G Worlds 2026 (
-                        {comparison.proSlice.playersInSlice.join(', ')} · Patch{' '}
+                        Pro {comparison.proSlice.matchingObservationCount}G Worlds 2026 (
+                        {comparison.proSlice.playersInSlice.join(', ')} ·{' '}
                         {comparison.proSlice.patchShort})
                       </span>
                     ) : (
                       <span
                         data-testid="unsupported-pro-pair-badge"
-                        className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-semibold text-[11px]"
+                        className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-semibold text-[10px]"
                       >
                         No Pro Reference in 8-Game Sample (0G for {selectedPair.championId} ·{' '}
                         {selectedPair.roleDisplay})
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                    Total CS = Lane + Jungle (±{CHECKPOINT_TOLERANCE_MS / 1000}s)
-                  </span>
+
+                  <div className="flex items-center gap-1.5">
+                    {comparison.unloadedMatchIdsForSelectedPair.length > 0 ? (
+                      <button
+                        type="button"
+                        data-testid="load-pair-timelines-btn"
+                        disabled={loadingTimelines}
+                        onClick={handleLoadTimelinesForSelectedPair}
+                        className="px-2 py-0.5 rounded text-[11px] font-extrabold bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500 transition-colors disabled:opacity-60"
+                      >
+                        {loadingTimelines
+                          ? 'Loading...'
+                          : `Load Timelines (${comparison.unloadedMatchIdsForSelectedPair.length}G)`}
+                      </button>
+                    ) : (
+                      <span
+                        data-testid="timelines-loaded-indicator"
+                        className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400"
+                      >
+                        {selectedPair.loadedTimelineCount}/{selectedPair.playerGameCount}G timelines
+                        · L+J (±{CHECKPOINT_TOLERANCE_MS / 1000}s)
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
+
 
               {/* Unsupported Champion+Role Notice (when 0G in pro sample) */}
               {selectedPair && !selectedPair.proReferenceAvailable && (
@@ -650,7 +580,23 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
 
       {/* MODE 2 & 3: PRO CATALOG OR MANUAL DEMO FALLBACK */}
       {(surfaceMode === 'pro_catalog' || surfaceMode === 'manual_demo') && (
-        <div className="mt-3 space-y-3">
+        <div className="space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-slate-200 dark:border-slate-800">
+            <span className="text-xs font-extrabold text-slate-900 dark:text-white">
+              {surfaceMode === 'pro_catalog'
+                ? `Worlds 2026 Pro Catalog (${allSupportedProPairs.length} Pairs)`
+                : 'Manual Demo Scratchpad (Not Searched Player Stats)'}
+            </span>
+            <button
+              type="button"
+              data-testid="surface-mode-player-btn"
+              onClick={() => setSurfaceMode('player_vs_pro')}
+              className="px-2 py-0.5 rounded text-xs font-bold bg-sky-600 text-white dark:bg-cyan-500 dark:text-slate-950"
+            >
+              ← Back to Player vs Pro ({comparison.pairOptions.length})
+            </button>
+          </div>
+
           {surfaceMode === 'manual_demo' && (
             <div
               data-testid="manual-demo-fallback-banner"
@@ -716,7 +662,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
             </select>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
             {PRO_CHECKPOINT_MINUTES.map((minute) => {
               const cp = catalogSlice.checkpoints[minute];
               const demoEval = demoEvaluations[minute];
@@ -724,7 +670,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
               return (
                 <div
                   key={minute}
-                  className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-2.5 flex flex-col justify-between"
+                  className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-2 flex flex-col justify-between"
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-extrabold text-sky-600 dark:text-cyan-400">
@@ -783,15 +729,14 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
       {/* Essential Caveat + On-Demand Disclosure Buttons */}
       <div
         data-testid="profile-comparison-caveat"
-        className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+        className="mt-2.5 pt-2 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
       >
-        <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+        <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
           <strong className="text-amber-600 dark:text-amber-300 font-semibold">Note:</strong>{' '}
-          Player CS uses raw timestamped timeline counters (lane + jungle, ±30s window); ended games
-          or missing counters are excluded (never 0 CS). Pro reference is a small 8-game Worlds 2026
-          sample (80 player-games, {allSupportedProPairs.length} pairs, patch 16.20; many n=1; 30m
-          not exported; CS@10 HUD-checked in 2/8 games)—reference only, not a solo-queue percentile
-          or grade.
+          Raw timeline CS (lane + jungle, ±30s; ended games &amp; missing counters excluded, never 0
+          CS). Pro ref: 8 Worlds 2026 games (80 player-games, {allSupportedProPairs.length} pairs,
+          patch 16.20; many n=1; 30m not exported; CS@10 HUD-checked in 2/8 games)—reference only,
+          not a solo-queue percentile or grade.
         </p>
 
         <div className="flex flex-wrap items-center gap-1.5 shrink-0">
@@ -801,11 +746,11 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
               data-testid="toggle-profile-match-breakdown"
               aria-expanded={showMatchBreakdown}
               onClick={() => setShowMatchBreakdown((prev) => !prev)}
-              className="px-2.5 py-1 rounded text-xs font-bold bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700"
+              className="px-2 py-1 rounded text-[11px] font-bold bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700"
             >
               {showMatchBreakdown
-                ? 'Hide Match Breakdown'
-                : `Match Breakdown (${selectedPair.playerGameCount}G Player / ${selectedPair.proSampleGameCount}G Pro)`}
+                ? 'Hide Breakdown'
+                : `Match Breakdown (${selectedPair.playerGameCount}G / ${selectedPair.proSampleGameCount}G)`}
             </button>
           )}
           <button
@@ -813,7 +758,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
             data-testid="toggle-profile-methodology"
             aria-expanded={showMethodology}
             onClick={() => setShowMethodology((prev) => !prev)}
-            className="px-2.5 py-1 rounded text-xs font-bold bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-sky-700 dark:text-cyan-300 border border-slate-300 dark:border-slate-700"
+            className="px-2 py-1 rounded text-[11px] font-bold bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-sky-700 dark:text-cyan-300 border border-slate-300 dark:border-slate-700"
           >
             {showMethodology ? 'Hide Methodology' : 'Methodology & Limits'}
           </button>
@@ -824,10 +769,10 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
       {showMatchBreakdown && selectedPair && surfaceMode === 'player_vs_pro' && (
         <div
           data-testid="profile-match-breakdown"
-          className="mt-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80 p-3 space-y-3 overflow-x-auto"
+          className="mt-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80 p-2.5 space-y-2.5 overflow-x-auto"
         >
           <div>
-            <h4 className="text-xs font-extrabold text-slate-900 dark:text-white mb-1.5">
+            <h4 className="text-xs font-extrabold text-slate-900 dark:text-white mb-1">
               Searched Player Matches ({gameName}#{tagLine} · {selectedPair.championId} ·{' '}
               {selectedPair.roleDisplay})
             </h4>
@@ -894,7 +839,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
 
           {selectedPair.proReferenceAvailable && comparison.proSlice && (
             <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                 <h4 className="text-xs font-extrabold text-indigo-700 dark:text-indigo-300">
                   Worlds 2026 Pro Reference Games ({selectedPair.championId} ·{' '}
                   {selectedPair.roleDisplay} · Patch {comparison.proSlice.patchShort})
@@ -972,7 +917,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
       {showMethodology && (
         <div
           data-testid="profile-methodology-details"
-          className="mt-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80 p-3 text-xs text-slate-700 dark:text-slate-300 space-y-1.5"
+          className="mt-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80 p-2.5 text-xs text-slate-700 dark:text-slate-300 space-y-1.5"
         >
           <p>
             <strong className="text-slate-900 dark:text-white">
@@ -999,6 +944,30 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
             an authenticated `gameState` clock across all endpoints. Item build timings are excluded
             due to Data Dragon `16.22.1` vs tournament `16.20` metadata mismatch.
           </p>
+          <div className="pt-1.5 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-bold text-slate-500">Alternate Views:</span>
+            <button
+              type="button"
+              data-testid="surface-mode-catalog-btn"
+              onClick={() => setSurfaceMode('pro_catalog')}
+              className="px-2 py-0.5 rounded text-[11px] font-bold border bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700"
+            >
+              Pro Catalog ({allSupportedProPairs.length})
+            </button>
+            <button
+              type="button"
+              data-testid="surface-mode-demo-btn"
+              onClick={() => {
+                setSurfaceMode('manual_demo');
+                if (Object.keys(demoInputs).length === 0) {
+                  setDemoInputs(DEFAULT_DEMO_INPUTS);
+                }
+              }}
+              className="px-2 py-0.5 rounded text-[11px] font-bold border bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700"
+            >
+              Demo Fallback
+            </button>
+          </div>
         </div>
       )}
     </section>
@@ -1006,3 +975,4 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
 };
 
 export default ProfileProComparisonTab;
+

@@ -42,7 +42,7 @@ interface SummonerInfoProps {
   /** Optional pre-loaded raw MatchTimelineDto map keyed by matchId for deterministic review/testing. */
   initialProTimelinesByMatchId?: Record<string, MatchTimelineDto | null | undefined>;
   /** Optional data source label mode for the Pro CS Comparison tab. */
-  proComparisonDataSourceMode?: 'live_profile' | 'contract_review';
+  proComparisonDataSourceMode?: 'live_profile' | 'synthetic_test_profile' | 'local_json';
 }
 
 /**

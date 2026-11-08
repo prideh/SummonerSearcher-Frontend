@@ -756,7 +756,7 @@ export function buildSearchedPlayerProComparison(params: {
     };
   });
 
-  const unloadedMatchIdsForSelectedPair = selectedPair.matches
+  const unloadedMatchIdsForSelectedPair = activeMatches
     .filter((m) => m.timelineStatus === 'not_loaded')
     .map((m) => m.matchId)
     .slice(0, MAX_BOUNDED_TIMELINE_FETCHES);

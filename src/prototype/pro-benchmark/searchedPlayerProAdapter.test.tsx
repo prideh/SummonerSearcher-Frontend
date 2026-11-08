@@ -237,7 +237,7 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
         tagLine={profile.tagLine}
         visibleMatches={profile.visibleMatches}
         initialTimelinesByMatchId={profile.timelinesByMatchId}
-        dataSourceMode="contract_review"
+        dataSourceMode="synthetic_test_profile"
       />
     );
 
@@ -265,6 +265,9 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     expect(screen.getByTestId('pro-comparison-identity-badge')).toHaveTextContent(
       'BladeRunner#EUW (EUW1)'
     );
+    expect(screen.getByTestId('pro-comparison-datasource-badge')).toHaveTextContent(
+      'Synthetic test profile / Not real player data'
+    );
     expect(screen.getByTestId('paired-selection-title')).toHaveTextContent('Top · KSante');
     expect(screen.getByTestId('player-mean-cs-10m')).toHaveTextContent('87.0');
 
@@ -275,7 +278,8 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     expect(screen.getByTestId('player-denom-10m')).toHaveTextContent('1/1G');
     expect(screen.getByTestId('player-mean-cs-10m')).toHaveTextContent('90.0');
 
-    // Switch searched player identity to ArcaneWave#KR1 -> clears stale Top/KSante selection and binds to Mid/Syndra
+    // Open Review Controls and switch synthetic test profile to ArcaneWave#KR1 -> clears stale Top/KSante selection and binds to Mid/Syndra
+    fireEvent.click(screen.getByTestId('toggle-review-controls'));
     fireEvent.click(screen.getByTestId('switch-review-player-kr'));
     expect(screen.getByTestId('pro-comparison-identity-badge')).toHaveTextContent(
       'ArcaneWave#KR1 (KR)'

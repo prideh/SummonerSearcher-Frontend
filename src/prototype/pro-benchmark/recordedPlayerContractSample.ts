@@ -1,7 +1,17 @@
 import type { MatchDto } from '../../types/match';
 import type { MatchTimelineDto, TimelineFrameDto } from '../../types/timeline';
 
-export interface RecordedReviewPlayerProfile {
+/**
+ * SYNTHETIC TEST FIXTURES — Synthetic test profile / Not real player data.
+ *
+ * These profiles construct fabricated PUUIDs, profile/rank metadata, match IDs,
+ * gold/xp values, and timeline frames solely to exercise the `MatchDto` + `MatchTimelineDto`
+ * TypeScript contract and edge cases (non-index PUUID mapping, short games ending before 25m/30m,
+ * and unsupported champion-role pairs) in offline review and unit tests.
+ *
+ * `BladeRunner#EUW` and `ArcaneWave#KR1` are synthetic test personas, NOT real searched Riot accounts.
+ */
+export interface SyntheticTestPlayerProfile {
   key: string;
   puuid: string;
   region: string;
@@ -17,6 +27,8 @@ export interface RecordedReviewPlayerProfile {
   visibleMatches: MatchDto[];
   timelinesByMatchId: Record<string, MatchTimelineDto>;
 }
+
+export type RecordedReviewPlayerProfile = SyntheticTestPlayerProfile;
 
 function buildTimelineFrames(
   participantId: number,
@@ -45,10 +57,10 @@ function buildTimelineFrames(
   }));
 }
 
-export const RECORDED_REVIEW_PROFILES: Record<string, RecordedReviewPlayerProfile> = {
+export const SYNTHETIC_TEST_PROFILES: Record<string, SyntheticTestPlayerProfile> = {
   euw_top_specialist: {
     key: 'euw_top_specialist',
-    puuid: 'puuid-review-euw-top-001',
+    puuid: 'puuid-synthetic-euw-top-001',
     region: 'EUW1',
     gameName: 'BladeRunner',
     tagLine: 'EUW',
@@ -63,7 +75,7 @@ export const RECORDED_REVIEW_PROFILES: Record<string, RecordedReviewPlayerProfil
       {
         metadata: {
           matchId: 'EUW1_7201001',
-          participants: ['puuid-enemy-top-1', 'puuid-review-euw-top-001'],
+          participants: ['puuid-enemy-top-1', 'puuid-synthetic-euw-top-001'],
         },
         info: {
           gameId: 7201001,
@@ -85,7 +97,7 @@ export const RECORDED_REVIEW_PROFILES: Record<string, RecordedReviewPlayerProfil
             },
             {
               participantId: 6,
-              puuid: 'puuid-review-euw-top-001',
+              puuid: 'puuid-synthetic-euw-top-001',
               championName: 'KSante',
               teamPosition: 'TOP',
               teamId: 200,
@@ -99,7 +111,7 @@ export const RECORDED_REVIEW_PROFILES: Record<string, RecordedReviewPlayerProfil
       {
         metadata: {
           matchId: 'EUW1_7201002',
-          participants: ['puuid-review-euw-top-001', 'puuid-enemy-top-2'],
+          participants: ['puuid-synthetic-euw-top-001', 'puuid-enemy-top-2'],
         },
         info: {
           gameId: 7201002,
@@ -110,7 +122,7 @@ export const RECORDED_REVIEW_PROFILES: Record<string, RecordedReviewPlayerProfil
           participants: [
             {
               participantId: 1,
-              puuid: 'puuid-review-euw-top-001',
+              puuid: 'puuid-synthetic-euw-top-001',
               championName: 'KSante',
               teamPosition: 'TOP',
               teamId: 100,
@@ -134,7 +146,7 @@ export const RECORDED_REVIEW_PROFILES: Record<string, RecordedReviewPlayerProfil
       {
         metadata: {
           matchId: 'EUW1_7201003',
-          participants: ['puuid-review-euw-top-001'],
+          participants: ['puuid-synthetic-euw-top-001'],
         },
         info: {
           gameId: 7201003,
@@ -145,7 +157,7 @@ export const RECORDED_REVIEW_PROFILES: Record<string, RecordedReviewPlayerProfil
           participants: [
             {
               participantId: 1,
-              puuid: 'puuid-review-euw-top-001',
+              puuid: 'puuid-synthetic-euw-top-001',
               championName: 'Garen',
               teamPosition: 'TOP',
               teamId: 100,
@@ -161,13 +173,13 @@ export const RECORDED_REVIEW_PROFILES: Record<string, RecordedReviewPlayerProfil
       EUW1_7201001: {
         metadata: {
           matchId: 'EUW1_7201001',
-          participants: ['puuid-enemy-top-1', 'puuid-review-euw-top-001'],
+          participants: ['puuid-enemy-top-1', 'puuid-synthetic-euw-top-001'],
         },
         info: {
           frameInterval: 60_000,
           participants: [
             { participantId: 1, puuid: 'puuid-enemy-top-1', championName: 'Gnar' },
-            { participantId: 6, puuid: 'puuid-review-euw-top-001', championName: 'KSante' },
+            { participantId: 6, puuid: 'puuid-synthetic-euw-top-001', championName: 'KSante' },
           ],
           frames: buildTimelineFrames(6, [
             { minute: 5, offsetMs: 120, minionsKilled: 38, jungleMinionsKilled: 0 },
@@ -182,12 +194,12 @@ export const RECORDED_REVIEW_PROFILES: Record<string, RecordedReviewPlayerProfil
       EUW1_7201002: {
         metadata: {
           matchId: 'EUW1_7201002',
-          participants: ['puuid-review-euw-top-001', 'puuid-enemy-top-2'],
+          participants: ['puuid-synthetic-euw-top-001', 'puuid-enemy-top-2'],
         },
         info: {
           frameInterval: 60_000,
           participants: [
-            { participantId: 1, puuid: 'puuid-review-euw-top-001', championName: 'KSante' },
+            { participantId: 1, puuid: 'puuid-synthetic-euw-top-001', championName: 'KSante' },
             { participantId: 6, puuid: 'puuid-enemy-top-2', championName: 'Jax' },
           ],
           frames: buildTimelineFrames(1, [
@@ -201,12 +213,12 @@ export const RECORDED_REVIEW_PROFILES: Record<string, RecordedReviewPlayerProfil
       EUW1_7201003: {
         metadata: {
           matchId: 'EUW1_7201003',
-          participants: ['puuid-review-euw-top-001'],
+          participants: ['puuid-synthetic-euw-top-001'],
         },
         info: {
           frameInterval: 60_000,
           participants: [
-            { participantId: 1, puuid: 'puuid-review-euw-top-001', championName: 'Garen' },
+            { participantId: 1, puuid: 'puuid-synthetic-euw-top-001', championName: 'Garen' },
           ],
           frames: buildTimelineFrames(1, [
             { minute: 5, minionsKilled: 34, jungleMinionsKilled: 0 },
@@ -221,7 +233,7 @@ export const RECORDED_REVIEW_PROFILES: Record<string, RecordedReviewPlayerProfil
   },
   kr_mid_specialist: {
     key: 'kr_mid_specialist',
-    puuid: 'puuid-review-kr-mid-002',
+    puuid: 'puuid-synthetic-kr-mid-002',
     region: 'KR',
     gameName: 'ArcaneWave',
     tagLine: 'KR1',
@@ -236,7 +248,7 @@ export const RECORDED_REVIEW_PROFILES: Record<string, RecordedReviewPlayerProfil
       {
         metadata: {
           matchId: 'KR_8102001',
-          participants: ['puuid-review-kr-mid-002'],
+          participants: ['puuid-synthetic-kr-mid-002'],
         },
         info: {
           gameId: 8102001,
@@ -247,7 +259,7 @@ export const RECORDED_REVIEW_PROFILES: Record<string, RecordedReviewPlayerProfil
           participants: [
             {
               participantId: 3,
-              puuid: 'puuid-review-kr-mid-002',
+              puuid: 'puuid-synthetic-kr-mid-002',
               championName: 'Syndra',
               teamPosition: 'MIDDLE',
               teamId: 100,
@@ -263,12 +275,12 @@ export const RECORDED_REVIEW_PROFILES: Record<string, RecordedReviewPlayerProfil
       KR_8102001: {
         metadata: {
           matchId: 'KR_8102001',
-          participants: ['puuid-review-kr-mid-002'],
+          participants: ['puuid-synthetic-kr-mid-002'],
         },
         info: {
           frameInterval: 60_000,
           participants: [
-            { participantId: 3, puuid: 'puuid-review-kr-mid-002', championName: 'Syndra' },
+            { participantId: 3, puuid: 'puuid-synthetic-kr-mid-002', championName: 'Syndra' },
           ],
           frames: buildTimelineFrames(3, [
             { minute: 5, minionsKilled: 40, jungleMinionsKilled: 0 },
@@ -282,3 +294,6 @@ export const RECORDED_REVIEW_PROFILES: Record<string, RecordedReviewPlayerProfil
     },
   },
 };
+
+export const RECORDED_REVIEW_PROFILES = SYNTHETIC_TEST_PROFILES;
+

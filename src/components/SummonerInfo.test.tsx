@@ -261,9 +261,7 @@ describe('SummonerInfo', () => {
     const proTab = screen.getByTestId('profile-pro-comparison-tab');
     expect(proTab).toHaveAttribute('data-bound-puuid', '123');
     expect(proTab).toHaveAttribute('data-bound-region', 'EUW1');
-    expect(screen.getByTestId('pro-comparison-identity-badge')).toHaveTextContent(
-      'TestUser#EUW (EUW1)'
-    );
+    expect(proTab).toHaveAttribute('data-bound-identity', 'TestUser#EUW (EUW1)');
     expect(analyzeTimelines).not.toHaveBeenCalled();
 
     // Changing searched player updates bound identity immediately
@@ -282,8 +280,6 @@ describe('SummonerInfo', () => {
     const updatedTab = screen.getByTestId('profile-pro-comparison-tab');
     expect(updatedTab).toHaveAttribute('data-bound-puuid', 'puuid-new-player-999');
     expect(updatedTab).toHaveAttribute('data-bound-region', 'KR');
-    expect(screen.getByTestId('pro-comparison-identity-badge')).toHaveTextContent(
-      'NewPlayer#KR1 (KR)'
-    );
+    expect(updatedTab).toHaveAttribute('data-bound-identity', 'NewPlayer#KR1 (KR)');
   });
 });
