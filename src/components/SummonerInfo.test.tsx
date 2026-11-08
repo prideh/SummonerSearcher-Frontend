@@ -2,7 +2,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import SummonerInfo from './SummonerInfo';
 import { useDataDragonStore } from '../store/dataDragonStore';
+import { useAuthStore } from '../store/authStore';
 import { analyzeTimelines } from '../api/timeline';
+import { chatWithAi } from '../api/ai';
 import type { ImprovementStatsDto } from '../types/improvementStats';
 
 // Mock child components and hooks
@@ -16,6 +18,11 @@ vi.mock('./TimelineAnalysisModal', () => ({
 
 vi.mock('../api/timeline', () => ({
   analyzeTimelines: vi.fn(),
+}));
+
+vi.mock('../api/ai', () => ({
+  chatWithAi: vi.fn(),
+  submitFeedback: vi.fn(),
 }));
 
 vi.mock('../hooks/useTimeAgo', () => ({
@@ -143,7 +150,13 @@ describe('SummonerInfo', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
+    useAuthStore.setState({ starredProfile: null });
     (useDataDragonStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue('https://ddragon.leagueoflegends.com/cdn/13.1.1');
+    (chatWithAi as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      response: 'Strong mid-game objective control on Ahri, focus on 10m lane CS consistency.\n---SUGGESTIONS---\n["How do I fix my 10m CS?", "When should I roam?"]',
+      interactionId: 'summary-interaction-1',
+    });
   });
 
   it('renders summoner details correctly', () => {
@@ -181,6 +194,56 @@ describe('SummonerInfo', () => {
   it('disables refresh button when refreshing', () => {
     render(<SummonerInfo {...defaultProps} refreshing={true} />);
     expect(screen.getByText('Refresh').closest('button')).toBeDisabled();
+  });
+
+  it('toggles starred landing profile state when Star button is clicked', () => {
+    render(<SummonerInfo {...defaultProps} />);
+
+    const starBtn = screen.getByTestId('star-profile-button');
+    expect(starBtn).toHaveAttribute('aria-pressed', 'false');
+    expect(starBtn).toHaveTextContent('Star');
+
+    fireEvent.click(starBtn);
+    expect(starBtn).toHaveAttribute('aria-pressed', 'true');
+    expect(starBtn).toHaveTextContent('Starred');
+
+    fireEvent.click(starBtn);
+    expect(starBtn).toHaveAttribute('aria-pressed', 'false');
+    expect(starBtn).toHaveTextContent('Star');
+  });
+
+  it('renders AI Coach Summary on top of a starred profile and continues that conversation in AI Coach when clicked', async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    useAuthStore.setState({
+      starredProfile: {
+        puuid: '123',
+        gameName: 'TestUser',
+        tagLine: 'EUW',
+        region: 'EUW1',
+      },
+    });
+
+    render(<SummonerInfo {...defaultProps} />);
+
+    const summaryCard = await screen.findByTestId('starred-ai-summary-card');
+    expect(summaryCard).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('starred-ai-summary-content')).toHaveTextContent(
+        'Strong mid-game objective control on Ahri, focus on 10m lane CS consistency.'
+      );
+    });
+
+    // Clicking the AI summary card opens AI Coach with the summary message already in the conversation
+    fireEvent.click(summaryCard);
+
+    const dialog = screen.getByTestId('ai-coach-modal-dialog');
+    expect(dialog).toBeInTheDocument();
+    const chatScroll = screen.getByTestId('ai-coach-chat-scroll');
+    expect(chatScroll).toHaveTextContent(
+      'Strong mid-game objective control on Ahri, focus on 10m lane CS consistency.'
+    );
+    expect(dialog).toHaveTextContent('How do I fix my 10m CS?');
   });
 
   it('renders SummonerProfileDto.improvementStats on mount without auto-calling analyzeTimelines, then upgrades to TimelineAnalysisDto.improvementStats on manual click', async () => {

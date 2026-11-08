@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore, isSameStarredProfile } from '../store/authStore';
 import { getSummonerByName, getMatches } from '../api/riot';
 import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import type { SummonerData } from '../types/summoner';
@@ -54,6 +54,7 @@ const SearchPage: React.FC = () => {
   const setRegion = useAuthStore((state) => state.setRegion);
   const lastSearchedSummoner = useAuthStore((state) => state.lastSearchedSummoner);
   const setLastSearchedSummoner = useAuthStore((state) => state.setLastSearchedSummoner);
+  const starredProfile = useAuthStore((state) => state.starredProfile);
 
   const addRecentSearch = useAuthStore((state) => state.addRecentSearch);
 
@@ -318,7 +319,48 @@ const SearchPage: React.FC = () => {
         controller.abort();
       };
     }
-    // If no search from URL, load the last searched summoner from the store
+    // If no search from URL, load the starred landing page profile if one is saved in cache
+    else if (starredProfile && !gameNameFromUrl && !tagLineFromUrl && !pathRegion && !riotId) {
+      const apiRegion = toApiRegion(starredProfile.region);
+      if (apiRegion !== region) {
+        setRegion(apiRegion);
+      }
+
+      // Avoid re-fetching if the starred profile is already displayed
+      if (summonerData && isSameStarredProfile(starredProfile, summonerData)) {
+        return;
+      }
+
+      // Restore immediately from in-memory lastSearchedSummoner if it matches the starred profile
+      if (
+        lastSearchedSummoner &&
+        lastSearchedSummoner !== 'NOT_FOUND' &&
+        typeof lastSearchedSummoner !== 'string' &&
+        isSameStarredProfile(starredProfile, lastSearchedSummoner)
+      ) {
+        setError(null);
+        setSummonerData(lastSearchedSummoner);
+        setMatches(lastSearchedSummoner.recentMatches);
+        setPage(1);
+        setHasMore(lastSearchedSummoner.recentMatches.length >= 20);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+      if (summonerData && !isSameStarredProfile(starredProfile, summonerData)) {
+        setSummonerData(null);
+        setMatches([]);
+      }
+
+      const controller = new AbortController();
+      performSearch(starredProfile.gameName, starredProfile.tagLine, apiRegion, true, controller.signal);
+
+      return () => {
+        controller.abort();
+      };
+    }
+    // If no search from URL and no starred profile, load the last searched summoner from the store
     else if (lastSearchedSummoner && !gameNameFromUrl && !tagLineFromUrl && !pathRegion && !riotId) {
       if (lastSearchedSummoner === 'NOT_FOUND') {
         setError('NOT_FOUND');
@@ -332,7 +374,7 @@ const SearchPage: React.FC = () => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, performSearch, lastSearchedSummoner, summonerData, setRegion, pathRegion, riotId, navigate]);
+  }, [searchParams, performSearch, lastSearchedSummoner, starredProfile, summonerData, setRegion, pathRegion, riotId, navigate]);
   
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const localRecentSearches = useAuthStore((state) => state.recentSearches);
@@ -453,6 +495,24 @@ const SearchPage: React.FC = () => {
     );
   };
 
+  const isLandingWithoutUrlParams =
+    !searchParams.get('gameName') &&
+    !searchParams.get('tagLine') &&
+    !pathRegion &&
+    !riotId &&
+    !isCoachEvidenceFixture;
+
+  const isShowingStarredProfile = Boolean(
+    starredProfile &&
+      (isLandingWithoutUrlParams ||
+        (summonerData && isSameStarredProfile(starredProfile, summonerData)))
+  );
+
+  const welcomeName =
+    summonerData && isSameStarredProfile(starredProfile, summonerData)
+      ? summonerData.gameName
+      : starredProfile?.gameName;
+
   const seoTitle = summonerData 
     ? `${summonerData.gameName}#${summonerData.tagLine} (${summonerData.region}) - Match History & Stats` 
     : 'Summoner Search | Summoner Searcher';
@@ -490,9 +550,25 @@ const SearchPage: React.FC = () => {
           <span className="inline-block text-[10px] font-extrabold uppercase tracking-[0.2em] text-sky-600 dark:text-cyan-400 mb-1">
             League of Legends Telemetry & Match Analytics
           </span>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Summoner Search
+          <h1
+            data-testid="search-page-heading"
+            className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight"
+          >
+            {isShowingStarredProfile && welcomeName ? `Welcome back ${welcomeName}` : 'Summoner Search'}
           </h1>
+          {isShowingStarredProfile && starredProfile && (
+            <div
+              data-testid="starred-landing-badge"
+              className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-[11px] font-bold text-amber-700 dark:text-amber-300 telemetry-nums"
+            >
+              <svg className="w-3 h-3 text-amber-500 dark:text-amber-400 fill-current" viewBox="0 0 24 24">
+                <path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+              </svg>
+              <span>
+                Starred Profile · {starredProfile.gameName}#{starredProfile.tagLine} ({starredProfile.region.replace(/[0-9]/g, '').toUpperCase()})
+              </span>
+            </div>
+          )}
         </div>
         <SearchBar
           searchInput={localSearchInput}
@@ -511,7 +587,7 @@ const SearchPage: React.FC = () => {
 
         <div className="mt-6 w-full max-w-7xl min-w-0">
           {renderError()}
-          {!loading && !summonerData && !error && (
+          {!loading && !summonerData && !error && !starredProfile && (
             <div className="text-center text-sm text-slate-500 dark:text-slate-400">
               <p>
                 Don't know who to search for? Try an example:

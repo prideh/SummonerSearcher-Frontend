@@ -35,7 +35,7 @@ interface Message {
   timestamp?: number; // When message was shown
 }
 
-const generatePersonalizedSuggestions = (context: AiContextData): string[] => {
+export const generatePersonalizedSuggestions = (context: AiContextData): string[] => {
   const suggestions = ["Analyze my profile"];
   
   if (context.primaryRole && context.primaryRole !== 'unknown' && typeof context.primaryRole === 'string') {
@@ -85,6 +85,36 @@ const generatePersonalizedSuggestions = (context: AiContextData): string[] => {
   return suggestions.slice(0, 5);
 };
 
+export const parseAiResponseWithSuggestions = (
+  rawResponse: string,
+  fallbackSuggestions: string[] = []
+): { cleanResponse: string; suggestions: string[] } => {
+  let cleanResponse = rawResponse;
+  let parsedSuggestions = fallbackSuggestions;
+  const suggestionsMatch = rawResponse.match(/---SUGGESTIONS---\s*(\[[\s\S]*?\])/);
+
+  if (suggestionsMatch) {
+    try {
+      let jsonStr = suggestionsMatch[1];
+      jsonStr = jsonStr.replace(/,\s*\]/g, ']');
+      const newSuggestions = JSON.parse(jsonStr);
+      if (Array.isArray(newSuggestions)) {
+        parsedSuggestions = newSuggestions;
+      }
+      cleanResponse = rawResponse.replace(suggestionsMatch[0], '').trim();
+    } catch (e) {
+      console.error('Failed to parse suggestions:', e);
+      const manualMatches = suggestionsMatch[1].match(/"([^"]+)"/g);
+      if (manualMatches) {
+        parsedSuggestions = manualMatches.map((s) => s.replace(/"/g, ''));
+        cleanResponse = rawResponse.replace(suggestionsMatch[0], '').trim();
+      }
+    }
+  }
+
+  return { cleanResponse, suggestions: parsedSuggestions };
+};
+
 const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
   isOpen,
   onClose,
@@ -126,30 +156,12 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
 
     try {
       const apiResponse = await chatWithAi(context, currentMessages, text, sessionId);
-      
-      // Parse suggestions from response
-      let cleanResponse = apiResponse.response;
-      const suggestionsMatch = apiResponse.response.match(/---SUGGESTIONS---\s*(\[[\s\S]*?\])/);
-      
-      if (suggestionsMatch) {
-        try {
-          let jsonStr = suggestionsMatch[1];
-          jsonStr = jsonStr.replace(/,\s*\]/g, ']');
-          
-          const newSuggestions = JSON.parse(jsonStr);
-          if (Array.isArray(newSuggestions)) {
-            setSuggestions(newSuggestions);
-          }
-          cleanResponse = apiResponse.response.replace(suggestionsMatch[0], '').trim();
-        } catch (e) {
-          console.error('Failed to parse suggestions:', e);
-          const manualMatches = suggestionsMatch[1].match(/"([^"]+)"/g);
-          if (manualMatches) {
-             const manualSuggestions = manualMatches.map(s => s.replace(/"/g, ''));
-             setSuggestions(manualSuggestions);
-             cleanResponse = apiResponse.response.replace(suggestionsMatch[0], '').trim();
-          }
-        }
+      const { cleanResponse, suggestions: nextSuggestions } = parseAiResponseWithSuggestions(
+        apiResponse.response,
+        suggestions
+      );
+      if (nextSuggestions.length > 0) {
+        setSuggestions(nextSuggestions);
       }
 
       setMessages(prev => [...prev, { 
@@ -164,7 +176,7 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [context, sessionId]);
+  }, [context, sessionId, suggestions]);
 
   const handleFeedback = async (interactionId: string | undefined, feedbackType: 'positive' | 'negative', messageTimestamp: number | undefined) => {
     if (!interactionId || !messageTimestamp) return;
@@ -185,8 +197,12 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
     }
   };
 
-  // Load history on mount
+  // Load history on open
   useEffect(() => {
+    if (!isOpen) {
+      hasInitialized.current = false;
+      return;
+    }
     if (isOpen && !hasInitialized.current) {
       hasInitialized.current = true;
       

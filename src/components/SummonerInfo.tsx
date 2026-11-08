@@ -1,11 +1,17 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 import type { SummonerData } from '../types/summoner';
 import type { MatchDto } from '../types/match';
 import RankedInfo from './RankedInfo';
 import { useTimeAgo } from '../hooks/useTimeAgo';
 import { useDataDragonStore } from '../store/dataDragonStore';
-import AiAnalysisModal from './AiAnalysisModal';
+import { useAuthStore, isSameStarredProfile } from '../store/authStore';
+import AiAnalysisModal, {
+  generatePersonalizedSuggestions,
+  parseAiResponseWithSuggestions,
+} from './AiAnalysisModal';
+import { chatWithAi } from '../api/ai';
 import { getLiveGame } from '../api/riot';
 import LiveGameDisplay, { type CurrentGameInfo } from './LiveGameDisplay';
 import { buildAiContext } from '../utils/aiContextBuilder';
@@ -14,6 +20,33 @@ import TimelineAnalysisModal from './TimelineAnalysisModal';
 import type { TimelineAnalysisDto } from '../types/timeline';
 import { resolveImprovementStats } from '../utils/improvementStatsHelper';
 import { getCorrectChampionName } from '../utils/championNameHelper';
+
+const SUMMARY_PROMPT =
+  'Give me a concise 2-3 sentence executive summary of my recent performance, key strength, and #1 focus area.';
+const CHAT_EXPIRATION_TIME = 30 * 60 * 1000;
+
+const buildFallbackAiSummary = (summoner: SummonerData, sigChamp: string | null): string => {
+  const rank = summoner.soloQueueRank
+    ? `${summoner.soloQueueRank.tier} ${summoner.soloQueueRank.rank} (${summoner.soloQueueRank.leaguePoints} LP)`
+    : 'Unranked';
+  const winRate =
+    summoner.overallStats?.winRate !== undefined
+      ? `${Math.round(summoner.overallStats.winRate)}% WR`
+      : summoner.soloQueueRank
+      ? `${Math.round(
+          (summoner.soloQueueRank.wins /
+            Math.max(1, summoner.soloQueueRank.wins + summoner.soloQueueRank.losses)) *
+            100
+        )}% WR`
+      : null;
+  const kda =
+    summoner.overallStats?.kda !== undefined
+      ? `${summoner.overallStats.kda.toFixed(2)} KDA`
+      : null;
+  const statsBits = [rank, winRate, kda].filter(Boolean).join(' • ');
+  const champBit = sigChamp ? ` with **${sigChamp}** as your signature pick` : '';
+  return `**${summoner.gameName}#${summoner.tagLine}** is currently sitting at **${statsBits}**${champBit}. Click to continue this conversation in AI Coach for a full breakdown of your laning, macro, and #1 climb priority.`;
+};
 
 /**
  * Props for the SummonerInfo component.
@@ -35,6 +68,10 @@ interface SummonerInfoProps {
   onViewProfile: () => void;
   /** Boolean indicating if the full profile is currently shown. */
   showFullProfile: boolean;
+  /** Optional explicit override indicating whether this profile is starred. */
+  isStarred?: boolean;
+  /** Optional callback when toggling the star state. */
+  onToggleStar?: () => void;
 }
 
 /**
@@ -42,9 +79,36 @@ interface SummonerInfoProps {
  * It includes their profile icon, Riot ID, level, and a "Refresh" button.
  * It also contains the `RankedInfo` component to show ranked statistics.
  */
-const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh, loading, refreshing, visibleMatches, onPlayerClick, onViewProfile, showFullProfile }) => {
+const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh, loading, refreshing, visibleMatches, onPlayerClick, onViewProfile, showFullProfile, isStarred: isStarredProp, onToggleStar }) => {
   const [timeAgo, ref] = useTimeAgo(new Date(summonerData.lastUpdated).getTime());
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
+  const starredProfile = useAuthStore(state => state?.starredProfile ?? null);
+  const toggleStarredProfile = useAuthStore(state => state?.toggleStarredProfile);
+  const isStarred = isStarredProp !== undefined
+    ? isStarredProp
+    : isSameStarredProfile(starredProfile, summonerData);
+
+  const handleStarClick = () => {
+    if (onToggleStar) {
+      onToggleStar();
+      return;
+    }
+    if (toggleStarredProfile) {
+      const nowStarred = toggleStarredProfile({
+        puuid: summonerData.puuid,
+        gameName: summonerData.gameName,
+        tagLine: summonerData.tagLine,
+        region: summonerData.region,
+        profileIconId: summonerData.profileIconId,
+        summonerLevel: summonerData.summonerLevel,
+      });
+      if (nowStarred) {
+        toast.success(`Starred ${summonerData.gameName}#${summonerData.tagLine} as your landing page profile`);
+      } else {
+        toast.info(`Removed ${summonerData.gameName}#${summonerData.tagLine} as landing page profile`);
+      }
+    }
+  };
   const [showAiModal, setShowAiModal] = useState(false);
   const [liveGameData, setLiveGameData] = useState<CurrentGameInfo | null>(null);
   const [loadingLiveGame, setLoadingLiveGame] = useState(false);
@@ -56,6 +120,11 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [showTimelineModal, setShowTimelineModal] = useState(false);
   const [aiInitialMessage, setAiInitialMessage] = useState<string | undefined>(undefined);
+
+  // AI Summary state for starred profile
+  const [aiSummaryText, setAiSummaryText] = useState<string | null>(null);
+  const [aiSummarySuggestions, setAiSummarySuggestions] = useState<string[]>([]);
+  const [loadingAiSummary, setLoadingAiSummary] = useState(false);
 
   // Resolve signature champion for ambient splash header
   const signatureChampion = useMemo(() => {
@@ -99,6 +168,136 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
     resolvedImprovement.stats
   );
 
+  const summonerFullName = `${summonerData.gameName}#${summonerData.tagLine}`;
+  const chatStorageKey = `chat_history_${summonerFullName}`;
+
+  // Generate or load the AI Coach Summary for the starred profile and keep its chat history synced
+  useEffect(() => {
+    if (!isStarred) {
+      setAiSummaryText(null);
+      setAiSummarySuggestions([]);
+      setLoadingAiSummary(false);
+      return;
+    }
+
+    // Check if localStorage already has a recent AI summary or conversation for this summoner
+    try {
+      const saved = localStorage.getItem(chatStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const age = Date.now() - (parsed.timestamp || 0);
+        if (age < CHAT_EXPIRATION_TIME && Array.isArray(parsed.messages)) {
+          const substantiveModelMsgs = parsed.messages.filter(
+            (m: { role?: string; content?: string }) =>
+              m.role === 'model' &&
+              typeof m.content === 'string' &&
+              !m.content.startsWith("Hi! I'm your AI Coach.")
+          );
+          if (substantiveModelMsgs.length > 0) {
+            setAiSummaryText(substantiveModelMsgs[substantiveModelMsgs.length - 1].content);
+            setAiSummarySuggestions(
+              Array.isArray(parsed.suggestions) && parsed.suggestions.length > 0
+                ? parsed.suggestions
+                : generatePersonalizedSuggestions(aiContext)
+            );
+            setLoadingAiSummary(false);
+            return;
+          }
+        }
+      }
+    } catch {
+      // Ignore storage parse errors
+    }
+
+    let cancelled = false;
+    const matchCount = aiContext.totalGamesAnalyzed || 0;
+    const impCtx = aiContext.improvementStats as { hasTimelineAnalysis?: boolean } | undefined;
+    const timelineReady = aiContext.timelineStatus === 'ANALYZED' || Boolean(impCtx?.hasTimelineAnalysis);
+    const greetingMsg = {
+      role: 'model' as const,
+      content: timelineReady
+        ? `Hi! I'm your AI Coach. Match summaries and 10m/20m timeline checkpoints from ${matchCount} recent games are ready. Ask a question below to generate coaching feedback!`
+        : `Hi! I'm your AI Coach. Match summaries from ${matchCount} recent games are loaded (deep timeline analysis not run yet). Ask a question below to generate coaching feedback!`,
+    };
+    const defaultSuggestions = generatePersonalizedSuggestions(aiContext);
+
+    const fetchSummary = async () => {
+      setLoadingAiSummary(true);
+      try {
+        const apiResponse = await chatWithAi(
+          aiContext,
+          [greetingMsg],
+          SUMMARY_PROMPT,
+          `summary_${summonerData.puuid || summonerFullName}`
+        );
+        if (cancelled) return;
+
+        if (apiResponse && typeof apiResponse.response === 'string' && apiResponse.response.trim()) {
+          const { cleanResponse, suggestions: nextSuggestions } = parseAiResponseWithSuggestions(
+            apiResponse.response,
+            defaultSuggestions
+          );
+          const seededMessages = [
+            greetingMsg,
+            { role: 'user' as const, content: SUMMARY_PROMPT },
+            {
+              role: 'model' as const,
+              content: cleanResponse,
+              interactionId: apiResponse.interactionId,
+              timestamp: Date.now(),
+            },
+          ];
+          localStorage.setItem(
+            chatStorageKey,
+            JSON.stringify({
+              timestamp: Date.now(),
+              messages: seededMessages,
+              suggestions: nextSuggestions,
+            })
+          );
+          setAiSummaryText(cleanResponse);
+          setAiSummarySuggestions(nextSuggestions);
+          return;
+        }
+      } catch {
+        // Fall through to deterministic telemetry summary if AI endpoint is unreachable
+      }
+
+      if (cancelled) return;
+      const fallback = buildFallbackAiSummary(summonerData, signatureChampion);
+      const seededMessages = [
+        greetingMsg,
+        { role: 'user' as const, content: SUMMARY_PROMPT },
+        {
+          role: 'model' as const,
+          content: fallback,
+          timestamp: Date.now(),
+        },
+      ];
+      localStorage.setItem(
+        chatStorageKey,
+        JSON.stringify({
+          timestamp: Date.now(),
+          messages: seededMessages,
+          suggestions: defaultSuggestions,
+        })
+      );
+      setAiSummaryText(fallback);
+      setAiSummarySuggestions(defaultSuggestions);
+    };
+
+    fetchSummary().finally(() => {
+      if (!cancelled) {
+        setLoadingAiSummary(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStarred, chatStorageKey, showAiModal]);
+
   const handleAnalyzeTimeline = async () => {
     if (timelineAnalysis) {
       setShowTimelineModal(true);
@@ -119,6 +318,11 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
 
   const handleAiCoachFromTimeline = (suggestion?: string) => {
     setAiInitialMessage(suggestion);
+    setShowAiModal(true);
+  };
+
+  const handleContinueSummaryInCoach = () => {
+    setAiInitialMessage(undefined);
     setShowAiModal(true);
   };
 
@@ -165,6 +369,68 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
       )}
 
       <div className="relative z-10 p-5">
+        {isStarred && (
+          <div
+            data-testid="starred-ai-summary-card"
+            role="button"
+            tabIndex={0}
+            onClick={handleContinueSummaryInCoach}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleContinueSummaryInCoach();
+              }
+            }}
+            className="mb-4 group cursor-pointer rounded-xl border border-sky-200/80 dark:border-cyan-500/30 bg-gradient-to-r from-sky-50/90 via-cyan-50/60 to-white dark:from-cyan-950/40 dark:via-slate-900/90 dark:to-[#0d1322] p-4 shadow-xs hover:border-sky-400 dark:hover:border-cyan-400/60 transition-all"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-sky-600/10 dark:bg-cyan-500/15 border border-sky-500/20 dark:border-cyan-400/30 text-sky-600 dark:text-cyan-300">
+                  <svg className="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                  </svg>
+                </span>
+                <span className="text-xs font-extrabold uppercase tracking-wider text-sky-700 dark:text-cyan-300">
+                  AI Coach Summary
+                </span>
+              </div>
+              <span className="text-xs font-bold text-sky-600 dark:text-cyan-400 group-hover:translate-x-0.5 transition-transform inline-flex items-center gap-1">
+                Continue in AI Coach &rarr;
+              </span>
+            </div>
+
+            {loadingAiSummary && !aiSummaryText ? (
+              <div className="text-xs text-slate-500 dark:text-slate-400 animate-pulse py-1">
+                Generating your personalized AI Coach summary...
+              </div>
+            ) : (
+              <div
+                data-testid="starred-ai-summary-content"
+                className="prose dark:prose-invert prose-sm max-w-none text-slate-700 dark:text-slate-200 prose-p:my-1 prose-strong:text-sky-700 dark:prose-strong:text-cyan-300"
+              >
+                <ReactMarkdown>{aiSummaryText || ''}</ReactMarkdown>
+              </div>
+            )}
+
+            {aiSummarySuggestions.length > 0 && (
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                {aiSummarySuggestions.slice(0, 3).map((suggestion, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAiCoachFromTimeline(suggestion);
+                    }}
+                    className="px-2.5 py-1 text-[11px] font-semibold rounded-full bg-white/80 dark:bg-slate-800/90 border border-sky-300/70 dark:border-cyan-500/30 text-sky-700 dark:text-cyan-300 hover:bg-sky-600 hover:text-white dark:hover:bg-cyan-400 dark:hover:text-slate-950 transition-colors"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
           <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4 text-center sm:text-left">
             <div className="relative shrink-0">
@@ -178,7 +444,7 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
               </span>
             </div>
             <div className="pt-1 sm:pt-0">
-              <div className="flex flex-wrap items-baseline justify-center sm:justify-start gap-2">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
                 <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
                   {summonerData.gameName} <span className="text-slate-400 dark:text-slate-500 font-bold text-lg telemetry-nums">#{summonerData.tagLine}</span>
                 </h2>
@@ -187,6 +453,35 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
                     {summonerData.region.replace(/[0-9]/g, '').toUpperCase()}
                   </span>
                 )}
+                <button
+                  type="button"
+                  onClick={handleStarClick}
+                  data-testid="star-profile-button"
+                  aria-pressed={isStarred}
+                  aria-label={isStarred ? `Remove ${summonerData.gameName}#${summonerData.tagLine} as landing page profile` : `Star ${summonerData.gameName}#${summonerData.tagLine} as landing page profile`}
+                  title={isStarred ? 'Starred as your landing page profile (click to remove)' : 'Star this profile to load it immediately on the landing page'}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-bold rounded border transition-colors ${
+                    isStarred
+                      ? 'bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/40 hover:bg-amber-100 dark:hover:bg-amber-500/25'
+                      : 'bg-slate-100 dark:bg-slate-800/90 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700/80 hover:border-amber-400 dark:hover:border-amber-500/50 hover:text-amber-600 dark:hover:text-amber-300'
+                  }`}
+                >
+                  <svg
+                    className={`w-3.5 h-3.5 ${isStarred ? 'text-amber-500 dark:text-amber-400 fill-current' : 'text-slate-400 dark:text-slate-400'}`}
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill={isStarred ? 'currentColor' : 'none'}
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
+                    />
+                  </svg>
+                  <span>{isStarred ? 'Starred' : 'Star'}</span>
+                </button>
                 {signatureChampion && (
                   <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded bg-slate-100 dark:bg-slate-800/90 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700/80 telemetry-nums">
                     Signature: {signatureChampion}

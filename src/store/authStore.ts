@@ -4,6 +4,27 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { SummonerData } from '../types/summoner';
 import type { RecentSearch } from '../api/user';
 
+export interface StarredProfile {
+  puuid?: string;
+  gameName: string;
+  tagLine: string;
+  region: string;
+  profileIconId?: number;
+  summonerLevel?: number;
+}
+
+export const isSameStarredProfile = (
+  a: StarredProfile | null | undefined,
+  b: { gameName: string; tagLine: string; region: string } | null | undefined
+): boolean => {
+  if (!a || !b) return false;
+  return (
+    a.gameName.trim().toLowerCase() === b.gameName.trim().toLowerCase() &&
+    a.tagLine.trim().toLowerCase() === b.tagLine.trim().toLowerCase() &&
+    a.region.trim().toUpperCase() === b.region.trim().toUpperCase()
+  );
+};
+
 /**
  * Defines the structure of the authentication and user state managed by Zustand.
  */
@@ -14,6 +35,7 @@ interface AuthState {
   darkMode: boolean;
   username: string | null;
   lastSearchedSummoner: SummonerData | 'NOT_FOUND' | null;
+  starredProfile: StarredProfile | null;
   searchInput: string;
   region: string;
   recentSearches: RecentSearch[];
@@ -30,6 +52,8 @@ interface AuthState {
   setRegion: (region: string) => void;
   setSearchInput: (input: string) => void;
   setLastSearchedSummoner: (summoner: SummonerData | 'NOT_FOUND' | null) => void;
+  setStarredProfile: (profile: StarredProfile | null) => void;
+  toggleStarredProfile: (profile: StarredProfile) => boolean;
   addRecentSearch: (search: RecentSearch) => void;
   clearRecentSearches: () => void;
   
@@ -52,6 +76,7 @@ export const useAuthStore = create<AuthState>()(
       darkMode: true, // Default to dark mode
       username: null,
       lastSearchedSummoner: null,
+      starredProfile: null,
       searchInput: '',
       region: 'EUW1', // Default region
       recentSearches: [],
@@ -104,6 +129,18 @@ export const useAuthStore = create<AuthState>()(
       setSearchInput: (input: string) => set({ searchInput: input }),
       // Action to cache the last successfully searched summoner data or a 'NOT_FOUND' status.
       setLastSearchedSummoner: (summoner) => set({ lastSearchedSummoner: summoner }),
+      // Action to set or clear the starred landing page profile in cache.
+      setStarredProfile: (profile) => set({ starredProfile: profile }),
+      // Action to toggle a profile as the starred landing page profile. Returns true if starred, false if unstarred.
+      toggleStarredProfile: (profile) => {
+        const current = get().starredProfile;
+        if (isSameStarredProfile(current, profile)) {
+          set({ starredProfile: null });
+          return false;
+        }
+        set({ starredProfile: profile });
+        return true;
+      },
       // Action to add a recent search locally (for guest users)
       addRecentSearch: (search) => {
           const currentSearches = get().recentSearches;
@@ -133,7 +170,8 @@ export const useAuthStore = create<AuthState>()(
           region: state.region, 
           isLoggedIn: !!state.token, 
           searchInput: state.searchInput,
-          recentSearches: state.recentSearches 
+          recentSearches: state.recentSearches,
+          starredProfile: state.starredProfile,
       }),
     }
   )

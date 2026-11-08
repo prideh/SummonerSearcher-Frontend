@@ -57,10 +57,11 @@ const mockSetLastSearchedSummoner = vi.fn();
 const mockAddRecentSearch = vi.fn();
 const mockClearRecentSearches = vi.fn();
 
-let mockStoreState = {
+let mockStoreState: any = {
   searchInput: '',
   region: 'EUW1',
   lastSearchedSummoner: null,
+  starredProfile: null,
   isLoggedIn: true,
   recentSearches: [],
   setSearchInput: mockSetSearchInput,
@@ -70,12 +71,16 @@ let mockStoreState = {
   clearRecentSearches: mockClearRecentSearches,
 };
 
-vi.mock('../store/authStore', () => ({
-  useAuthStore: Object.assign(
-    (selector: any) => selector(mockStoreState),
-    { getState: () => mockStoreState }
-  ),
-}));
+vi.mock('../store/authStore', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../store/authStore')>();
+  return {
+    ...actual,
+    useAuthStore: Object.assign(
+      (selector: any) => selector(mockStoreState),
+      { getState: () => mockStoreState }
+    ),
+  };
+});
 
 describe('SearchPage', () => {
   beforeEach(() => {
@@ -86,6 +91,7 @@ describe('SearchPage', () => {
       searchInput: '',
       region: 'EUW1',
       lastSearchedSummoner: null,
+      starredProfile: null,
       isLoggedIn: true,
       recentSearches: [],
       setSearchInput: mockSetSearchInput,
@@ -243,5 +249,61 @@ describe('SearchPage', () => {
       expect(screen.getByTestId('coach-evidence-fixture-banner')).toBeInTheDocument();
       expect(screen.getByTestId('summoner-info')).toHaveTextContent('CoachContractFixture');
     });
+  });
+
+  it('immediately shows "Welcome back Lagily" and loads the starred profile when a star is in cache on /search', async () => {
+    mockStoreState.starredProfile = {
+      puuid: 'lagily-puuid',
+      gameName: 'Lagily',
+      tagLine: 'lol',
+      region: 'EUW1',
+      profileIconId: 29,
+      summonerLevel: 450,
+    };
+
+    const mockSummonerData = {
+      puuid: 'lagily-puuid',
+      gameName: 'Lagily',
+      tagLine: 'lol',
+      region: 'EUW1',
+      recentMatches: [],
+      lastUpdated: new Date().toISOString(),
+    };
+    (riotApi.getSummonerByName as any).mockResolvedValue(mockSummonerData);
+
+    render(
+      <MemoryRouter initialEntries={['/search']}>
+        <Routes>
+          <Route path="/search" element={<SearchPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('heading', { name: 'Welcome back Lagily' })).toBeInTheDocument();
+    expect(screen.getByTestId('starred-landing-badge')).toHaveTextContent('Lagily#lol (EUW)');
+    expect(screen.queryByText(/Don't know who to search for/i)).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(riotApi.getSummonerByName).toHaveBeenCalledWith('EUW1', 'Lagily', 'lol', expect.anything());
+      expect(screen.getByTestId('summoner-info')).toHaveTextContent('Lagily');
+    });
+  });
+
+  it('stays as default Summoner Search landing page when no star is in cache', () => {
+    mockStoreState.starredProfile = null;
+    mockStoreState.lastSearchedSummoner = null;
+
+    render(
+      <MemoryRouter initialEntries={['/search']}>
+        <Routes>
+          <Route path="/search" element={<SearchPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('heading', { name: 'Summoner Search' })).toBeInTheDocument();
+    expect(screen.queryByTestId('starred-landing-badge')).not.toBeInTheDocument();
+    expect(screen.getByText(/Don't know who to search for/i)).toBeInTheDocument();
+    expect(riotApi.getSummonerByName).not.toHaveBeenCalled();
   });
 });
