@@ -17,7 +17,10 @@ import { Skeleton } from '../components/ui/Skeleton';
 import SummonerInfo from '../components/SummonerInfo';
 import PlayerProfile from '../components/PlayerProfile';
 import { toApiRegion, toUrlRegion } from '../utils/regionUtils';
-import { COACH_EVIDENCE_REVIEW_FIXTURE } from '../utils/coachEvidenceReviewFixture';
+import {
+  COACH_EVIDENCE_REVIEW_FIXTURE,
+  isCoachEvidenceFixtureEnabled,
+} from '../utils/coachEvidenceReviewFixture';
 import SEO from '../components/SEO';
 import Footer from '../components/Footer';
 
@@ -246,8 +249,10 @@ const SearchPage: React.FC = () => {
   /**
    * Effect to handle search based on URL parameters.
    * This acts as the source of truth for the current search state.
+   * Strictly gated behind import.meta.env.DEV so production URLs can never activate synthetic fixture profiles.
    */
-  const isCoachEvidenceFixture = searchParams.get('fixture') === 'coach-evidence';
+  const isCoachEvidenceFixture =
+    import.meta.env.DEV && isCoachEvidenceFixtureEnabled(searchParams.get('fixture'), import.meta.env.DEV);
 
   useEffect(() => {
     if (isCoachEvidenceFixture) {

@@ -1,7 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import SearchPage from './SearchPage';
+import { isCoachEvidenceFixtureEnabled } from '../utils/coachEvidenceReviewFixture';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import * as riotApi from '../api/riot';
 import * as userApi from '../api/user';
@@ -202,6 +203,45 @@ describe('SearchPage', () => {
 
     await waitFor(() => {
       expect(riotApi.getMatches).toHaveBeenCalledWith('EUW1', '123', 2);
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('blocks ?fixture=coach-evidence in production (DEV=false) while keeping local DEV review functional', async () => {
+    expect(isCoachEvidenceFixtureEnabled('coach-evidence', false)).toBe(false);
+    expect(isCoachEvidenceFixtureEnabled('coach-evidence', true)).toBe(true);
+    expect(isCoachEvidenceFixtureEnabled(null, true)).toBe(false);
+
+    vi.stubEnv('DEV', false);
+
+    const { unmount } = render(
+      <MemoryRouter initialEntries={['/search?fixture=coach-evidence']}>
+        <Routes>
+          <Route path="/search" element={<SearchPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByTestId('coach-evidence-fixture-banner')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('summoner-info')).not.toBeInTheDocument();
+    unmount();
+
+    vi.stubEnv('DEV', true);
+
+    render(
+      <MemoryRouter initialEntries={['/search?fixture=coach-evidence']}>
+        <Routes>
+          <Route path="/search" element={<SearchPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('coach-evidence-fixture-banner')).toBeInTheDocument();
+      expect(screen.getByTestId('summoner-info')).toHaveTextContent('CoachContractFixture');
     });
   });
 });

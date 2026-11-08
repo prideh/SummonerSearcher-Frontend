@@ -3,6 +3,13 @@ import type { SummonerData } from '../types/summoner';
 import type { ImprovementStatsDto } from '../types/improvementStats';
 import type { MatchDto } from '../types/match';
 
+export function isCoachEvidenceFixtureEnabled(
+  fixtureParam: string | null,
+  isDev: boolean = import.meta.env.DEV
+): boolean {
+  return Boolean(isDev) && fixtureParam === 'coach-evidence';
+}
+
 const fixtureMatches = [
   {
     metadata: { matchId: 'EUW1_101' },
