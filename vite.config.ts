@@ -7,6 +7,14 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(),
     tailwindcss(),],
+  build: {
+    rollupOptions: {
+      input: {
+        main: './index.html',
+        proComparisonPreview: './pro-comparison-preview.html',
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',
