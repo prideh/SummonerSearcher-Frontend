@@ -8,6 +8,7 @@ import {
   extractPlayerMatchSummary,
   resolvePlayerMatchParticipant,
   resolveTimelineParticipantIdByPuuid,
+  resolveValidatedMatchSortTimestampMs,
   sharedTimelineCache,
 } from './searchedPlayerProAdapter';
 import { ProfileProComparisonTab } from './ProfileProComparisonTab';
@@ -659,6 +660,28 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     );
     expect(allTopSlice.checkpoints[10].meanCsDiffVsRoleOpponent).toBeNull();
     expect(allTopSlice.checkpoints[10].meanGoldDiffVsRoleOpponent).toBeNull();
+
+    // Dataset-wide slice ('ALL' roles, 'ALL' champions): conservative whole-game pause exclusion
+    // excludes IG vs TES G1 (10 observations, total_pause_s = 105.02) at ALL checkpoints (including 5m),
+    // so earlyTotalDeaths has 70 unpaused observations across 7 games at 5m, 10m, 14m, 15m, and 20m — NEVER 80!
+    const fullDatasetSlice = computeProComparisonSlice(DEFAULT_PRO_BENCHMARK_DATASET, {
+      role: 'ALL',
+      championId: 'ALL',
+    });
+    expect(fullDatasetSlice.totalGamesInDataset).toBe(8);
+    expect(fullDatasetSlice.totalObservationsInDataset).toBe(80);
+    expect(fullDatasetSlice.unpausedGamesInDatasetCount).toBe(7);
+    expect(fullDatasetSlice.unpausedObservationsInDatasetCount).toBe(70);
+    expect(fullDatasetSlice.pausedGamesInDatasetCount).toBe(1);
+    expect(fullDatasetSlice.pausedObservationsInDatasetCount).toBe(10);
+    for (const m of [5, 10, 15, 20] as const) {
+      expect(fullDatasetSlice.checkpoints[m].availableSnapshotCount).toBe(80);
+      expect(fullDatasetSlice.checkpoints[m].earlyTotalDeathsAvailableCount).toBe(70);
+      expect(fullDatasetSlice.checkpoints[m].earlyTotalDeathsPausedGamesExcludedCount).toBe(10);
+    }
+    expect(fullDatasetSlice.optional14mSummary.availableSnapshotCount).toBe(80);
+    expect(fullDatasetSlice.optional14mSummary.earlyTotalDeathsAvailableCount).toBe(70);
+    expect(fullDatasetSlice.optional14mSummary.earlyTotalDeathsPausedGamesExcludedCount).toBe(10);
   });
 
   it('computes paired player vs pro Gold, Level, Role-Opponent GD/CSD, Early Total Deaths, Whole-Game KP/DMG%/WPM, and keeps soloKills/soloDeaths/turretPlates explicitly UNAVAILABLE', () => {
@@ -1003,25 +1026,45 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     expect(matchWithNullEventsTimeline.checkpoints[10].earlyTotalDeaths).toBeNull();
   });
 
-  it('caps searched player analysis strictly to the 20 most recent deduplicated matches and supports preselected yet changeable role filtering', () => {
+  it('sorts 25 shuffled + duplicate matches by validated timestamp newest-first before applying the 20-match cap, handles unknown dates deterministically, and strictly scopes pairOptions to the preselected or selected role', () => {
     const puuid = 'puuid-recent20-tester';
-    // Build 25 unique matches:
-    // Matches 1..15: Mid Syndra
-    // Matches 16..20: Top KSante
-    // Matches 21..25 (beyond 20): Bot Ezreal (must be excluded by the 20-match cap!)
-    const matches: MatchDto[] = Array.from({ length: 25 }, (_, idx) => {
-      const n = idx + 1;
-      const isMid = n <= 15;
-      const isTop = n >= 16 && n <= 20;
+    const baseTimestampMs = 1_762_000_000_000;
+
+    // Build 25 unique matches where:
+    // - Chronological rank 1..15 (NEWEST, highest timestamps): Mid Syndra
+    // - Chronological rank 16..20 (NEXT 5 newest timestamps): Top KSante
+    // - Chronological rank 21..23 (OLDER timestamps beyond recent 20): Bot Ezreal
+    // - Chronological rank 24..25 (UNKNOWN/missing or invalid timestamps <= 0): Bot Ezreal
+    const chronologicalNewestFirst: MatchDto[] = Array.from({ length: 25 }, (_, idx) => {
+      const rank = idx + 1; // 1 = newest, 25 = oldest/unknown
+      const isMid = rank <= 15;
+      const isTop = rank >= 16 && rank <= 20;
       const championName = isMid ? 'Syndra' : isTop ? 'KSante' : 'Ezreal';
       const teamPosition = isMid ? 'MIDDLE' : isTop ? 'TOP' : 'BOTTOM';
+      const tsMs = baseTimestampMs + (30 - rank) * 3_600_000;
+
+      // Test different timestamp fields and unknown-date cases:
+      // - rank 1..18 use gameEndTimestamp
+      // - rank 19..23 use gameCreation
+      // - rank 24 has undefined timestamps (unknown date)
+      // - rank 25 has gameEndTimestamp: 0 and gameCreation: -500 (invalid -> unknown date)
+      const timestampFields =
+        rank <= 18
+          ? { gameEndTimestamp: tsMs }
+          : rank <= 23
+            ? { gameCreation: tsMs }
+            : rank === 24
+              ? {}
+              : { gameEndTimestamp: 0, gameCreation: -500 };
+
       return {
         metadata: {
-          matchId: `EUW1_REC_${String(n).padStart(3, '0')}`,
+          matchId: `EUW1_REC_${String(rank).padStart(3, '0')}`,
           participants: [puuid],
         },
         info: {
-          gameId: 8000 + n,
+          gameId: 8000 + rank,
+          ...timestampFields,
           gameDuration: 1800,
           gameMode: 'CLASSIC',
           gameVersion: '16.20.1',
@@ -1032,7 +1075,7 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
               puuid,
               championName,
               teamPosition,
-              win: n % 2 === 0,
+              win: rank % 2 === 0,
               kills: 5,
               deaths: 2,
               assists: 7,
@@ -1044,26 +1087,82 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
       };
     });
 
-    // Duplicate match #1 to verify deduplication happens before the 20-match window cap
-    const inputMatches = [matches[0], ...matches];
+    // Verify resolveValidatedMatchSortTimestampMs directly
+    expect(resolveValidatedMatchSortTimestampMs(chronologicalNewestFirst[0])).toBe(
+      baseTimestampMs + 29 * 3_600_000
+    );
+    expect(resolveValidatedMatchSortTimestampMs(chronologicalNewestFirst[19])).toBe(
+      baseTimestampMs + 10 * 3_600_000
+    );
+    expect(resolveValidatedMatchSortTimestampMs(chronologicalNewestFirst[23])).toBeNull();
+    expect(resolveValidatedMatchSortTimestampMs(chronologicalNewestFirst[24])).toBeNull();
+
+    // Pass the 25 matches in SHUFFLED + OLDEST-FIRST order (putting the 5 Bot Ezreal matches first in the input array!)
+    // plus 2 duplicate match entries (including a duplicate of rank 1 that initially lacked a timestamp and is upgraded by the real rank 1 entry).
+    const rank1WithoutTimestamp: MatchDto = {
+      ...chronologicalNewestFirst[0],
+      info: {
+        ...chronologicalNewestFirst[0].info!,
+        gameEndTimestamp: undefined,
+        gameCreation: undefined,
+      },
+    };
+    const shuffledAndDuplicatedInput: MatchDto[] = [
+      chronologicalNewestFirst[24], // rank 25 (Ezreal Bot, invalid timestamp -> unknown)
+      chronologicalNewestFirst[23], // rank 24 (Ezreal Bot, missing timestamp -> unknown)
+      chronologicalNewestFirst[22], // rank 23 (Ezreal Bot, old timestamp)
+      chronologicalNewestFirst[21], // rank 22 (Ezreal Bot, old timestamp)
+      chronologicalNewestFirst[20], // rank 21 (Ezreal Bot, old timestamp)
+      rank1WithoutTimestamp, // earlier duplicate of rank 1 without timestamp
+      chronologicalNewestFirst[17], // rank 18 (KSante Top)
+      chronologicalNewestFirst[10], // rank 11 (Syndra Mid)
+      chronologicalNewestFirst[19], // rank 20 (KSante Top)
+      chronologicalNewestFirst[19], // duplicate of rank 20
+      chronologicalNewestFirst[3], // rank 4 (Syndra Mid)
+      chronologicalNewestFirst[15], // rank 16 (KSante Top)
+      chronologicalNewestFirst[0], // rank 1 (Syndra Mid, upgrades timestamp on duplicate)
+      chronologicalNewestFirst[18], // rank 19 (KSante Top)
+      chronologicalNewestFirst[16], // rank 17 (KSante Top)
+      chronologicalNewestFirst[14], // rank 15 (Syndra Mid)
+      chronologicalNewestFirst[1], // rank 2 (Syndra Mid)
+      chronologicalNewestFirst[13], // rank 14 (Syndra Mid)
+      chronologicalNewestFirst[2], // rank 3 (Syndra Mid)
+      chronologicalNewestFirst[12], // rank 13 (Syndra Mid)
+      chronologicalNewestFirst[4], // rank 5 (Syndra Mid)
+      chronologicalNewestFirst[11], // rank 12 (Syndra Mid)
+      chronologicalNewestFirst[5], // rank 6 (Syndra Mid)
+      chronologicalNewestFirst[9], // rank 10 (Syndra Mid)
+      chronologicalNewestFirst[6], // rank 7 (Syndra Mid)
+      chronologicalNewestFirst[8], // rank 9 (Syndra Mid)
+      chronologicalNewestFirst[7], // rank 8 (Syndra Mid)
+    ];
 
     const defaultView = buildSearchedPlayerProComparison({
       identity: { puuid, region: 'EUW1', gameName: 'WindowTester', tagLine: 'EUW' },
-      visibleMatches: inputMatches,
+      visibleMatches: shuffledAndDuplicatedInput,
       timelinesByMatchId: {},
     });
 
     expect(MAX_RECENT_PLAYER_MATCHES).toBe(20);
     expect(defaultView.recentMatchWindow).toEqual({
       maxRecentMatches: 20,
+      timestampSortPolicy: 'known_timestamps_newest_first_then_unknown_in_input_order',
       inputMatchCount: 25,
+      duplicateMatchesExcludedCount: 2,
+      knownTimestampMatchCountInInput: 23,
+      unknownTimestampMatchCountInInput: 2,
       analyzedRecentMatchCount: 20,
+      knownTimestampMatchCountInRecent20: 20,
+      unknownTimestampMatchCountInRecent20: 0,
+      newestMatchTimestampMsInRecent20: baseTimestampMs + 29 * 3_600_000,
+      oldestMatchTimestampMsInRecent20: baseTimestampMs + 10 * 3_600_000,
       excludedBeyondRecent20Count: 5,
       positionalMatchCountInRecent20: 20,
       excludedNonPositionalMatchesInRecent20: 0,
     });
 
-    // Matches 21..25 (Ezreal Bot) must be excluded from allPairOptionsInRecent20 and roleSelection
+    // Even though the 5 Ezreal Bot matches were placed FIRST in shuffledAndDuplicatedInput,
+    // timestamp sorting newest-first before the 20-match cap excludes all 5 of them!
     expect(
       defaultView.allPairOptionsInRecent20.map((p) => `${p.role}::${p.championId}`)
     ).toEqual(['mid::Syndra', 'top::KSante']);
@@ -1071,16 +1170,34 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     expect(defaultView.roleSelection.selectedRole).toBe('mid');
     expect(defaultView.roleSelection.isRolePreselectedByDefault).toBe(true);
     expect(defaultView.roleSelection.playerGamesInSelectedRole).toBe(15);
-    expect(defaultView.pairOptions.map((p) => p.pairKey)).toEqual([
+
+    // Crucial: default role preselection strictly scopes pairOptions to the preselected primary role ('mid::Syndra'),
+    // while allPairOptionsInRecent20 retains the separate cross-role list!
+    expect(defaultView.pairOptions.map((p) => p.pairKey)).toEqual(['mid::Syndra']);
+    expect(defaultView.selectedPair?.pairKey).toBe('mid::Syndra');
+    // Verify activeMatches are sorted newest-first (EUW1_REC_001 .. EUW1_REC_015)
+    expect(defaultView.activeMatches.map((m) => m.matchId)).toEqual(
+      Array.from({ length: 15 }, (_, idx) => `EUW1_REC_${String(idx + 1).padStart(3, '0')}`)
+    );
+
+    // Explicitly passing selectedRole: 'ALL' returns all roles in pairOptions
+    const allRolesView = buildSearchedPlayerProComparison({
+      identity: { puuid, region: 'EUW1', gameName: 'WindowTester', tagLine: 'EUW' },
+      visibleMatches: shuffledAndDuplicatedInput,
+      timelinesByMatchId: {},
+      selectedRole: 'ALL',
+    });
+    expect(allRolesView.roleSelection.selectedRole).toBe('ALL');
+    expect(allRolesView.roleSelection.isRolePreselectedByDefault).toBe(false);
+    expect(allRolesView.pairOptions.map((p) => p.pairKey)).toEqual([
       'mid::Syndra',
       'top::KSante',
     ]);
-    expect(defaultView.selectedPair?.pairKey).toBe('mid::Syndra');
 
     // Switch role to 'top' -> changeable role filter narrows pairOptions to Top · KSante (5G in recent 20)
     const topRoleView = buildSearchedPlayerProComparison({
       identity: { puuid, region: 'EUW1', gameName: 'WindowTester', tagLine: 'EUW' },
-      visibleMatches: inputMatches,
+      visibleMatches: shuffledAndDuplicatedInput,
       timelinesByMatchId: {},
       selectedRole: 'top',
     });
@@ -1091,10 +1208,10 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     expect(topRoleView.pairOptions.map((p) => p.pairKey)).toEqual(['top::KSante']);
     expect(topRoleView.selectedPair?.pairKey).toBe('top::KSante');
 
-    // Switch role to 'bottom' (where the only 5 Ezreal games were at positions 21..25 beyond recent 20) -> 0 games in recent 20
+    // Switch role to 'bottom' (where the 5 Ezreal games were older/unknown beyond the newest 20) -> 0 games in recent 20
     const bottomRoleView = buildSearchedPlayerProComparison({
       identity: { puuid, region: 'EUW1', gameName: 'WindowTester', tagLine: 'EUW' },
-      visibleMatches: inputMatches,
+      visibleMatches: shuffledAndDuplicatedInput,
       timelinesByMatchId: {},
       selectedRole: 'bottom',
     });

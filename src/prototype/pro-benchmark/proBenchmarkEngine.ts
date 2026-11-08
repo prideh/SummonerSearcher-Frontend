@@ -1463,6 +1463,23 @@ export function computeProComparisonSlice(
   const patchVersion = dataset.patchVersion ?? "16.20.826.3891";
   const patchShort = patchVersion.split(".").slice(0, 2).join(".");
 
+  const allDatasetGames = dataset.games ?? [];
+  const totalGamesInDataset = allDatasetGames.length;
+  const totalObservationsInDataset = allDatasetGames.reduce(
+    (acc, g) => acc + Object.keys(g.participants ?? {}).length,
+    0,
+  );
+  const pausedGamesInDatasetCount = allDatasetGames.filter((g) =>
+    isProGamePaused(g),
+  ).length;
+  const unpausedGamesInDatasetCount =
+    totalGamesInDataset - pausedGamesInDatasetCount;
+  const pausedObservationsInDatasetCount = allDatasetGames
+    .filter((g) => isProGamePaused(g))
+    .reduce((acc, g) => acc + Object.keys(g.participants ?? {}).length, 0);
+  const unpausedObservationsInDatasetCount =
+    totalObservationsInDataset - pausedObservationsInDatasetCount;
+
   return {
     filter: {
       role: normalizedRole,
@@ -1481,11 +1498,12 @@ export function computeProComparisonSlice(
     alternateRolesForChampion,
     selectionTitle,
     selectionSubtitle,
-    totalGamesInDataset: dataset.games?.length ?? 0,
-    totalObservationsInDataset: (dataset.games ?? []).reduce(
-      (acc, g) => acc + Object.keys(g.participants ?? {}).length,
-      0,
-    ),
+    totalGamesInDataset,
+    totalObservationsInDataset,
+    unpausedGamesInDatasetCount,
+    unpausedObservationsInDatasetCount,
+    pausedGamesInDatasetCount,
+    pausedObservationsInDatasetCount,
     totalRoleChampionPairsInDataset: allOptions.length,
     reportClaimedRoleChampionPairs: 57,
     patchVersion,

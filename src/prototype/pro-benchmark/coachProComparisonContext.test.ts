@@ -504,21 +504,44 @@ describe("coachProComparisonContext adapter contract & data integrity", () => {
 
     expect(ctx.schemaVersion).toBe("coach-pro-comparison-v1");
     expect(ctx.dataIntegrityRules).toEqual({
+      recentMatchWindowPolicy: "most_recent_20_deduplicated_matches_only",
+      roleSelectionScopePolicy:
+        "enforce_selected_or_preselected_role_with_separate_all_roles_metadata",
       missingChallengesPolicy: "preserve_null_unknown_never_zero",
       missingTimelineAssistsPolicy: "preserve_null_unknown_never_zero_or_solo",
       unassistedKillDeathPolicy:
         "zero_recorded_assists_is_not_proven_1v1_solo",
       proEarlyDeathsPausePolicy:
         "exclude_paused_pro_games_with_total_pause_gt_0",
-      recentMatchWindowPolicy: "most_recent_20_deduplicated_matches_only",
       proPlayerFilterPolicy: "never_fabricate_pro_player_availability",
+    });
+
+    expect(ctx.proDatasetMetadata).toEqual({
+      patchVersion: "16.20.826.3891",
+      gamesIngestedCount: 8,
+      playerObservationsCount: 80,
+      unpausedGamesCountForEarlyDeaths: 7,
+      unpausedPlayerObservationsCountForEarlyDeaths: 70,
+      pausedGamesExcludedFromEarlyDeathsCount: 1,
+      pausedPlayerObservationsExcludedFromEarlyDeathsCount: 10,
+      earlyDeaths5mTo20mMaxUnpausedObservations: 70,
+      supportedChampionRolePairsCount: 53,
     });
 
     // Verify recentMatchWindow, roleSelection, and proPlayerSelection on default context
     expect(ctx.recentMatchWindow).toEqual({
       maxRecentMatches: 20,
+      timestampSortPolicy:
+        "known_timestamps_newest_first_then_unknown_in_input_order",
       inputMatchCount: 2,
+      duplicateMatchesExcludedCount: 0,
+      knownTimestampMatchCountInInput: 2,
+      unknownTimestampMatchCountInInput: 0,
       analyzedRecentMatchCount: 2,
+      knownTimestampMatchCountInRecent20: 2,
+      unknownTimestampMatchCountInRecent20: 0,
+      newestMatchTimestampMsInRecent20: 1_762_000_000_000,
+      oldestMatchTimestampMsInRecent20: 1_762_000_000_000,
       excludedBeyondRecent20Count: 0,
       positionalMatchCountInRecent20: 2,
       excludedNonPositionalMatchesInRecent20: 0,
@@ -786,6 +809,221 @@ describe("coachProComparisonContext adapter contract & data integrity", () => {
         slice.checkpointComparisons[10].totalCs.deltaPlayerMinusPro,
       ).toBeNull();
     }
+  });
+
+  it("sorts 25 shuffled + duplicate matches by validated timestamp newest-first in coach context and strictly scopes matches/championRoleComparisons to the preselected or selected role while exposing separate allRolesInRecent20Metadata", () => {
+    const puuid = "puuid-coach-recent20-role-scope";
+    const baseTimestampMs = 1_762_500_000_000;
+
+    // 25 unique matches:
+    // - Chronological rank 1..15 (newest timestamps): Mid Syndra
+    // - Chronological rank 16..20 (next 5 newest timestamps): Top KSante
+    // - Chronological rank 21..23 (older timestamps beyond recent 20): Bot Ezreal
+    // - Chronological rank 24..25 (unknown/invalid timestamps): Bot Ezreal
+    const chronologicalNewestFirst: MatchDto[] = Array.from(
+      { length: 25 },
+      (_, idx) => {
+        const rank = idx + 1;
+        const isMid = rank <= 15;
+        const isTop = rank >= 16 && rank <= 20;
+        const championName = isMid ? "Syndra" : isTop ? "KSante" : "Ezreal";
+        const teamPosition = isMid ? "MIDDLE" : isTop ? "TOP" : "BOTTOM";
+        const tsMs = baseTimestampMs + (30 - rank) * 3_600_000;
+
+        const timestampFields =
+          rank <= 20
+            ? { gameEndTimestamp: tsMs }
+            : rank <= 23
+              ? { gameCreation: tsMs }
+              : rank === 24
+                ? {}
+                : { gameEndTimestamp: -1, gameCreation: 0 };
+
+        return {
+          metadata: {
+            matchId: `EUW1_COACH_${String(rank).padStart(3, "0")}`,
+            participants: [puuid],
+          },
+          info: {
+            gameId: 9000 + rank,
+            ...timestampFields,
+            gameDuration: 1800,
+            gameMode: "CLASSIC",
+            gameVersion: "16.20.826.3891",
+            queueId: 420,
+            participants: [
+              {
+                participantId: 1,
+                puuid,
+                championName,
+                teamPosition,
+                teamId: 100,
+                win: rank % 2 === 1,
+                kills: 6,
+                deaths: 2,
+                assists: 8,
+                totalMinionsKilled: 220,
+                neutralMinionsKilled: 10,
+                challenges: {
+                  soloKills: 1,
+                  turretPlatesTaken: 2,
+                },
+              },
+            ],
+          },
+        };
+      },
+    );
+
+    // Shuffle and place the 5 older/unknown-date Bot Ezreal matches FIRST, plus 2 duplicates
+    const shuffledWithDuplicates: MatchDto[] = [
+      chronologicalNewestFirst[24], // rank 25 (Ezreal Bot, invalid timestamp -> unknown)
+      chronologicalNewestFirst[23], // rank 24 (Ezreal Bot, missing timestamp -> unknown)
+      chronologicalNewestFirst[22], // rank 23 (Ezreal Bot, old timestamp)
+      chronologicalNewestFirst[21], // rank 22 (Ezreal Bot, old timestamp)
+      chronologicalNewestFirst[20], // rank 21 (Ezreal Bot, old timestamp)
+      chronologicalNewestFirst[19], // rank 20 (KSante Top)
+      chronologicalNewestFirst[18], // rank 19 (KSante Top)
+      chronologicalNewestFirst[19], // duplicate of rank 20
+      chronologicalNewestFirst[17], // rank 18 (KSante Top)
+      chronologicalNewestFirst[16], // rank 17 (KSante Top)
+      chronologicalNewestFirst[15], // rank 16 (KSante Top)
+      chronologicalNewestFirst[14], // rank 15 (Syndra Mid)
+      chronologicalNewestFirst[13], // rank 14 (Syndra Mid)
+      chronologicalNewestFirst[12], // rank 13 (Syndra Mid)
+      chronologicalNewestFirst[11], // rank 12 (Syndra Mid)
+      chronologicalNewestFirst[10], // rank 11 (Syndra Mid)
+      chronologicalNewestFirst[9], // rank 10 (Syndra Mid)
+      chronologicalNewestFirst[8], // rank 9 (Syndra Mid)
+      chronologicalNewestFirst[7], // rank 8 (Syndra Mid)
+      chronologicalNewestFirst[6], // rank 7 (Syndra Mid)
+      chronologicalNewestFirst[5], // rank 6 (Syndra Mid)
+      chronologicalNewestFirst[4], // rank 5 (Syndra Mid)
+      chronologicalNewestFirst[3], // rank 4 (Syndra Mid)
+      chronologicalNewestFirst[2], // rank 3 (Syndra Mid)
+      chronologicalNewestFirst[1], // rank 2 (Syndra Mid)
+      chronologicalNewestFirst[0], // rank 1 (Syndra Mid)
+      chronologicalNewestFirst[0], // duplicate of rank 1
+    ];
+
+    // 1. Default invocation (selectedRole omitted -> preselected to 'mid'):
+    //    Coach context MUST scope matches and championRoleComparisons strictly to 'mid' (15 games),
+    //    and MUST NOT emit 'top::KSante' in championRoleComparisons or matches!
+    const defaultCtx = buildCoachProComparisonContext({
+      puuid,
+      region: "EUW1",
+      gameName: "CoachWindowTester",
+      tagLine: "EUW",
+      matches: shuffledWithDuplicates,
+    });
+
+    expect(defaultCtx.recentMatchWindow).toEqual({
+      maxRecentMatches: 20,
+      timestampSortPolicy:
+        "known_timestamps_newest_first_then_unknown_in_input_order",
+      inputMatchCount: 25,
+      duplicateMatchesExcludedCount: 2,
+      knownTimestampMatchCountInInput: 23,
+      unknownTimestampMatchCountInInput: 2,
+      analyzedRecentMatchCount: 20,
+      knownTimestampMatchCountInRecent20: 20,
+      unknownTimestampMatchCountInRecent20: 0,
+      newestMatchTimestampMsInRecent20: baseTimestampMs + 29 * 3_600_000,
+      oldestMatchTimestampMsInRecent20: baseTimestampMs + 10 * 3_600_000,
+      excludedBeyondRecent20Count: 5,
+      positionalMatchCountInRecent20: 20,
+      excludedNonPositionalMatchesInRecent20: 0,
+    });
+
+    expect(defaultCtx.roleSelection.detectedPrimaryRole).toBe("mid");
+    expect(defaultCtx.roleSelection.selectedRole).toBe("mid");
+    expect(defaultCtx.roleSelection.isRolePreselectedByDefault).toBe(true);
+    expect(defaultCtx.roleSelection.playerGamesInSelectedRole).toBe(15);
+
+    // Coach matches and championRoleComparisons are strictly scoped to the preselected 'mid' role
+    expect(defaultCtx.championRoleComparisons.map((c) => c.pairKey)).toEqual([
+      "mid::Syndra",
+    ]);
+    expect(defaultCtx.matches).toHaveLength(15);
+    expect(defaultCtx.matches.every((m) => m.role === "mid")).toBe(true);
+    expect(defaultCtx.matches.map((m) => m.matchId)).toEqual(
+      Array.from(
+        { length: 15 },
+        (_, idx) => `EUW1_COACH_${String(idx + 1).padStart(3, "0")}`,
+      ),
+    );
+
+    // Separate allRolesInRecent20Metadata explicitly exposes off-role Top · KSante with isIncludedInSelectedRoleScope=false
+    expect(defaultCtx.allRolesInRecent20Metadata).toMatchObject({
+      selectedRoleScope: "mid",
+      isRolePreselectedByDefault: true,
+      totalPositionalMatchesInRecent20: 20,
+      playerGamesInSelectedRoleScope: 15,
+      playerGamesOutsideSelectedRoleScope: 5,
+      rolesPresentInRecent20: ["mid", "top"],
+      allPairsInRecent20: [
+        {
+          pairKey: "mid::Syndra",
+          championId: "Syndra",
+          role: "mid",
+          playerGameCount: 15,
+          isIncludedInSelectedRoleScope: true,
+        },
+        {
+          pairKey: "top::KSante",
+          championId: "KSante",
+          role: "top",
+          playerGameCount: 5,
+          isIncludedInSelectedRoleScope: false,
+        },
+      ],
+    });
+
+    // 2. Switching selectedRole to 'top' scopes coach matches (5G) and championRoleComparisons to 'top::KSante'
+    const topCtx = buildCoachProComparisonContext({
+      puuid,
+      region: "EUW1",
+      gameName: "CoachWindowTester",
+      tagLine: "EUW",
+      matches: shuffledWithDuplicates,
+      selectedRole: "top",
+    });
+    expect(topCtx.roleSelection.selectedRole).toBe("top");
+    expect(topCtx.roleSelection.isRolePreselectedByDefault).toBe(false);
+    expect(topCtx.championRoleComparisons.map((c) => c.pairKey)).toEqual([
+      "top::KSante",
+    ]);
+    expect(topCtx.matches).toHaveLength(5);
+    expect(topCtx.matches.map((m) => m.matchId)).toEqual([
+      "EUW1_COACH_016",
+      "EUW1_COACH_017",
+      "EUW1_COACH_018",
+      "EUW1_COACH_019",
+      "EUW1_COACH_020",
+    ]);
+    expect(topCtx.allRolesInRecent20Metadata.playerGamesInSelectedRoleScope).toBe(
+      5,
+    );
+    expect(
+      topCtx.allRolesInRecent20Metadata.playerGamesOutsideSelectedRoleScope,
+    ).toBe(15);
+
+    // 3. Explicitly passing selectedRole: 'ALL' includes both 'mid::Syndra' and 'top::KSante' (20G)
+    const allRolesCtx = buildCoachProComparisonContext({
+      puuid,
+      region: "EUW1",
+      gameName: "CoachWindowTester",
+      tagLine: "EUW",
+      matches: shuffledWithDuplicates,
+      selectedRole: "ALL",
+    });
+    expect(allRolesCtx.roleSelection.selectedRole).toBe("ALL");
+    expect(allRolesCtx.roleSelection.isRolePreselectedByDefault).toBe(false);
+    expect(allRolesCtx.championRoleComparisons.map((c) => c.pairKey)).toEqual([
+      "mid::Syndra",
+      "top::KSante",
+    ]);
+    expect(allRolesCtx.matches).toHaveLength(20);
   });
 });
 

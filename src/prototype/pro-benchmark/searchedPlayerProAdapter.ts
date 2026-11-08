@@ -159,6 +159,7 @@ export type MatchTimelineResolutionStatus =
 
 export interface SearchedPlayerMatchSummary {
   matchId: string;
+  matchTimestampMs: number | null;
   puuid: string;
   participantId: number | null;
   roleOpponentPuuid: string | null;
@@ -199,8 +200,16 @@ export interface SearchedPlayerPairOption {
 
 export interface RecentPlayerMatchWindowSummary {
   maxRecentMatches: typeof MAX_RECENT_PLAYER_MATCHES;
+  timestampSortPolicy: "known_timestamps_newest_first_then_unknown_in_input_order";
   inputMatchCount: number;
+  duplicateMatchesExcludedCount: number;
+  knownTimestampMatchCountInInput: number;
+  unknownTimestampMatchCountInInput: number;
   analyzedRecentMatchCount: number;
+  knownTimestampMatchCountInRecent20: number;
+  unknownTimestampMatchCountInRecent20: number;
+  newestMatchTimestampMsInRecent20: number | null;
+  oldestMatchTimestampMsInRecent20: number | null;
   excludedBeyondRecent20Count: number;
   positionalMatchCountInRecent20: number;
   excludedNonPositionalMatchesInRecent20: number;
@@ -1401,6 +1410,7 @@ export function extractPlayerMatchSummary(
 
   return {
     matchId,
+    matchTimestampMs: resolveValidatedMatchSortTimestampMs(matchDto),
     puuid,
     participantId: resolvedParticipantId,
     roleOpponentPuuid,
@@ -1671,14 +1681,48 @@ export function summarizeSliceDeathAttribution(
   };
 }
 
+const isStrictPositiveTimestampMs = (val: unknown): val is number =>
+  typeof val === "number" && Number.isFinite(val) && val > 0;
+
+/**
+ * Extracts a validated match timestamp in epoch milliseconds from `MatchDto.info`.
+ *
+ * Priority order:
+ * 1. `info.gameEndTimestamp` when finite and `> 0`.
+ * 2. `info.gameStartTimestamp` (if present on raw Match-v5 payload) when finite and `> 0`.
+ * 3. `info.gameCreation` when finite and `> 0`.
+ * 4. Otherwise `null` (unknown/missing/non-finite/non-positive timestamp).
+ */
+export function resolveValidatedMatchSortTimestampMs(
+  matchDto: MatchDto | null | undefined,
+): number | null {
+  const info = matchDto?.info as
+    | (MatchDto["info"] & { gameStartTimestamp?: unknown })
+    | undefined;
+  if (!info) return null;
+  if (isStrictPositiveTimestampMs(info.gameEndTimestamp)) {
+    return info.gameEndTimestamp;
+  }
+  if (isStrictPositiveTimestampMs(info.gameStartTimestamp)) {
+    return info.gameStartTimestamp;
+  }
+  if (isStrictPositiveTimestampMs(info.gameCreation)) {
+    return info.gameCreation;
+  }
+  return null;
+}
+
 /**
  * Builds the complete searched-player vs pro-reference comparison view bound to the searched player's
  * `{ puuid, region, gameName, tagLine }`.
  *
  * Product direction enforced:
- * 1. Uses the player's most recent 20 matches ONLY (`MAX_RECENT_PLAYER_MATCHES = 20`).
+ * 1. Deduplicates input matches by `metadata.matchId`, sorts validated match timestamps newest-first
+ *    (with unknown/missing timestamps placed after known timestamps in deterministic deduplicated input
+ *    order), and THEN caps to the player's most recent 20 matches ONLY (`MAX_RECENT_PLAYER_MATCHES = 20`).
  * 2. Preselects the player's primary role from those 20 matches by default (`detectedPrimaryRole`),
- *    while allowing the caller to switch to any role (`selectedRole`).
+ *    while allowing the caller to switch to any role (`selectedRole`), and strictly scopes `pairOptions`
+ *    to `activeRole` (while retaining separate cross-role metadata in `allPairOptionsInRecent20`).
  * 3. Supports optional narrowing of the pro reference to a specific pro player (`selectedProPlayerId`,
  *    matched by stable `esportsPlayerId`, full `summonerName`, or unique handle). Never fabricates
  *    availability: vision examples not in the dataset (such as `"Chovy"` or `"Faker"`) resolve to
@@ -1719,32 +1763,94 @@ export function buildSearchedPlayerProComparison(params: {
       ? "ALL"
       : rawProPlayerQuery;
 
-  // 1. Deduplicate input matches in chronological/input order and cap to MAX_RECENT_PLAYER_MATCHES (20)
-  const deduplicatedMatches: MatchDto[] = [];
-  const seenMatchIds = new Set<string>();
-  for (const matchDto of visibleMatches || []) {
-    const mid = matchDto?.metadata?.matchId?.trim();
-    if (!mid || seenMatchIds.has(mid)) continue;
-    seenMatchIds.add(mid);
-    deduplicatedMatches.push(matchDto);
+  // 1. Deduplicate input matches by matchId, sort by validated timestamp newest-first
+  //    (known timestamps descending first, then unknown timestamps in deterministic input order),
+  //    and cap to MAX_RECENT_PLAYER_MATCHES (20).
+  interface DeduplicatedMatchCandidate {
+    matchId: string;
+    matchDto: MatchDto;
+    dedupIndex: number;
+    sortTimestampMs: number | null;
   }
 
-  const inputMatchCount = deduplicatedMatches.length;
-  const recent20Matches = deduplicatedMatches.slice(
+  const deduplicatedById = new Map<string, DeduplicatedMatchCandidate>();
+  let duplicateMatchesExcludedCount = 0;
+
+  for (const matchDto of visibleMatches || []) {
+    const mid = matchDto?.metadata?.matchId?.trim();
+    if (!mid) continue;
+    const candidateTs = resolveValidatedMatchSortTimestampMs(matchDto);
+    const existing = deduplicatedById.get(mid);
+    if (existing) {
+      duplicateMatchesExcludedCount += 1;
+      // If the earlier duplicate lacked a timestamp and the later duplicate has a validated timestamp,
+      // upgrade the stored MatchDto and timestamp while keeping its original dedupIndex.
+      if (existing.sortTimestampMs === null && candidateTs !== null) {
+        existing.matchDto = matchDto;
+        existing.sortTimestampMs = candidateTs;
+      }
+      continue;
+    }
+    deduplicatedById.set(mid, {
+      matchId: mid,
+      matchDto,
+      dedupIndex: deduplicatedById.size,
+      sortTimestampMs: candidateTs,
+    });
+  }
+
+  const deduplicatedCandidates = Array.from(deduplicatedById.values());
+  const inputMatchCount = deduplicatedCandidates.length;
+  const knownTimestampMatchCountInInput = deduplicatedCandidates.filter(
+    (c) => c.sortTimestampMs !== null,
+  ).length;
+  const unknownTimestampMatchCountInInput =
+    inputMatchCount - knownTimestampMatchCountInInput;
+
+  const sortedCandidates = [...deduplicatedCandidates].sort((a, b) => {
+    const aKnown = a.sortTimestampMs !== null;
+    const bKnown = b.sortTimestampMs !== null;
+    if (aKnown !== bKnown) {
+      return aKnown ? -1 : 1;
+    }
+    if (
+      a.sortTimestampMs !== null &&
+      b.sortTimestampMs !== null &&
+      b.sortTimestampMs !== a.sortTimestampMs
+    ) {
+      return b.sortTimestampMs - a.sortTimestampMs;
+    }
+    return a.dedupIndex - b.dedupIndex;
+  });
+
+  const recent20Candidates = sortedCandidates.slice(
     0,
     MAX_RECENT_PLAYER_MATCHES,
   );
   const excludedBeyondRecent20Count = Math.max(
     0,
-    inputMatchCount - recent20Matches.length,
+    inputMatchCount - recent20Candidates.length,
   );
+
+  const knownRecentTimestamps = recent20Candidates
+    .map((c) => c.sortTimestampMs)
+    .filter((ts): ts is number => ts !== null);
+  const knownTimestampMatchCountInRecent20 = knownRecentTimestamps.length;
+  const unknownTimestampMatchCountInRecent20 =
+    recent20Candidates.length - knownTimestampMatchCountInRecent20;
+  const newestMatchTimestampMsInRecent20 =
+    knownRecentTimestamps.length > 0 ? knownRecentTimestamps[0] : null;
+  const oldestMatchTimestampMsInRecent20 =
+    knownRecentTimestamps.length > 0
+      ? knownRecentTimestamps[knownRecentTimestamps.length - 1]
+      : null;
 
   const parsedMatches: SearchedPlayerMatchSummary[] = [];
   let excludedNonPositionalMatches = 0;
 
-  for (const matchDto of recent20Matches) {
+  for (const candidate of recent20Candidates) {
     const summary = extractPlayerMatchSummary(
-      matchDto,
+      candidate.matchDto,
       identity.puuid,
       timelinesByMatchId,
       dataset,
@@ -1758,8 +1864,17 @@ export function buildSearchedPlayerProComparison(params: {
 
   const recentMatchWindow: RecentPlayerMatchWindowSummary = {
     maxRecentMatches: MAX_RECENT_PLAYER_MATCHES,
+    timestampSortPolicy:
+      "known_timestamps_newest_first_then_unknown_in_input_order",
     inputMatchCount,
-    analyzedRecentMatchCount: recent20Matches.length,
+    duplicateMatchesExcludedCount,
+    knownTimestampMatchCountInInput,
+    unknownTimestampMatchCountInInput,
+    analyzedRecentMatchCount: recent20Candidates.length,
+    knownTimestampMatchCountInRecent20,
+    unknownTimestampMatchCountInRecent20,
+    newestMatchTimestampMsInRecent20,
+    oldestMatchTimestampMsInRecent20,
     excludedBeyondRecent20Count,
     positionalMatchCountInRecent20: parsedMatches.length,
     excludedNonPositionalMatchesInRecent20: excludedNonPositionalMatches,
@@ -1831,6 +1946,7 @@ export function buildSearchedPlayerProComparison(params: {
     pairMap.set(key, list);
   }
 
+  // Separate explicit all-roles metadata across the recent 20 window (sorted with detectedPrimaryRole first)
   const allPairOptionsInRecent20: SearchedPlayerPairOption[] = Array.from(
     pairMap.entries(),
   )
@@ -1870,6 +1986,9 @@ export function buildSearchedPlayerProComparison(params: {
       };
     })
     .sort((a, b) => {
+      const aPrimary = a.role === detectedPrimaryRole ? 0 : 1;
+      const bPrimary = b.role === detectedPrimaryRole ? 0 : 1;
+      if (aPrimary !== bPrimary) return aPrimary - bPrimary;
       if (b.playerGameCount !== a.playerGameCount) {
         return b.playerGameCount - a.playerGameCount;
       }
@@ -1890,24 +2009,12 @@ export function buildSearchedPlayerProComparison(params: {
     ? selectedRole
     : (pairRequestedByKey?.role ?? detectedPrimaryRole ?? "ALL");
 
-  // When selectedRole is explicitly passed (and not "ALL"), filter pairOptions to that role.
-  // When selectedRole is omitted (default), keep all pairOptions in recent 20 sorted with detectedPrimaryRole first.
-  const pairOptions: SearchedPlayerPairOption[] = !isRolePreselectedByDefault
-    ? activeRole === "ALL"
+  // Strictly enforce activeRole scope on pairOptions (even when activeRole is preselected by default),
+  // while allPairOptionsInRecent20 explicitly retains the separate cross-role list across the recent 20 matches.
+  const pairOptions: SearchedPlayerPairOption[] =
+    activeRole === "ALL"
       ? allPairOptionsInRecent20
-      : allPairOptionsInRecent20.filter((p) => p.role === activeRole)
-    : [...allPairOptionsInRecent20].sort((a, b) => {
-        const aPrimary = a.role === detectedPrimaryRole ? 0 : 1;
-        const bPrimary = b.role === detectedPrimaryRole ? 0 : 1;
-        if (aPrimary !== bPrimary) return aPrimary - bPrimary;
-        if (b.playerGameCount !== a.playerGameCount) {
-          return b.playerGameCount - a.playerGameCount;
-        }
-        if (a.proReferenceAvailable !== b.proReferenceAvailable) {
-          return a.proReferenceAvailable ? -1 : 1;
-        }
-        return a.championId.localeCompare(b.championId);
-      });
+      : allPairOptionsInRecent20.filter((p) => p.role === activeRole);
 
   const selectedPair =
     (selectedPairKey
@@ -1916,9 +2023,12 @@ export function buildSearchedPlayerProComparison(params: {
     pairOptions[0] ??
     null;
 
-  const effectiveRoleForSelection: ProRoleFilter = selectedPair
-    ? (selectedPair.role as ProRoleFilter)
-    : activeRole;
+  const effectiveRoleForSelection: ProRoleFilter =
+    activeRole === "ALL"
+      ? "ALL"
+      : selectedPair
+        ? (selectedPair.role as ProRoleFilter)
+        : activeRole;
   const playerGamesInSelectedRole =
     effectiveRoleForSelection === "ALL"
       ? parsedMatches.length

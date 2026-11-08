@@ -369,6 +369,10 @@ export interface ProSliceComputationResult {
   selectionSubtitle: string;
   totalGamesInDataset: number;
   totalObservationsInDataset: number;
+  unpausedGamesInDatasetCount: number;
+  unpausedObservationsInDatasetCount: number;
+  pausedGamesInDatasetCount: number;
+  pausedObservationsInDatasetCount: number;
   totalRoleChampionPairsInDataset: number;
   reportClaimedRoleChampionPairs: number;
   patchVersion: string;

@@ -13,6 +13,7 @@ import {
 import {
   DEFAULT_PRO_BENCHMARK_DATASET,
   getUnavailableRequestedMetrics,
+  isProGamePaused,
   roundToDecimals,
 } from "./proBenchmarkEngine";
 import {
@@ -24,6 +25,7 @@ import {
   resolvePlayerMatchParticipant,
   resolveTimelineParticipantIdByPuuid,
   resolveUniqueRoleOpponentParticipant,
+  resolveValidatedMatchSortTimestampMs,
   type MatchTimelineResolutionStatus,
   type PairedCheckpointComparison,
   type PairedWholeGameMetricComparison,
@@ -137,6 +139,7 @@ export interface RawTimelineAssistAudit {
 
 export interface CoachMatchGroundTruthEntry {
   matchId: string;
+  matchTimestampMs: number | null;
   championId: string;
   rawChampionName: string;
   role: ProRoleKey;
@@ -315,6 +318,29 @@ export interface CoachChampionRoleProComparisonSlice {
   >;
 }
 
+export interface CoachAllRolesPairMetadataEntry {
+  pairKey: string;
+  championId: string;
+  role: ProRoleKey;
+  roleDisplay: string;
+  playerGameCount: number;
+  loadedTimelineCount: number;
+  proReferenceAvailable: boolean;
+  proSampleGameCount: number;
+  isIncludedInSelectedRoleScope: boolean;
+}
+
+export interface CoachAllRolesInRecent20Metadata {
+  selectedRoleScope: ProRoleFilter;
+  isRolePreselectedByDefault: boolean;
+  totalPositionalMatchesInRecent20: number;
+  playerGamesInSelectedRoleScope: number;
+  playerGamesOutsideSelectedRoleScope: number;
+  rolesPresentInRecent20: ProRoleKey[];
+  allPairsInRecent20: CoachAllRolesPairMetadataEntry[];
+  scopeNote: string;
+}
+
 export interface CoachProComparisonContext {
   schemaVersion: "coach-pro-comparison-v1";
   identity: {
@@ -325,15 +351,22 @@ export interface CoachProComparisonContext {
   };
   recentMatchWindow: RecentPlayerMatchWindowSummary;
   roleSelection: PlayerRoleSelectionSummary;
+  allRolesInRecent20Metadata: CoachAllRolesInRecent20Metadata;
   proPlayerSelection: ProPlayerSelectionSummary;
   proDatasetMetadata: {
     patchVersion: string;
     gamesIngestedCount: number;
     playerObservationsCount: number;
+    unpausedGamesCountForEarlyDeaths: number;
+    unpausedPlayerObservationsCountForEarlyDeaths: number;
+    pausedGamesExcludedFromEarlyDeathsCount: number;
+    pausedPlayerObservationsExcludedFromEarlyDeathsCount: number;
+    earlyDeaths5mTo20mMaxUnpausedObservations: number;
     supportedChampionRolePairsCount: number;
   };
   dataIntegrityRules: {
     recentMatchWindowPolicy: "most_recent_20_deduplicated_matches_only";
+    roleSelectionScopePolicy: "enforce_selected_or_preselected_role_with_separate_all_roles_metadata";
     missingChallengesPolicy: "preserve_null_unknown_never_zero";
     missingTimelineAssistsPolicy: "preserve_null_unknown_never_zero_or_solo";
     unassistedKillDeathPolicy: "zero_recorded_assists_is_not_proven_1v1_solo";
@@ -999,7 +1032,14 @@ export function buildCoachProComparisonContext(input: {
   const rawMatchById = new Map<string, MatchDto>();
   for (const m of input.matches ?? []) {
     const mid = m?.metadata?.matchId?.trim();
-    if (mid && !rawMatchById.has(mid)) {
+    if (!mid) continue;
+    const existing = rawMatchById.get(mid);
+    if (!existing) {
+      rawMatchById.set(mid, m);
+    } else if (
+      resolveValidatedMatchSortTimestampMs(existing) === null &&
+      resolveValidatedMatchSortTimestampMs(m) !== null
+    ) {
       rawMatchById.set(mid, m);
     }
   }
@@ -1077,6 +1117,7 @@ export function buildCoachProComparisonContext(input: {
 
       matchEntriesById.set(summary.matchId, {
         matchId: summary.matchId,
+        matchTimestampMs: summary.matchTimestampMs,
         championId: normChamp,
         rawChampionName: rawChamp,
         role: normRole,
@@ -1095,14 +1136,14 @@ export function buildCoachProComparisonContext(input: {
     }
   }
 
-  // Build champion+role comparison slices
+  // Build champion+role comparison slices strictly for the active roleSelection.selectedRole scope
   const championRoleComparisons: CoachChampionRoleProComparisonSlice[] =
     baseView.pairOptions.map((pairOption) => {
       const pairView = buildSearchedPlayerProComparison({
         identity,
         visibleMatches: input.matches,
         timelinesByMatchId,
-        selectedRole: input.selectedRole,
+        selectedRole: baseView.roleSelection.selectedRole,
         selectedPairKey: pairOption.pairKey,
         selectedMatchId: "ALL",
         selectedProPlayerId: input.selectedProPlayerId,
@@ -1335,21 +1376,89 @@ export function buildCoachProComparisonContext(input: {
       };
     });
 
+  const selectedPairKeySet = new Set(baseView.pairOptions.map((p) => p.pairKey));
+  const selectedRoleScope = baseView.roleSelection.selectedRole;
+  const totalPositionalMatchesInRecent20 =
+    baseView.recentMatchWindow.positionalMatchCountInRecent20;
+  const playerGamesInSelectedRoleScope =
+    baseView.roleSelection.playerGamesInSelectedRole;
+  const playerGamesOutsideSelectedRoleScope = Math.max(
+    0,
+    totalPositionalMatchesInRecent20 - playerGamesInSelectedRoleScope,
+  );
+  const rolesPresentInRecent20 = Array.from(
+    new Set(baseView.allPairOptionsInRecent20.map((p) => p.role)),
+  );
+
+  const allRolesInRecent20Metadata: CoachAllRolesInRecent20Metadata = {
+    selectedRoleScope,
+    isRolePreselectedByDefault:
+      baseView.roleSelection.isRolePreselectedByDefault,
+    totalPositionalMatchesInRecent20,
+    playerGamesInSelectedRoleScope,
+    playerGamesOutsideSelectedRoleScope,
+    rolesPresentInRecent20,
+    allPairsInRecent20: baseView.allPairOptionsInRecent20.map((p) => ({
+      pairKey: p.pairKey,
+      championId: p.championId,
+      role: p.role,
+      roleDisplay: p.roleDisplay,
+      playerGameCount: p.playerGameCount,
+      loadedTimelineCount: p.loadedTimelineCount,
+      proReferenceAvailable: p.proReferenceAvailable,
+      proSampleGameCount: p.proSampleGameCount,
+      isIncludedInSelectedRoleScope: selectedPairKeySet.has(p.pairKey),
+    })),
+    scopeNote:
+      selectedRoleScope === "ALL"
+        ? "Caller explicitly requested selectedRole='ALL'; matches and championRoleComparisons include all positional roles in the recent 20 window."
+        : `matches and championRoleComparisons are strictly scoped to selectedRole='${selectedRoleScope}' (${playerGamesInSelectedRoleScope} of ${totalPositionalMatchesInRecent20} positional games in recent 20; isRolePreselectedByDefault=${String(
+            baseView.roleSelection.isRolePreselectedByDefault,
+          )}). Off-role games (${playerGamesOutsideSelectedRoleScope}) are listed only in allRolesInRecent20Metadata.allPairsInRecent20 with isIncludedInSelectedRoleScope=false.`,
+  };
+
+  const allDatasetGames = dataset.games ?? [];
+  const pausedDatasetGames = allDatasetGames.filter((g) => isProGamePaused(g));
+  const pausedGamesExcludedFromEarlyDeathsCount = pausedDatasetGames.length;
+  const unpausedGamesCountForEarlyDeaths = Math.max(
+    0,
+    allDatasetGames.length - pausedGamesExcludedFromEarlyDeathsCount,
+  );
+  const pausedPlayerObservationsExcludedFromEarlyDeathsCount =
+    pausedDatasetGames.reduce(
+      (acc, g) => acc + Object.keys(g.participants ?? {}).length,
+      0,
+    );
+  const unpausedPlayerObservationsCountForEarlyDeaths = Math.max(
+    0,
+    dataset.playerObservationsCount -
+      pausedPlayerObservationsExcludedFromEarlyDeathsCount,
+  );
+
   return {
     schemaVersion: "coach-pro-comparison-v1",
     identity: baseView.identity,
     recentMatchWindow: baseView.recentMatchWindow,
     roleSelection: baseView.roleSelection,
+    allRolesInRecent20Metadata,
     proPlayerSelection: baseView.proPlayerSelection,
     proDatasetMetadata: {
       patchVersion: dataset.patchVersion || "16.20",
       gamesIngestedCount: dataset.gamesIngestedCount,
       playerObservationsCount: dataset.playerObservationsCount,
+      unpausedGamesCountForEarlyDeaths,
+      unpausedPlayerObservationsCountForEarlyDeaths,
+      pausedGamesExcludedFromEarlyDeathsCount,
+      pausedPlayerObservationsExcludedFromEarlyDeathsCount,
+      earlyDeaths5mTo20mMaxUnpausedObservations:
+        unpausedPlayerObservationsCountForEarlyDeaths,
       supportedChampionRolePairsCount: (dataset.roleChampionBaselines ?? [])
         .length,
     },
     dataIntegrityRules: {
       recentMatchWindowPolicy: "most_recent_20_deduplicated_matches_only",
+      roleSelectionScopePolicy:
+        "enforce_selected_or_preselected_role_with_separate_all_roles_metadata",
       missingChallengesPolicy: "preserve_null_unknown_never_zero",
       missingTimelineAssistsPolicy: "preserve_null_unknown_never_zero_or_solo",
       unassistedKillDeathPolicy: "zero_recorded_assists_is_not_proven_1v1_solo",
