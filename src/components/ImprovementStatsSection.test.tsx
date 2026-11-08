@@ -439,4 +439,220 @@ describe('ImprovementStatsSection', () => {
     expect(resolved.stats.totalGamesConsidered).toBe(4);
     expect(resolved.stats.deathCost.bountyOnPlayerDeaths.totalCombinedBountyGold).toBe(750);
   });
+
+  it('renders Inspectable Coach Evidence Cards with Observed Facts vs Coach Inference Boundaries, per-match/checkpoint inspection, and short/missing-data states without raw API identifiers', () => {
+    const mockMatches = [
+      {
+        metadata: { matchId: 'EUW1_101' },
+        info: {
+          gameCreation: 1740000000000,
+          gameDuration: 1860, // 31:00
+          gameVersion: '16.5.600.1234', // Patch 26.5
+          queueId: 420,
+          participants: [
+            {
+              puuid: 'player-puuid-1',
+              championName: 'Ahri',
+              teamPosition: 'MIDDLE',
+              win: true,
+              kills: 8,
+              deaths: 2,
+              assists: 7,
+              totalMinionsKilled: 210,
+              neutralMinionsKilled: 14,
+              challenges: { laneMinionsFirst10Minutes: 82 },
+            },
+            {
+              puuid: 'opp-1',
+              championName: 'Syndra',
+              teamPosition: 'MIDDLE',
+              win: false,
+            },
+          ],
+        },
+      },
+      {
+        metadata: { matchId: 'EUW1_102' },
+        info: {
+          gameCreation: 1740003600000,
+          gameDuration: 540, // 9:00 short game (<600s)
+          gameVersion: '16.5.600.1234',
+          queueId: 420,
+          participants: [
+            {
+              puuid: 'player-puuid-1',
+              championName: 'Orianna',
+              teamPosition: 'MIDDLE',
+              win: false,
+              kills: 1,
+              deaths: 1,
+              assists: 0,
+              totalMinionsKilled: 58,
+              neutralMinionsKilled: 0,
+              challenges: { laneMinionsFirst10Minutes: 58 },
+            },
+          ],
+        },
+      },
+      {
+        metadata: { matchId: 'EUW1_103' },
+        info: {
+          gameCreation: 1740007200000,
+          gameDuration: 1680, // 28:00 pre-26.1 patch
+          gameVersion: '15.24.500.1111',
+          queueId: 420,
+          participants: [
+            {
+              puuid: 'player-puuid-1',
+              championName: 'Viktor',
+              teamPosition: 'MIDDLE',
+              win: true,
+              kills: 6,
+              deaths: 3,
+              assists: 9,
+              totalMinionsKilled: 195,
+              neutralMinionsKilled: 8,
+              challenges: { laneMinionsFirst10Minutes: 76 },
+            },
+          ],
+        },
+      },
+      {
+        metadata: { matchId: 'EUW1_104' },
+        info: {
+          gameCreation: 1740010800000,
+          gameDuration: 1750,
+          gameVersion: '16.5.600.1234',
+          queueId: 420,
+          participants: [
+            {
+              puuid: 'player-puuid-1',
+              championName: 'LeeSin',
+              teamPosition: 'JUNGLE',
+              win: false,
+              kills: 4,
+              deaths: 4,
+              assists: 6,
+              totalMinionsKilled: 22,
+              neutralMinionsKilled: 148,
+              challenges: { laneMinionsFirst10Minutes: 8 },
+            },
+          ],
+        },
+      },
+    ] as never[];
+
+    render(
+      <ImprovementStatsSection
+        stats={BACKEND_18_ANALYZED_FIXTURE}
+        hasTimelineAnalysis={true}
+        matches={mockMatches}
+        puuid="player-puuid-1"
+      />
+    );
+
+    const toggleBtn = screen.getByTestId('inspect-evidence-cards-toggle');
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('inspectable-evidence-cards-panel')).not.toBeInTheDocument();
+
+    // Expand Inspectable Coach Evidence Cards
+    fireEvent.click(toggleBtn);
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'true');
+    const panel = screen.getByTestId('inspectable-evidence-cards-panel');
+    expect(panel).toBeInTheDocument();
+
+    // Default tab is ALL (shows all cards including Early Lane CS@10)
+    const laneCs10Card = screen.getByTestId('evidence-card-lane-cs-10');
+    expect(laneCs10Card).toHaveTextContent('79 CS (2G)');
+    expect(laneCs10Card).toHaveTextContent(
+      'Unavailable (1 pre-26.1 / mixed-patch · supported actual 82 CS in 1G)'
+    );
+    expect(laneCs10Card).toHaveTextContent('Missing/Short Laner Excl: 1G');
+    expect(laneCs10Card).toHaveTextContent('never subtract target - actual');
+
+    // Inspect per-match rows in Early Lane CS@10
+    expect(screen.getByTestId('evidence-lane-cs-row-EUW1_101')).toHaveTextContent('Ahri');
+    expect(screen.getByTestId('evidence-lane-cs-row-EUW1_101')).toHaveTextContent('82 CS');
+    expect(screen.getByTestId('evidence-lane-cs-row-EUW1_101')).toHaveTextContent('120 CS');
+    expect(screen.getByTestId('evidence-lane-cs-row-EUW1_101')).toHaveTextContent('Patch 16.5');
+
+    expect(screen.getByTestId('evidence-lane-cs-row-EUW1_102')).toHaveTextContent('Orianna');
+    expect(screen.getByTestId('evidence-lane-cs-row-EUW1_102')).toHaveTextContent(
+      'Short game <10:00 (excluded from 10m benchmark)'
+    );
+
+    expect(screen.getByTestId('evidence-lane-cs-row-EUW1_103')).toHaveTextContent('Viktor');
+    expect(screen.getByTestId('evidence-lane-cs-row-EUW1_103')).toHaveTextContent('76 CS');
+    expect(screen.getByTestId('evidence-lane-cs-row-EUW1_103')).toHaveTextContent(
+      'Pre-26.1 patch (actual recorded · target null)'
+    );
+
+    expect(screen.getByTestId('evidence-lane-cs-row-EUW1_104')).toHaveTextContent('LeeSin');
+    expect(screen.getByTestId('evidence-lane-cs-row-EUW1_104')).toHaveTextContent(
+      'Non-laner role (excluded from lane benchmark)'
+    );
+
+    // Switch through all category tabs and verify Observed Facts + Coach Inference Boundaries + Per-Match/Checkpoint rows
+    fireEvent.click(screen.getByTestId('evidence-tab-PHASE_FARMING'));
+    expect(screen.queryByTestId('evidence-card-lane-cs-10')).not.toBeInTheDocument();
+    const phaseCard = screen.getByTestId('evidence-card-phase-farming');
+    expect(phaseCard).toHaveTextContent('9.15/m');
+    expect(phaseCard).toHaveTextContent('missed last-hits or wave states are never guessed');
+    expect(screen.getByTestId('evidence-phase-row-M1')).toHaveTextContent('Ahri');
+    expect(screen.getByTestId('evidence-phase-row-M2')).toHaveTextContent(
+      'Short game <20:00 (10–20m & 20m+ excluded)'
+    );
+
+    fireEvent.click(screen.getByTestId('evidence-tab-LEAD_RETENTION'));
+    const leadCard = screen.getByTestId('evidence-card-lead-retention');
+    expect(leadCard).toHaveTextContent('@10m: 3G · @20m: 2G');
+    expect(leadCard).toHaveTextContent('50% (1/2G)');
+    expect(leadCard).toHaveTextContent('temporal associations only—never proof of a throw');
+    expect(screen.getByTestId('evidence-lead-row-M1')).toHaveTextContent('Ahri vs Syndra');
+
+    fireEvent.click(screen.getByTestId('evidence-tab-DEATH_COST'));
+    const deathCard = screen.getByTestId('evidence-card-death-cost');
+    expect(deathCard).toHaveTextContent('750g (Base 600g + Shutdown 150g)');
+    expect(deathCard).toHaveTextContent(
+      'Never estimates lost minion waves, indirect map pressure, or whether a death was avoidable'
+    );
+    expect(screen.getByTestId('evidence-death-row-M1')).toHaveTextContent('54s (3.00%)');
+    expect(screen.getByTestId('evidence-death-row-M4')).toHaveTextContent('Timeline required');
+
+    fireEvent.click(screen.getByTestId('evidence-tab-UNSPENT_GOLD'));
+    const unspentCard = screen.getByTestId('evidence-card-unspent-gold');
+    expect(unspentCard).toHaveTextContent('800.0g');
+    expect(unspentCard).toHaveTextContent('never an automatic mistake score');
+    expect(screen.getByTestId('evidence-unspent-sample-M1-10')).toHaveTextContent('Ahri (M1) @10m');
+
+    fireEvent.click(screen.getByTestId('evidence-tab-TEAM_OBJECTIVES'));
+    const objCard = screen.getByTestId('evidence-card-team-objectives');
+    expect(objCard).toHaveTextContent('Towers: Team 5.67/g vs Enemy 3.50/g');
+    expect(objCard).toHaveTextContent(
+      'kept strictly separate from personal last-hits and takedowns'
+    );
+    expect(screen.getByTestId('evidence-objective-row-M1')).toHaveTextContent('Ahri');
+
+    // Switch back to ALL so every evidence card is mounted for the raw API identifier check
+    fireEvent.click(screen.getByTestId('evidence-tab-ALL'));
+
+    // Verify zero forbidden raw API identifiers even with the entire evidence panel open
+    const sectionText = screen.getByTestId('improvement-stats-section').textContent ?? '';
+    for (const forbiddenApiName of [
+      'info.teams',
+      'MatchDto',
+      'minionsKilled',
+      'jungleMinionsKilled',
+      'baseKillBountyGold',
+      'shutdownBountyGold',
+      'combinedBountyGold',
+      'event.bounty',
+      'event.shutdownBounty',
+      'participantFrame',
+      'currentGold',
+    ]) {
+      expect(sectionText).not.toContain(forbiddenApiName);
+    }
+  });
 });
+

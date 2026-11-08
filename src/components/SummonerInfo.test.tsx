@@ -241,5 +241,23 @@ describe('SummonerInfo', () => {
     });
     expect(screen.getByTestId('phase-window-10-20m')).toHaveTextContent('9.15/m');
     expect(screen.getByTestId('card-death-cost')).toHaveTextContent('750g');
+
+    // Open AI Coach modal and toggle the Structured Coach Evidence drawer
+    Element.prototype.scrollIntoView = vi.fn();
+    fireEvent.click(screen.getByText('AI Coach'));
+    const evidenceToggle = screen.getByTestId('ai-coach-evidence-toggle');
+    expect(evidenceToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('ai-coach-evidence-drawer')).not.toBeInTheDocument();
+
+    fireEvent.click(evidenceToggle);
+    expect(evidenceToggle).toHaveAttribute('aria-expanded', 'true');
+    const drawer = screen.getByTestId('ai-coach-evidence-drawer');
+    expect(drawer).toBeInTheDocument();
+    expect(drawer).toHaveTextContent('Structured Coach Evidence Sent in Context');
+    expect(drawer).toHaveTextContent('Coach Inference Guardrails Active');
+    expect(drawer).toHaveTextContent('10–20m: 9.15/m (2G)');
+    expect(drawer).toHaveTextContent('Bounty: 750g');
+    expect(drawer).toHaveTextContent('Unspent Med: 800g (11 1m snaps, neutral)');
   });
 });
+

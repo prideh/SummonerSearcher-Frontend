@@ -1215,12 +1215,114 @@ describe('aiContextBuilder (#14)', () => {
       )
     ).byteLength;
 
-    // Exact measured deterministic UTF-8 payload sizes & upper bounds
-    expect(oneMatchNotAnalyzedBytes).toBe(2187);
-    expect(oneMatchAnalyzedBytes).toBe(3250);
-    expect(notAnalyzedBytes).toBe(22182);
-    expect(analyzedBytes).toBe(35595);
+    // Exact measured deterministic UTF-8 payload sizes & upper bounds (with 5-stat improvementStats context)
+    expect(oneMatchNotAnalyzedBytes).toBe(4928);
+    expect(oneMatchAnalyzedBytes).toBe(5991);
+    expect(notAnalyzedBytes).toBe(24932);
+    expect(analyzedBytes).toBe(38345);
     expect(notAnalyzedBytes).toBeLessThan(25000);
     expect(analyzedBytes).toBeLessThan(40000);
+  });
+
+  it('excludes short (<600s) and early-surrendered laner games from 10m lane CS target and counts them in missingLaneCsAt10Matches', () => {
+    const shortMatch = createMatch({
+      matchId: 'KR_SHORT_1',
+      playerOverrides: { challenges: { laneMinionsFirst10Minutes: 53 } },
+    });
+    shortMatch.info!.gameDuration = 420; // 7m remake/short game
+
+    const earlyFfMatch = createMatch({
+      matchId: 'KR_EARLYFF_2',
+      playerOverrides: {
+        gameEndedInEarlySurrender: true,
+        challenges: { laneMinionsFirst10Minutes: 54 },
+      },
+    });
+
+    const fullValidMatch = createMatch({
+      matchId: 'KR_VALID_3',
+      playerOverrides: { challenges: { laneMinionsFirst10Minutes: 85 } },
+    });
+
+    const ctx = buildAiContext(
+      'Faker',
+      'KR1',
+      [shortMatch, earlyFfMatch, fullValidMatch],
+      'player-puuid',
+      { tier: 'CHALLENGER', rank: 'I', leaguePoints: 1250, wins: 120, losses: 90 },
+      BASE_CHAMPION_STATS,
+      BASE_OVERALL_STATS,
+      null
+    );
+
+    expect(ctx.missingLaneCsAt10Matches).toBe(2);
+    expect(ctx.avgLaneCsAt10).toMatchObject({
+      matchCount: 1,
+      targetMatchCount: 1,
+      avgActual: 85,
+      avgTarget: 120,
+    });
+    expect(ctx.recentMatches[0].laneCsAt10).toBeUndefined();
+    expect(ctx.recentMatches[1].laneCsAt10).toBeUndefined();
+    expect(ctx.recentMatches[2].laneCsAt10).toEqual({
+      actual: 85,
+      target: 120,
+      targetLabel: 'Mid lane target',
+    });
+  });
+
+  it('includes all 5 structured improvementStats evidence groups with denominators, missingness, and pre-purchase samples without duplicating perMatch/byChampion', () => {
+    const match1 = createMatch({ matchId: 'KR_IMP_1' });
+    const ctx = buildAiContext(
+      'Faker',
+      'KR1',
+      [match1],
+      'player-puuid',
+      { tier: 'CHALLENGER', rank: 'I', leaguePoints: 1250, wins: 120, losses: 90 },
+      BASE_CHAMPION_STATS,
+      BASE_OVERALL_STATS,
+      null
+    );
+
+    expect(ctx.improvementStats).toBeDefined();
+    expect(ctx.improvementStats?.totalGamesConsidered).toBe(1);
+    expect(ctx.improvementStats?.excludedInvalidDurationGames).toBe(0);
+    expect(ctx.improvementStats?.excludedMissingTimelineGames).toBe(1);
+    expect(ctx.improvementStats?.hasTimelineAnalysis).toBe(false);
+
+    // 1. Phase Farming
+    expect(ctx.improvementStats?.phaseFarming.min10To20).toHaveProperty('eligibleGames');
+    expect(ctx.improvementStats?.phaseFarming.min10To20).toHaveProperty('shortGames');
+    expect(ctx.improvementStats?.phaseFarming.min10To20).toHaveProperty('missingFrameGames');
+    expect(ctx.improvementStats?.phaseFarming.min20ToEnd).toHaveProperty('eligibleGames');
+
+    // 2. Lead Retention
+    expect(ctx.improvementStats?.leadRetention).toHaveProperty('eligibleGamesAt10');
+    expect(ctx.improvementStats?.leadRetention).toHaveProperty('eligibleGamesAt20');
+    expect(ctx.improvementStats?.leadRetention).toHaveProperty('missingOpponentGames');
+    expect(ctx.improvementStats?.leadRetention).toHaveProperty('goldLeadRetentionRate');
+
+    // 3. Death Cost
+    expect(ctx.improvementStats?.deathCost).toHaveProperty('eligibleTimeDeadGames');
+    expect(ctx.improvementStats?.deathCost.bounty).toHaveProperty('eligibleTimelineGames');
+    expect(ctx.improvementStats?.deathCost.bounty).toHaveProperty('totalCombinedBountyGold');
+
+    // 4. Unspent Gold
+    expect(ctx.improvementStats?.unspentGold).toHaveProperty('eligibleGames');
+    expect(ctx.improvementStats?.unspentGold).toHaveProperty('highBalanceThresholdGold', 1300);
+    expect(Array.isArray(ctx.improvementStats?.unspentGold.prePurchaseSamples)).toBe(true);
+
+    // 5. Team Objectives
+    expect(ctx.improvementStats?.teamObjectives).toHaveProperty('eligibleTeamObjectiveGames');
+    expect(ctx.improvementStats?.teamObjectives.tower).toHaveProperty('teamKills');
+    expect(ctx.improvementStats?.teamObjectives.dragon).toHaveProperty('firstCount');
+    expect(ctx.improvementStats?.teamObjectives.baron).toHaveProperty('personalTd');
+    expect(ctx.improvementStats?.teamObjectives.riftHerald).toHaveProperty('timelineInvolved');
+    expect(ctx.improvementStats?.teamObjectives.horde).toHaveProperty('teamAvg');
+
+    // Ensure duplicate heavy arrays are omitted from coach payload
+    expect(ctx.improvementStats).not.toHaveProperty('perMatch');
+    expect(ctx.improvementStats).not.toHaveProperty('byChampion');
+    expect(ctx.improvementStats).not.toHaveProperty('byRole');
   });
 });

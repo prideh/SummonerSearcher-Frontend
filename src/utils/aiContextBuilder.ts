@@ -1,5 +1,10 @@
 import type { MatchDto, ParticipantDto } from '../types/match';
 import type { ChampionStats, OverallStats } from '../types/summoner';
+import type {
+  ImprovementStatsDto,
+  ObjectiveTypeSummaryDto,
+  PhaseFarmingWindowDto,
+} from '../types/improvementStats';
 import {
   isPlayerTimelineEvent,
   type BuildOrderDto,
@@ -14,15 +19,18 @@ import {
   calculateAverageLaneCsAt10,
   calculateConsistency,
   calculateLaneCsAt10Comparison,
+  isEligibleLaneCsAt10Match,
   isLanerPosition,
   STAT_ROLE_MAPPING,
   type AverageLaneCsAt10Summary,
 } from './statsCalculator';
+import { formatPurchaseItemLabel, resolveImprovementStats } from './improvementStatsHelper';
 import { camelCaseToTitleCase } from './formatters';
 
 export const MAX_RECENT_MATCHES = 20;
 export const MAX_EARLY_DEATHS_PER_GAME = 3;
 export const MAX_ITEM_SPIKES_PER_GAME = 3;
+export const MAX_COACH_HIGH_BALANCE_SAMPLES = 3;
 
 export const VISION_DATA_PRECISION_NOTE =
   'Ward counts, types, and time-buckets only — Riot WARD_PLACED events carry no coordinates; never present ward locations.';
@@ -209,6 +217,115 @@ export interface EnrichedTimelineInsights extends TimelineAggregateSummary {
   } | null;
   /** Number of recentMatches that did not have a matching `matchId` in `timelineAnalysis`. */
   missingTimelineMatches: number;
+}
+
+export interface CoachPhaseFarmingWindowSummary {
+  eligibleGames: number;
+  shortGames: number;
+  missingFrameGames: number;
+  avgLaneCsGained: number | null;
+  avgJungleCsGained: number | null;
+  avgLaneCsPerMin: number | null;
+  avgJungleCsPerMin: number | null;
+  avgTotalCsPerMin: number | null;
+}
+
+export interface CoachHighBalanceSample {
+  matchId: string;
+  championName: string;
+  role: string;
+  sampledMinute: number;
+  currentGoldAtSample: number;
+  nextPurchaseMinute: number | null;
+  nextPurchaseItemId: number | null;
+  nextPurchaseItemName: string | null;
+}
+
+export interface CoachObjectiveTypeSummary {
+  eligibleGames: number;
+  missingGames: number;
+  firstCount: number | null;
+  firstRate: number | null;
+  teamKills: number | null;
+  teamAvg: number | null;
+  enemyAvg: number | null;
+  personalLh: number | null;
+  personalTd: number | null;
+  timelineInvolved: number | null;
+}
+
+export interface CoachImprovementStatsContext {
+  totalGamesConsidered: number;
+  excludedInvalidDurationGames: number;
+  excludedMissingTimelineGames: number;
+  hasTimelineAnalysis: boolean;
+  phaseFarming: {
+    min10To20: CoachPhaseFarmingWindowSummary;
+    min20ToEnd: CoachPhaseFarmingWindowSummary;
+  };
+  leadRetention: {
+    missingOpponentGames: number;
+    shortBefore10: number;
+    shortBefore20: number;
+    eligibleGamesAt10: number;
+    eligibleGamesAt20: number;
+    avgGoldLeadAt10: number | null;
+    avgXpLeadAt10: number | null;
+    avgGoldLeadAt20: number | null;
+    avgXpLeadAt20: number | null;
+    aheadGold10: number;
+    aheadGold10Reach20: number;
+    retainedGold20: number;
+    goldLeadRetentionRate: number | null;
+    aheadXp10: number;
+    aheadXp10Reach20: number;
+    retainedXp20: number;
+    xpLeadRetentionRate: number | null;
+    allyObj10To20: number;
+    enemyObj10To20: number;
+    allyTowers10To20: number;
+    enemyTowers10To20: number;
+  };
+  deathCost: {
+    eligibleTimeDeadGames: number;
+    missingTimeDeadGames: number;
+    totalTimeSpentDeadSeconds: number | null;
+    avgTimeSpentDeadSeconds: number | null;
+    avgDeadTimeGameSharePct: number | null;
+    overallDeadTimeGameSharePct: number | null;
+    bounty: {
+      eligibleTimelineGames: number;
+      totalRecordedDeaths: number | null;
+      deathsWithAnyBountyData: number;
+      deathsMissingBountyData: number;
+      totalBaseKillBountyGold: number | null;
+      totalShutdownBountyGold: number | null;
+      totalCombinedBountyGold: number | null;
+      avgCombinedBountyPerDeath: number | null;
+    };
+  };
+  unspentGold: {
+    eligibleGames: number;
+    missingSampleGames: number;
+    sampleCount: number;
+    medianCurrentGold: number | null;
+    maxCurrentGold: number | null;
+    avgCurrentGold: number | null;
+    highBalanceThresholdGold: number;
+    highBalanceSampleCount: number | null;
+    highBalancePrePurchaseCount: number | null;
+    prePurchaseSamples: CoachHighBalanceSample[];
+  };
+  teamObjectives: {
+    eligibleTeamObjectiveGames: number;
+    missingTeamsGames: number;
+    timelineEligibleGames: number;
+    tower: CoachObjectiveTypeSummary;
+    dragon: CoachObjectiveTypeSummary;
+    baron: CoachObjectiveTypeSummary;
+    riftHerald: CoachObjectiveTypeSummary;
+    horde: CoachObjectiveTypeSummary;
+  };
 }
 
 export function formatEventTimestamp(minuteMark: number, secondMark: number = 0): string {
@@ -535,8 +652,140 @@ function findLaneOpponent(
   return opponent || null;
 }
 
+function summarizePhaseWindow(w: PhaseFarmingWindowDto): CoachPhaseFarmingWindowSummary {
+  return {
+    eligibleGames: w.eligibleGames,
+    shortGames: w.excludedShortGames,
+    missingFrameGames: w.excludedMissingFrameCounters,
+    avgLaneCsGained: w.avgLaneCsGained,
+    avgJungleCsGained: w.avgJungleCsGained,
+    avgLaneCsPerMin: w.avgLaneCsPerMin,
+    avgJungleCsPerMin: w.avgJungleCsPerMin,
+    avgTotalCsPerMin: w.avgTotalCsPerMin,
+  };
+}
+
+function summarizeObjectiveType(obj: ObjectiveTypeSummaryDto): CoachObjectiveTypeSummary {
+  return {
+    eligibleGames: obj.eligibleGamesWithKills,
+    missingGames: obj.excludedMissingObjectiveGames,
+    firstCount: obj.teamFirstCount,
+    firstRate: obj.teamFirstRate,
+    teamKills: obj.teamTotalKills,
+    teamAvg: obj.teamAvgKills,
+    enemyAvg: obj.enemyTeamAvgKills,
+    personalLh: obj.personalTotalLastHits,
+    personalTd: obj.personalTotalTakedowns,
+    timelineInvolved: obj.timelinePersonalInvolvements,
+  };
+}
+
+export function buildCoachImprovementStatsContext(
+  stats: ImprovementStatsDto,
+  hasTimelineAnalysis: boolean,
+  itemMap: ItemMap | null
+): CoachImprovementStatsContext {
+  const pf = stats.phaseFarming;
+  const lr = stats.leadRetention;
+  const dc = stats.deathCost;
+  const ug = stats.unspentGold;
+  const to = stats.teamObjectives;
+
+  const prePurchaseSamples: CoachHighBalanceSample[] = (
+    ug.highBalanceBeforePurchaseSamples || []
+  )
+    .slice(0, MAX_COACH_HIGH_BALANCE_SAMPLES)
+    .map(s => {
+      const label = formatPurchaseItemLabel(s.nextPurchaseItemId, itemMap);
+      return {
+        matchId: s.matchId,
+        championName: s.championName,
+        role: s.role,
+        sampledMinute: s.sampledMinute,
+        currentGoldAtSample: s.currentGoldAtSample,
+        nextPurchaseMinute: s.nextPurchaseMinute ?? null,
+        nextPurchaseItemId: s.nextPurchaseItemId ?? null,
+        nextPurchaseItemName: label ? label : null,
+      };
+    });
+
+  return {
+    totalGamesConsidered: stats.totalGamesConsidered,
+    excludedInvalidDurationGames: stats.excludedInvalidDurationGames,
+    excludedMissingTimelineGames: stats.excludedMissingTimelineGames,
+    hasTimelineAnalysis,
+    phaseFarming: {
+      min10To20: summarizePhaseWindow(pf.min10To20),
+      min20ToEnd: summarizePhaseWindow(pf.min20ToEnd),
+    },
+    leadRetention: {
+      missingOpponentGames: lr.excludedMissingOpponentGames,
+      shortBefore10: lr.excludedShortGamesBefore10,
+      shortBefore20: lr.excludedShortGamesBefore20,
+      eligibleGamesAt10: lr.eligibleGamesAt10,
+      eligibleGamesAt20: lr.eligibleGamesAt20,
+      avgGoldLeadAt10: lr.avgGoldLeadAt10,
+      avgXpLeadAt10: lr.avgXpLeadAt10,
+      avgGoldLeadAt20: lr.avgGoldLeadAt20,
+      avgXpLeadAt20: lr.avgXpLeadAt20,
+      aheadGold10: lr.gamesAheadInGoldAt10,
+      aheadGold10Reach20: lr.gamesAheadInGoldAt10Reaching20,
+      retainedGold20: lr.gamesRetainedGoldLeadAt20,
+      goldLeadRetentionRate: lr.goldLeadRetentionRate,
+      aheadXp10: lr.gamesAheadInXpAt10,
+      aheadXp10Reach20: lr.gamesAheadInXpAt10Reaching20,
+      retainedXp20: lr.gamesRetainedXpLeadAt20,
+      xpLeadRetentionRate: lr.xpLeadRetentionRate,
+      allyObj10To20: lr.allyObjectiveEvents10To20,
+      enemyObj10To20: lr.enemyObjectiveEvents10To20,
+      allyTowers10To20: lr.allyTowerEvents10To20,
+      enemyTowers10To20: lr.enemyTowerEvents10To20,
+    },
+    deathCost: {
+      eligibleTimeDeadGames: dc.eligibleTimeDeadGames,
+      missingTimeDeadGames: dc.excludedMissingTimeSpentDeadGames,
+      totalTimeSpentDeadSeconds: dc.totalTimeSpentDeadSeconds,
+      avgTimeSpentDeadSeconds: dc.avgTimeSpentDeadSeconds,
+      avgDeadTimeGameSharePct: dc.avgDeadTimeGameSharePct,
+      overallDeadTimeGameSharePct: dc.overallDeadTimeGameSharePct,
+      bounty: {
+        eligibleTimelineGames: dc.bountyOnPlayerDeaths.eligibleTimelineGames,
+        totalRecordedDeaths: dc.bountyOnPlayerDeaths.totalRecordedDeaths,
+        deathsWithAnyBountyData: dc.bountyOnPlayerDeaths.deathsWithAnyBountyData,
+        deathsMissingBountyData: dc.bountyOnPlayerDeaths.deathsMissingBountyData,
+        totalBaseKillBountyGold: dc.bountyOnPlayerDeaths.totalBaseKillBountyGold,
+        totalShutdownBountyGold: dc.bountyOnPlayerDeaths.totalShutdownBountyGold,
+        totalCombinedBountyGold: dc.bountyOnPlayerDeaths.totalCombinedBountyGold,
+        avgCombinedBountyPerDeath: dc.bountyOnPlayerDeaths.avgCombinedBountyPerDeath,
+      },
+    },
+    unspentGold: {
+      eligibleGames: ug.eligibleGames,
+      missingSampleGames: ug.excludedNoCurrentGoldSamplesGames,
+      sampleCount: ug.sampleCount,
+      medianCurrentGold: ug.medianCurrentGold,
+      maxCurrentGold: ug.maxCurrentGold,
+      avgCurrentGold: ug.avgCurrentGold,
+      highBalanceThresholdGold: ug.highBalanceThresholdGold,
+      highBalanceSampleCount: ug.highBalanceSampleCount,
+      highBalancePrePurchaseCount: ug.highBalanceBeforePurchaseSampleCount,
+      prePurchaseSamples,
+    },
+    teamObjectives: {
+      eligibleTeamObjectiveGames: to.eligibleTeamObjectiveGames,
+      missingTeamsGames: to.excludedMissingTeamsDataGames,
+      timelineEligibleGames: to.tower.timelineEligibleGames,
+      tower: summarizeObjectiveType(to.tower),
+      dragon: summarizeObjectiveType(to.dragon),
+      baron: summarizeObjectiveType(to.baron),
+      riftHerald: summarizeObjectiveType(to.riftHerald),
+      horde: summarizeObjectiveType(to.horde),
+    },
+  };
+}
+
 /**
- * Builds comprehensive, token-bounded AI context from matches, Data Dragon maps, and optional TimelineAnalysisDto.
+ * Builds comprehensive, token-bounded AI context from matches, Data Dragon maps, and optional TimelineAnalysisDto / ImprovementStatsDto.
  */
 export function buildAiContext(
   summonerName: string,
@@ -546,7 +795,8 @@ export function buildAiContext(
   rankInfo: { tier: string; rank: string; leaguePoints: number; wins: number; losses: number } | null,
   championStats: ChampionStats[],
   overallStats: OverallStats | null,
-  timelineAnalysis?: TimelineAnalysisDto | null
+  timelineAnalysis?: TimelineAnalysisDto | null,
+  improvementStats?: ImprovementStatsDto | null
 ): {
   summonerName: string;
   rank: string;
@@ -559,6 +809,7 @@ export function buildAiContext(
   avgLaneCsAt10: AverageLaneCsAt10Summary | null;
   missingLaneCsAt10Matches: number;
   timelineInsights?: EnrichedTimelineInsights;
+  improvementStats?: CoachImprovementStatsContext;
   winRate: string;
   kda: string;
   avgKills: string;
@@ -594,17 +845,29 @@ export function buildAiContext(
   const timelineStatus: 'ANALYZED' | 'NOT_ANALYZED' = timelineAnalysis ? 'ANALYZED' : 'NOT_ANALYZED';
 
   if (!overallStats) {
+    const fallbackResolvedImprovement = resolveImprovementStats(
+      improvementStats,
+      timelineAnalysis,
+      allMatches.slice(0, MAX_RECENT_MATCHES),
+      puuid
+    );
+    const fallbackCoachImprovementStats = buildCoachImprovementStatsContext(
+      fallbackResolvedImprovement.stats,
+      fallbackResolvedImprovement.hasTimelineAnalysis,
+      itemMap
+    );
     return {
       summonerName: `${summonerName}#${tagLine}`,
       rank: 'Unranked',
       totalWins: 0,
       totalLosses: 0,
       primaryRole: 'UNKNOWN',
-      totalGamesAnalyzed: 0,
+      totalGamesAnalyzed: allMatches.length || fallbackResolvedImprovement.stats.totalGamesConsidered,
       timelineStatus,
       visionDataPrecision: VISION_DATA_PRECISION_NOTE,
       avgLaneCsAt10: null,
       missingLaneCsAt10Matches: 0,
+      improvementStats: fallbackCoachImprovementStats,
       winRate: '0.0',
       kda: '0.00',
       avgKills: '0.0',
@@ -767,10 +1030,14 @@ export function buildAiContext(
     const totalDamageShieldedOnTeammates = myParticipant.totalDamageShieldedOnTeammates;
     const totalHealsOnTeammates = myParticipant.totalHealsOnTeammates;
 
-    // Early laning CS @10 (role-gated; missing values preserved in missingLaneCsAt10Matches, never counted as 0)
+    // Early laning CS @10 (role-gated and duration/queue-gated; missing or short-game values preserved in missingLaneCsAt10Matches, never counted as 0)
+    const rawLaneCs10 = myParticipant.challenges?.laneMinionsFirst10Minutes;
     const hasValidLaneCsAt10 =
-      typeof myParticipant.challenges?.laneMinionsFirst10Minutes === 'number' &&
-      Number.isFinite(myParticipant.challenges.laneMinionsFirst10Minutes);
+      isEligibleLaneCsAt10Match(match.info) &&
+      !myParticipant.gameEndedInEarlySurrender &&
+      typeof rawLaneCs10 === 'number' &&
+      Number.isFinite(rawLaneCs10) &&
+      rawLaneCs10 >= 0;
     if (isLanerPosition(role) && !hasValidLaneCsAt10) {
       missingLaneCsAt10Matches += 1;
     }
@@ -779,7 +1046,7 @@ export function buildAiContext(
       isLanerPosition(role) && hasValidLaneCsAt10
         ? (() => {
             const comp = calculateLaneCsAt10Comparison(
-              myParticipant.challenges!.laneMinionsFirst10Minutes!,
+              rawLaneCs10,
               match.info?.gameVersion,
               role
             );
@@ -894,8 +1161,21 @@ export function buildAiContext(
   primaryRole = Object.entries(roleCount).sort((a, b) => b[1] - a[1])[0]?.[0] || 'UNKNOWN';
 
   // Cap recentMatches deterministically at MAX_RECENT_MATCHES (20)
+  const cappedMatches = allMatches.slice(0, MAX_RECENT_MATCHES);
   const primaryRoleMatches = matchDetails.slice(0, MAX_RECENT_MATCHES);
-  const avgLaneCsAt10 = calculateAverageLaneCsAt10(allMatches.slice(0, MAX_RECENT_MATCHES), puuid);
+  const avgLaneCsAt10 = calculateAverageLaneCsAt10(cappedMatches, puuid);
+
+  const resolvedImprovement = resolveImprovementStats(
+    improvementStats,
+    timelineAnalysis,
+    cappedMatches,
+    puuid
+  );
+  const coachImprovementStats = buildCoachImprovementStatsContext(
+    resolvedImprovement.stats,
+    resolvedImprovement.hasTimelineAnalysis,
+    itemMap
+  );
 
   // Build enriched timelineInsights summary (without any raw [x, y] coordinate arrays)
   let timelineInsights: EnrichedTimelineInsights | undefined;
@@ -967,6 +1247,7 @@ export function buildAiContext(
     avgLaneCsAt10,
     missingLaneCsAt10Matches,
     ...(timelineInsights ? { timelineInsights } : {}),
+    improvementStats: coachImprovementStats,
     // Aggregate stats
     winRate: Number(overallStats.winRate).toFixed(1),
     kda: Number(overallStats.kda) === Infinity ? 'Perfect' : Number(overallStats.kda).toFixed(2),

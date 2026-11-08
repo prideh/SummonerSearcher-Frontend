@@ -71,6 +71,7 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showEvidenceDrawer, setShowEvidenceDrawer] = useState(false);
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substring(7)}`);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   
@@ -228,25 +229,88 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
 
   if (!isOpen) return null;
 
+  const avgLaneCs10 = context.avgLaneCsAt10 as
+    | {
+        avgActual?: number;
+        matchCount?: number;
+        avgTarget?: number | null;
+        targetMatchCount?: number;
+        targetLabel?: string;
+      }
+    | null
+    | undefined;
+  const missingCs10 = (context.missingLaneCsAt10Matches as number | undefined) ?? 0;
+  const imp = context.improvementStats as
+    | {
+        totalGamesConsidered?: number;
+        excludedMissingTimelineGames?: number;
+        hasTimelineAnalysis?: boolean;
+        phaseFarming?: {
+          min10To20?: { eligibleGames?: number; avgTotalCsPerMin?: number | null; shortGames?: number };
+          min20ToEnd?: { eligibleGames?: number; avgTotalCsPerMin?: number | null; shortGames?: number };
+        };
+        leadRetention?: {
+          eligibleGamesAt10?: number;
+          eligibleGamesAt20?: number;
+          avgGoldLeadAt10?: number | null;
+          avgGoldLeadAt20?: number | null;
+          goldLeadRetentionRate?: number | null;
+        };
+        deathCost?: {
+          eligibleTimeDeadGames?: number;
+          avgTimeSpentDeadSeconds?: number | null;
+          bounty?: { eligibleTimelineGames?: number; totalCombinedBountyGold?: number | null };
+        };
+        unspentGold?: {
+          eligibleGames?: number;
+          sampleCount?: number;
+          medianCurrentGold?: number | null;
+          highBalanceThresholdGold?: number;
+          highBalanceSampleCount?: number | null;
+        };
+        teamObjectives?: {
+          eligibleTeamObjectiveGames?: number;
+          tower?: { teamAvg?: number | null; enemyAvg?: number | null };
+          dragon?: { teamAvg?: number | null; enemyAvg?: number | null };
+        };
+      }
+    | undefined;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm p-2 sm:p-4 transition-all">
       <div className="bg-white/95 dark:bg-slate-900/80 backdrop-blur-xl w-full max-w-3xl h-[95vh] sm:h-[85vh] rounded-2xl md:rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-gray-200/50 dark:border-white/10">
         {/* Header */}
-        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-200/50 dark:border-white/5 flex justify-between items-center shrink-0">
-          <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2 sm:gap-3">
+        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-200/50 dark:border-white/5 flex flex-wrap justify-between items-center gap-2 shrink-0">
+          <h2 className="text-base sm:text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-cyan-500/30 flex items-center justify-center shadow-lg shadow-cyan-500/10 dark:shadow-cyan-500/20 p-1.5 sm:p-2 overflow-hidden shrink-0">
               <img src="/lol.svg" alt="AI Coach" className="w-full h-full object-contain invert dark:invert-0 brightness-150 grayscale opacity-90 transition-all dark:opacity-100 dark:brightness-100 dark:grayscale-0" />
             </div>
-            <span>AI Coach: {summonerName}</span>
+            <span className="truncate">AI Coach: {summonerName}</span>
           </h2>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             <button
+              type="button"
+              data-testid="ai-coach-evidence-toggle"
+              aria-expanded={showEvidenceDrawer}
+              aria-controls="ai-coach-evidence-drawer"
+              onClick={() => setShowEvidenceDrawer(prev => !prev)}
+              className={`text-xs font-semibold px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full border transition-colors ${
+                showEvidenceDrawer
+                  ? 'bg-indigo-600 text-white border-indigo-500'
+                  : 'text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/50'
+              }`}
+            >
+              {showEvidenceDrawer ? 'Hide Evidence' : 'Inspect Evidence'}
+            </button>
+            <button
+              type="button"
               onClick={handleClearChat}
               className="text-xs sm:text-sm text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-500"
             >
               Clear Chat
             </button>
             <button 
+              type="button"
               onClick={onClose}
               className="text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors p-1"
             >
@@ -256,6 +320,97 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
             </button>
           </div>
         </div>
+
+        {/* Collapsible Structured Coach Input & Evidence Drawer */}
+        {showEvidenceDrawer && (
+          <div
+            id="ai-coach-evidence-drawer"
+            data-testid="ai-coach-evidence-drawer"
+            className="px-4 py-3 sm:px-6 bg-slate-50/95 dark:bg-slate-950/90 border-b border-indigo-200/70 dark:border-indigo-900/60 max-h-60 overflow-y-auto text-xs space-y-2 shrink-0"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-1.5">
+              <span className="font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
+                Structured Coach Evidence Sent in Context
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                  Observed Facts: {context.totalGamesAnalyzed || 0}G ({String(context.timelineStatus || 'NOT_ANALYZED')})
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
+                  Coach Inference Guardrails Active
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 telemetry-nums">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2">
+                <div className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
+                  Early Lane CS@10 Contract
+                </div>
+                <div className="mt-0.5 text-slate-800 dark:text-slate-100 font-semibold">
+                  {avgLaneCs10
+                    ? `Actual ${avgLaneCs10.avgActual} (${avgLaneCs10.matchCount}G) · Target ${avgLaneCs10.avgTarget ?? 'null'} (${avgLaneCs10.targetMatchCount}G)`
+                    : 'No eligible laner games'}
+                </div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                  Missing/Short Laner Excl: {missingCs10}G · Target != missed CS
+                </div>
+              </div>
+
+              {imp && (
+                <>
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2">
+                    <div className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
+                      1. Phase Farming (10–20m / 20m+)
+                    </div>
+                    <div className="mt-0.5 text-slate-800 dark:text-slate-100 font-semibold">
+                      10–20m: {imp.phaseFarming?.min10To20?.avgTotalCsPerMin ?? 'Unavailable'}/m ({imp.phaseFarming?.min10To20?.eligibleGames ?? 0}G)
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                      20m+: {imp.phaseFarming?.min20ToEnd?.avgTotalCsPerMin ?? 'Unavailable'}/m ({imp.phaseFarming?.min20ToEnd?.eligibleGames ?? 0}G)
+                    </div>
+                  </div>
+
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2">
+                    <div className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
+                      2. Lead Retention (10m → 20m)
+                    </div>
+                    <div className="mt-0.5 text-slate-800 dark:text-slate-100 font-semibold">
+                      @10m: {imp.leadRetention?.avgGoldLeadAt10 ?? 'Unavailable'}g ({imp.leadRetention?.eligibleGamesAt10 ?? 0}G) · @20m: {imp.leadRetention?.avgGoldLeadAt20 ?? 'Unavailable'}g ({imp.leadRetention?.eligibleGamesAt20 ?? 0}G)
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                      10–20m events are temporal associations only
+                    </div>
+                  </div>
+
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2">
+                    <div className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
+                      3. Death Cost &amp; 4. Unspent Gold
+                    </div>
+                    <div className="mt-0.5 text-slate-800 dark:text-slate-100 font-semibold">
+                      Dead: {imp.deathCost?.avgTimeSpentDeadSeconds ?? 'Unavailable'}s/g ({imp.deathCost?.eligibleTimeDeadGames ?? 0}G) · Bounty: {imp.deathCost?.bounty?.totalCombinedBountyGold ?? 'Unavailable'}g
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                      Unspent Med: {imp.unspentGold?.medianCurrentGold ?? 'Unavailable'}g ({imp.unspentGold?.sampleCount ?? 0} 1m snaps, neutral)
+                    </div>
+                  </div>
+
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2 sm:col-span-2">
+                    <div className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
+                      5. Team Objectives vs Personal Participation ({imp.teamObjectives?.eligibleTeamObjectiveGames ?? 0}G)
+                    </div>
+                    <div className="mt-0.5 text-slate-800 dark:text-slate-100 font-semibold">
+                      Towers: {imp.teamObjectives?.tower?.teamAvg ?? '—'} vs {imp.teamObjectives?.tower?.enemyAvg ?? '—'} · Dragons: {imp.teamObjectives?.dragon?.teamAvg ?? '—'} vs {imp.teamObjectives?.dragon?.enemyAvg ?? '—'}
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                      Team outcomes and personal takedowns are kept distinct; null fields are never coerced to 0.
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Chat Area */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 sm:space-y-8 bg-transparent">

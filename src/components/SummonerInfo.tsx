@@ -56,20 +56,6 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
   const [showTimelineModal, setShowTimelineModal] = useState(false);
   const [aiInitialMessage, setAiInitialMessage] = useState<string | undefined>(undefined);
 
-  // Build comprehensive AI context from all loaded matches.
-  // If timeline has been analyzed by the user, buildAiContext merges its aggregate summary
-  // and per-match timeline diffs, death context, item spikes, and skill max order.
-  const aiContext = buildAiContext(
-    summonerData.gameName,
-    summonerData.tagLine,
-    visibleMatches,
-    summonerData.puuid,
-    summonerData.soloQueueRank,
-    summonerData.championStats,
-    summonerData.overallStats,
-    timelineAnalysis
-  );
-
   const resolvedImprovement = useMemo(
     () =>
       resolveImprovementStats(
@@ -79,6 +65,21 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
         summonerData.puuid
       ),
     [summonerData.improvementStats, timelineAnalysis, visibleMatches, summonerData.puuid]
+  );
+
+  // Build comprehensive AI context from all loaded matches.
+  // If timeline has been analyzed by the user, buildAiContext merges its aggregate summary
+  // and per-match timeline diffs, death context, item spikes, skill max order, and 5-stat improvement evidence.
+  const aiContext = buildAiContext(
+    summonerData.gameName,
+    summonerData.tagLine,
+    visibleMatches,
+    summonerData.puuid,
+    summonerData.soloQueueRank,
+    summonerData.championStats,
+    summonerData.overallStats,
+    timelineAnalysis,
+    resolvedImprovement.stats
   );
 
   const handleAnalyzeTimeline = async () => {
@@ -265,6 +266,8 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
         hasTimelineAnalysis={resolvedImprovement.hasTimelineAnalysis}
         onAnalyzeTimeline={handleAnalyzeTimeline}
         loadingTimeline={loadingTimeline}
+        matches={visibleMatches}
+        puuid={summonerData.puuid}
       />
       
       <AiAnalysisModal 
