@@ -7,14 +7,15 @@ import RankedInfo from './RankedInfo';
 import { useTimeAgo } from '../hooks/useTimeAgo';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import { useAuthStore, isSameStarredProfile } from '../store/authStore';
-import AiAnalysisModal, {
-  generatePersonalizedSuggestions,
-  parseAiResponseWithSuggestions,
-} from './AiAnalysisModal';
+import AiAnalysisModal from './AiAnalysisModal';
 import { chatWithAi } from '../api/ai';
 import { getLiveGame } from '../api/riot';
 import LiveGameDisplay, { type CurrentGameInfo } from './LiveGameDisplay';
-import { buildAiContext } from '../utils/aiContextBuilder';
+import {
+  buildAiContext,
+  generatePersonalizedSuggestions,
+  parseAiResponseWithSuggestions,
+} from '../utils/aiContextBuilder';
 import { analyzeTimelines } from '../api/timeline';
 import TimelineAnalysisModal from './TimelineAnalysisModal';
 import type { TimelineAnalysisDto } from '../types/timeline';

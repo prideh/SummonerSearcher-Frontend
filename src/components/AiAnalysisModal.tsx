@@ -4,6 +4,10 @@ import { chatWithAi, submitFeedback } from '../api/ai';
 import ImprovementStatsSection from './ImprovementStatsSection';
 import type { ImprovementStatsDto } from '../types/improvementStats';
 import type { MatchDto } from '../types/match';
+import {
+  generatePersonalizedSuggestions,
+  parseAiResponseWithSuggestions,
+} from '../utils/aiContextBuilder';
 
 interface AiContextData {
   summonerName: string;
@@ -34,86 +38,6 @@ interface Message {
   feedback?: 'positive' | 'negative'; // User's feedback
   timestamp?: number; // When message was shown
 }
-
-export const generatePersonalizedSuggestions = (context: AiContextData): string[] => {
-  const suggestions = ["Analyze my profile"];
-  
-  if (context.primaryRole && context.primaryRole !== 'unknown' && typeof context.primaryRole === 'string') {
-    let formattedRole = context.primaryRole.charAt(0).toUpperCase() + context.primaryRole.slice(1).toLowerCase();
-    if (context.primaryRole === 'UTILITY') formattedRole = 'Support';
-    if (context.primaryRole === 'BOTTOM') formattedRole = 'Bot Carry';
-    suggestions.push(`Analyze my ${formattedRole} macro`);
-  } else {
-    suggestions.push("What are my biggest strengths?");
-  }
-
-  // Suggest an analysis on their most played champ instead of matchups
-  const topChamps = context.topChampions as Array<{ name: string; games: number }> | undefined;
-  if (topChamps && topChamps.length > 0) {
-    suggestions.push(`How can I improve my ${topChamps[0].name}?`);
-  } else {
-    suggestions.push("How can I improve my CS?");
-  }
-
-  // Add role-specific learning questions
-  if (context.primaryRole === 'JUNGLE') {
-    suggestions.push("How is my jungle pathing?");
-  } else if (context.primaryRole === 'SUPPORT' || context.primaryRole === 'UTILITY') {
-    suggestions.push("How is my vision control?");
-  } else {
-    suggestions.push("How is my wave management?");
-  }
-
-  // Conditionally format the winrate prompt from scoped sample records (falling back to legacy winRate if present)
-  const savedHistory = context.savedHistory as { winRate?: string } | null | undefined;
-  const rankedRecord = context.rankedRecord as { winRate?: string } | null | undefined;
-  const recentMatchSample = context.recentMatchSample as { winRate?: string | null } | null | undefined;
-  const rawWinRate =
-    savedHistory?.winRate ??
-    rankedRecord?.winRate ??
-    recentMatchSample?.winRate ??
-    (context.winRate as string | undefined) ??
-    '0';
-  const winRate = parseFloat(rawWinRate);
-  if (winRate > 55) {
-    suggestions.push("How can I snowball my leads?");
-  } else {
-    suggestions.push("Why is my win rate low?");
-  }
-
-  // Return exactly 5 suggestions
-  return suggestions.slice(0, 5);
-};
-
-export const parseAiResponseWithSuggestions = (
-  rawResponse: string,
-  fallbackSuggestions: string[] = []
-): { cleanResponse: string; suggestions: string[] } => {
-  let cleanResponse = rawResponse;
-  let parsedSuggestions = fallbackSuggestions;
-  const suggestionsMatch = rawResponse.match(/---SUGGESTIONS---\s*(\[[\s\S]*?\])/);
-
-  if (suggestionsMatch) {
-    try {
-      let jsonStr = suggestionsMatch[1];
-      jsonStr = jsonStr.replace(/,\s*\]/g, ']');
-      const newSuggestions = JSON.parse(jsonStr);
-      if (Array.isArray(newSuggestions)) {
-        parsedSuggestions = newSuggestions;
-      }
-      cleanResponse = rawResponse.replace(suggestionsMatch[0], '').trim();
-    } catch (e) {
-      console.error('Failed to parse suggestions:', e);
-      const manualMatches = suggestionsMatch[1].match(/"([^"]+)"/g);
-      if (manualMatches) {
-        parsedSuggestions = manualMatches.map((s) => s.replace(/"/g, ''));
-        cleanResponse = rawResponse.replace(suggestionsMatch[0], '').trim();
-      }
-    }
-  }
-
-  return { cleanResponse, suggestions: parsedSuggestions };
-};
 
 const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
   isOpen,
