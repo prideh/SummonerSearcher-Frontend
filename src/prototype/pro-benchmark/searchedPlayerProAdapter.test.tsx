@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   CHECKPOINT_TOLERANCE_MS,
@@ -7,6 +7,7 @@ import {
   extractPlayerMatchSummary,
   resolvePlayerMatchParticipant,
   resolveTimelineParticipantIdByPuuid,
+  sharedTimelineCache,
 } from './searchedPlayerProAdapter';
 import { ProfileProComparisonTab } from './ProfileProComparisonTab';
 import { RECORDED_REVIEW_PROFILES } from './recordedPlayerContractSample';
@@ -325,5 +326,252 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     expect(mockFetchTimeline).toHaveBeenCalledTimes(2);
     expect(mockFetchTimeline).toHaveBeenCalledWith('EUW1', 'EUW1_7201001');
     expect(mockFetchTimeline).toHaveBeenCalledWith('EUW1', 'EUW1_7201002');
+  });
+
+  it('invalidates in-flight timeline requests when switching from Player A to Player B and prevents stale completion from applying', async () => {
+    const playerA = RECORDED_REVIEW_PROFILES.euw_top_specialist;
+    const playerB = RECORDED_REVIEW_PROFILES.kr_mid_specialist;
+
+    let resolvePlayerAMatch1!: (dto: MatchTimelineDto | null) => void;
+    const playerAMatch1Promise = new Promise<MatchTimelineDto | null>((resolve) => {
+      resolvePlayerAMatch1 = resolve;
+    });
+
+    const mockFetchTimeline = vi
+      .fn()
+      .mockImplementation((_region: string, matchId: string) => {
+        if (matchId === 'EUW1_7201001') {
+          return playerAMatch1Promise;
+        }
+        return Promise.resolve(
+          playerA.timelinesByMatchId[matchId] ?? playerB.timelinesByMatchId[matchId] ?? null
+        );
+      });
+
+    const { rerender } = render(
+      <ProfileProComparisonTab
+        puuid={playerA.puuid}
+        region={playerA.region}
+        gameName={playerA.gameName}
+        tagLine={playerA.tagLine}
+        visibleMatches={playerA.visibleMatches}
+        initialTimelinesByMatchId={{}}
+        fetchTimeline={mockFetchTimeline}
+      />
+    );
+
+    // No automatic fetch on mount
+    expect(mockFetchTimeline).not.toHaveBeenCalled();
+
+    // Start loading timelines on Player A (2G: EUW1_7201001 and EUW1_7201002)
+    const loadBtnA = screen.getByTestId('load-pair-timelines-btn');
+    expect(loadBtnA).toHaveTextContent('Load Timelines (2G)');
+    fireEvent.click(loadBtnA);
+
+    expect(mockFetchTimeline).toHaveBeenCalledTimes(1);
+    expect(mockFetchTimeline).toHaveBeenCalledWith('EUW1', 'EUW1_7201001');
+    expect(screen.getByTestId('load-pair-timelines-btn')).toHaveTextContent('Loading...');
+    expect(screen.getByTestId('load-pair-timelines-btn')).toBeDisabled();
+
+    // Switch searched player to Player B while Player A's first timeline request is still pending
+    rerender(
+      <ProfileProComparisonTab
+        puuid={playerB.puuid}
+        region={playerB.region}
+        gameName={playerB.gameName}
+        tagLine={playerB.tagLine}
+        visibleMatches={playerB.visibleMatches}
+        initialTimelinesByMatchId={{}}
+        fetchTimeline={mockFetchTimeline}
+      />
+    );
+
+    // Player B must NOT inherit Player A's loading state and must NOT auto-fetch
+    expect(screen.getByTestId('profile-pro-comparison-tab')).toHaveAttribute(
+      'data-bound-identity',
+      'ArcaneWave#KR1 (KR)'
+    );
+    const loadBtnB = screen.getByTestId('load-pair-timelines-btn');
+    expect(loadBtnB).toHaveTextContent('Load Timelines (1G)');
+    expect(loadBtnB).not.toBeDisabled();
+    expect(mockFetchTimeline).toHaveBeenCalledTimes(1);
+
+    // Now resolve Player A's delayed request AFTER Player B is displayed
+    await act(async () => {
+      resolvePlayerAMatch1(playerA.timelinesByMatchId.EUW1_7201001);
+      await Promise.resolve();
+    });
+
+    // Must not continue Player A's batch to EUW1_7201002, must not cache stale result, and must not alter Player B UI
+    expect(mockFetchTimeline).toHaveBeenCalledTimes(1);
+    expect(sharedTimelineCache.has('euw1::EUW1_7201001')).toBe(false);
+    expect(screen.getByTestId('player-unavailable-10m')).toHaveTextContent('Load Timeline');
+    expect(screen.queryByTestId('timeline-fetch-error')).not.toBeInTheDocument();
+
+    // Even switching back to Player A must not show stale completion from the invalidated generation
+    rerender(
+      <ProfileProComparisonTab
+        puuid={playerA.puuid}
+        region={playerA.region}
+        gameName={playerA.gameName}
+        tagLine={playerA.tagLine}
+        visibleMatches={playerA.visibleMatches}
+        initialTimelinesByMatchId={{}}
+        fetchTimeline={mockFetchTimeline}
+      />
+    );
+    expect(screen.getByTestId('player-unavailable-10m')).toHaveTextContent('Load Timeline');
+    expect(screen.getByTestId('load-pair-timelines-btn')).toHaveTextContent('Load Timelines (2G)');
+  });
+
+  it('isolates loading and error states when an old request from Player A fails after Player B is displayed or loading', async () => {
+    const playerA = RECORDED_REVIEW_PROFILES.euw_top_specialist;
+    const playerB = RECORDED_REVIEW_PROFILES.kr_mid_specialist;
+
+    let rejectPlayerAMatch1!: (err: Error) => void;
+    const playerAMatch1Promise = new Promise<MatchTimelineDto | null>((_resolve, reject) => {
+      rejectPlayerAMatch1 = reject;
+    });
+
+    let resolvePlayerBMatch1!: (dto: MatchTimelineDto | null) => void;
+    const playerBMatch1Promise = new Promise<MatchTimelineDto | null>((resolve) => {
+      resolvePlayerBMatch1 = resolve;
+    });
+
+    const mockFetchTimeline = vi
+      .fn()
+      .mockImplementation((_region: string, matchId: string) => {
+        if (matchId === 'EUW1_7201001') {
+          return playerAMatch1Promise;
+        }
+        if (matchId === 'KR_8102001') {
+          return playerBMatch1Promise;
+        }
+        return Promise.resolve(null);
+      });
+
+    const { rerender } = render(
+      <ProfileProComparisonTab
+        puuid={playerA.puuid}
+        region={playerA.region}
+        gameName={playerA.gameName}
+        tagLine={playerA.tagLine}
+        visibleMatches={playerA.visibleMatches}
+        initialTimelinesByMatchId={{}}
+        fetchTimeline={mockFetchTimeline}
+      />
+    );
+
+    // Start Player A request
+    fireEvent.click(screen.getByTestId('load-pair-timelines-btn'));
+    expect(screen.getByTestId('load-pair-timelines-btn')).toHaveTextContent('Loading...');
+
+    // Switch to Player B
+    rerender(
+      <ProfileProComparisonTab
+        puuid={playerB.puuid}
+        region={playerB.region}
+        gameName={playerB.gameName}
+        tagLine={playerB.tagLine}
+        visibleMatches={playerB.visibleMatches}
+        initialTimelinesByMatchId={{}}
+        fetchTimeline={mockFetchTimeline}
+      />
+    );
+
+    // Start Player B request so Player B is actively loading
+    fireEvent.click(screen.getByTestId('load-pair-timelines-btn'));
+    expect(screen.getByTestId('load-pair-timelines-btn')).toHaveTextContent('Loading...');
+    expect(screen.getByTestId('load-pair-timelines-btn')).toBeDisabled();
+
+    // Now Player A's old request rejects while Player B is loading
+    await act(async () => {
+      rejectPlayerAMatch1(new Error('Network timeout for Player A'));
+      await Promise.resolve();
+    });
+
+    // Player B must NOT receive Player A's error and must STILL be in Loading... state
+    expect(screen.queryByTestId('timeline-fetch-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('load-pair-timelines-btn')).toHaveTextContent('Loading...');
+    expect(screen.getByTestId('load-pair-timelines-btn')).toBeDisabled();
+
+    // Resolve Player B's request and verify Player B completes cleanly
+    await act(async () => {
+      resolvePlayerBMatch1(playerB.timelinesByMatchId.KR_8102001);
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('player-mean-cs-10m')).toHaveTextContent('94.0');
+    });
+    expect(screen.queryByTestId('timeline-fetch-error')).not.toBeInTheDocument();
+  });
+
+  it('invalidates in-flight timeline requests on unmount and reports factual error message when current request fails', async () => {
+    const playerA = RECORDED_REVIEW_PROFILES.euw_top_specialist;
+    const playerB = RECORDED_REVIEW_PROFILES.kr_mid_specialist;
+
+    let resolvePlayerAMatch1!: (dto: MatchTimelineDto | null) => void;
+    const playerAMatch1Promise = new Promise<MatchTimelineDto | null>((resolve) => {
+      resolvePlayerAMatch1 = resolve;
+    });
+
+    const mockFetchTimeline = vi
+      .fn()
+      .mockImplementation((_region: string, matchId: string) => {
+        if (matchId === 'EUW1_7201001') {
+          return playerAMatch1Promise;
+        }
+        return Promise.resolve(null);
+      });
+
+    const { unmount } = render(
+      <ProfileProComparisonTab
+        puuid={playerA.puuid}
+        region={playerA.region}
+        gameName={playerA.gameName}
+        tagLine={playerA.tagLine}
+        visibleMatches={playerA.visibleMatches}
+        initialTimelinesByMatchId={{}}
+        fetchTimeline={mockFetchTimeline}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('load-pair-timelines-btn'));
+    expect(mockFetchTimeline).toHaveBeenCalledTimes(1);
+
+    // Unmount before promise resolves
+    unmount();
+
+    await act(async () => {
+      resolvePlayerAMatch1(playerA.timelinesByMatchId.EUW1_7201001);
+      await Promise.resolve();
+    });
+
+    // Second match in batch must never be fetched after unmount, and cache must not be written
+    expect(mockFetchTimeline).toHaveBeenCalledTimes(1);
+    expect(sharedTimelineCache.has('euw1::EUW1_7201001')).toBe(false);
+
+    // Verify current-player failure message is factual and does not speculate about memory guards
+    const failingFetch = vi.fn().mockResolvedValue(null);
+    render(
+      <ProfileProComparisonTab
+        puuid={playerB.puuid}
+        region={playerB.region}
+        gameName={playerB.gameName}
+        tagLine={playerB.tagLine}
+        visibleMatches={playerB.visibleMatches}
+        initialTimelinesByMatchId={{}}
+        fetchTimeline={failingFetch}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('load-pair-timelines-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('timeline-fetch-error')).toHaveTextContent(
+        'Could not load 1 of 1 match timeline(s) from the timeline endpoint.'
+      );
+    });
+    expect(screen.getByTestId('timeline-fetch-error').textContent).not.toContain('memory guard');
   });
 });

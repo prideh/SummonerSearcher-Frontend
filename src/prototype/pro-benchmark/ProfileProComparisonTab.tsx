@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { MatchDto } from '../../types/match';
 import type { MatchTimelineDto } from '../../types/timeline';
 import * as timelineApi from '../../api/timeline';
@@ -53,6 +53,28 @@ export interface ProfileProComparisonTabProps {
 
 type TabSurfaceMode = 'player_vs_pro' | 'pro_catalog' | 'manual_demo';
 
+interface PlayerScopedUiState {
+  identityKey: string;
+  selectedPairKey: string | null;
+  selectedMatchId: 'ALL' | string;
+  loadedTimelines: Record<string, MatchTimelineDto | null | undefined>;
+  loadingTimelines: boolean;
+  timelineFetchError: string | null;
+  surfaceMode: TabSurfaceMode;
+  showMatchBreakdown: boolean;
+}
+
+const createInitialPlayerUiState = (targetIdentityKey: string): PlayerScopedUiState => ({
+  identityKey: targetIdentityKey,
+  selectedPairKey: null,
+  selectedMatchId: 'ALL',
+  loadedTimelines: {},
+  loadingTimelines: false,
+  timelineFetchError: null,
+  surfaceMode: 'player_vs_pro',
+  showMatchBreakdown: false,
+});
+
 const DEFAULT_DEMO_INPUTS: DemoCsInputMap = {
   5: '38',
   10: '86',
@@ -95,17 +117,15 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
 
   const identityKey = `${region.toLowerCase()}::${puuid}`;
 
-  // Local state bound to identityKey; resets automatically whenever puuid or region changes.
-  const [boundIdentityKey, setBoundIdentityKey] = useState<string>(identityKey);
-  const [selectedPairKey, setSelectedPairKey] = useState<string | null>(null);
-  const [selectedMatchId, setSelectedMatchId] = useState<'ALL' | string>('ALL');
-  const [loadedTimelines, setLoadedTimelines] = useState<
-    Record<string, MatchTimelineDto | null | undefined>
-  >(() => ({ ...(initialTimelinesByMatchId ?? {}) }));
-  const [loadingTimelines, setLoadingTimelines] = useState<boolean>(false);
-  const [timelineFetchError, setTimelineFetchError] = useState<string | null>(null);
-  const [surfaceMode, setSurfaceMode] = useState<TabSurfaceMode>('player_vs_pro');
-  const [showMatchBreakdown, setShowMatchBreakdown] = useState<boolean>(false);
+  // Track mounted lifecycle, current player identity, and request generation in refs
+  // so async timeline loaders never compare against a stale render closure.
+  const isMountedRef = useRef<boolean>(true);
+  const activeIdentityKeyRef = useRef<string>(identityKey);
+  const requestGenerationRef = useRef<number>(0);
+
+  const [playerUiState, setPlayerUiState] = useState<PlayerScopedUiState>(() =>
+    createInitialPlayerUiState(identityKey)
+  );
   const [showMethodology, setShowMethodology] = useState<boolean>(false);
 
   // Catalog / Manual Demo fallback state
@@ -113,29 +133,84 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
   const [catalogChampion, setCatalogChampion] = useState<string>('KSante');
   const [demoInputs, setDemoInputs] = useState<DemoCsInputMap>({});
 
-  // Reset all player-specific selections when searched player identity changes
+  // Invalidate any in-flight timeline requests on unmount
   useEffect(() => {
-    if (boundIdentityKey !== identityKey) {
-      setBoundIdentityKey(identityKey);
-      setSelectedPairKey(null);
-      setSelectedMatchId('ALL');
-      setLoadedTimelines({ ...(initialTimelinesByMatchId ?? {}) });
-      setLoadingTimelines(false);
-      setTimelineFetchError(null);
-      setSurfaceMode('player_vs_pro');
-      setShowMatchBreakdown(false);
-    }
-  }, [boundIdentityKey, identityKey, initialTimelinesByMatchId]);
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      requestGenerationRef.current += 1;
+    };
+  }, []);
 
-  // Sync if initialTimelinesByMatchId prop updates for the same identity
+  // Invalidate in-flight requests and reset player-scoped UI state when searched player identity changes
   useEffect(() => {
-    if (initialTimelinesByMatchId) {
-      setLoadedTimelines((prev) => ({
-        ...initialTimelinesByMatchId,
-        ...prev,
-      }));
+    if (activeIdentityKeyRef.current !== identityKey) {
+      activeIdentityKeyRef.current = identityKey;
+      requestGenerationRef.current += 1;
     }
-  }, [initialTimelinesByMatchId]);
+    setPlayerUiState((prev) =>
+      prev.identityKey === identityKey ? prev : createInitialPlayerUiState(identityKey)
+    );
+  }, [identityKey]);
+
+  // Derive active UI values strictly for the current identityKey (prevents 1-frame stale leaks on switch)
+  const isCurrentIdentityState = playerUiState.identityKey === identityKey;
+  const selectedPairKey = isCurrentIdentityState ? playerUiState.selectedPairKey : null;
+  const selectedMatchId = isCurrentIdentityState ? playerUiState.selectedMatchId : 'ALL';
+  const loadedTimelines = useMemo(
+    () => (isCurrentIdentityState ? playerUiState.loadedTimelines : {}),
+    [isCurrentIdentityState, playerUiState.loadedTimelines]
+  );
+  const loadingTimelines = isCurrentIdentityState ? playerUiState.loadingTimelines : false;
+  const timelineFetchError = isCurrentIdentityState ? playerUiState.timelineFetchError : null;
+  const surfaceMode: TabSurfaceMode = isCurrentIdentityState
+    ? playerUiState.surfaceMode
+    : 'player_vs_pro';
+  const showMatchBreakdown = isCurrentIdentityState ? playerUiState.showMatchBreakdown : false;
+
+  const updateCurrentPlayerUiState = (
+    updater: (base: PlayerScopedUiState) => Partial<PlayerScopedUiState>
+  ) => {
+    setPlayerUiState((prev) => {
+      const base =
+        prev.identityKey === identityKey ? prev : createInitialPlayerUiState(identityKey);
+      return {
+        ...base,
+        ...updater(base),
+        identityKey,
+      };
+    });
+  };
+
+  const setSelectedPairKey = (nextPairKey: string | null) => {
+    requestGenerationRef.current += 1;
+    updateCurrentPlayerUiState(() => ({
+      selectedPairKey: nextPairKey,
+      selectedMatchId: 'ALL',
+      loadingTimelines: false,
+      timelineFetchError: null,
+    }));
+  };
+
+  const setSelectedMatchId = (nextMatchId: 'ALL' | string) => {
+    updateCurrentPlayerUiState(() => ({
+      selectedMatchId: nextMatchId,
+      timelineFetchError: null,
+    }));
+  };
+
+  const setSurfaceMode = (nextMode: TabSurfaceMode) => {
+    updateCurrentPlayerUiState(() => ({ surfaceMode: nextMode }));
+  };
+
+  const setShowMatchBreakdown = (
+    nextVal: boolean | ((prevBreakdown: boolean) => boolean)
+  ) => {
+    updateCurrentPlayerUiState((base) => ({
+      showMatchBreakdown:
+        typeof nextVal === 'function' ? nextVal(base.showMatchBreakdown) : nextVal,
+    }));
+  };
 
   // Merge shared cache entries for visible matches of this region
   const effectiveTimelinesByMatchId = useMemo(() => {
@@ -190,17 +265,42 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
     if (matchIdsToFetch.length === 0) return;
 
     const requestIdentityKey = identityKey;
-    setLoadingTimelines(true);
-    setTimelineFetchError(null);
+    const requestRegion = region;
+    const normRegion = requestRegion.toLowerCase();
+    activeIdentityKeyRef.current = requestIdentityKey;
+    requestGenerationRef.current += 1;
+    const requestGeneration = requestGenerationRef.current;
 
-    const normRegion = region.toLowerCase();
+    const isRequestCurrent = (): boolean =>
+      isMountedRef.current &&
+      activeIdentityKeyRef.current === requestIdentityKey &&
+      requestGenerationRef.current === requestGeneration;
+
+    setPlayerUiState((prev) => {
+      const base =
+        prev.identityKey === requestIdentityKey
+          ? prev
+          : createInitialPlayerUiState(requestIdentityKey);
+      return {
+        ...base,
+        loadingTimelines: true,
+        timelineFetchError: null,
+      };
+    });
+
     const newlyLoaded: Record<string, MatchTimelineDto> = {};
     let failedCount = 0;
 
     try {
       for (const matchId of matchIdsToFetch) {
+        if (!isRequestCurrent()) {
+          return;
+        }
         try {
-          const dto = await fetchTimeline(region, matchId);
+          const dto = await fetchTimeline(requestRegion, matchId);
+          if (!isRequestCurrent()) {
+            return;
+          }
           if (dto && dto.info?.frames) {
             sharedTimelineCache.set(`${normRegion}::${matchId}`, dto);
             newlyLoaded[matchId] = dto;
@@ -208,23 +308,40 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
             failedCount++;
           }
         } catch {
+          if (!isRequestCurrent()) {
+            return;
+          }
           failedCount++;
         }
       }
 
-      if (requestIdentityKey === `${region.toLowerCase()}::${puuid}`) {
-        if (Object.keys(newlyLoaded).length > 0) {
-          setLoadedTimelines((prev) => ({ ...prev, ...newlyLoaded }));
-        }
-        if (failedCount > 0) {
-          setTimelineFetchError(
-            `Could not load ${failedCount} of ${matchIdsToFetch.length} match timeline(s). Backend timeline endpoint may be offline or paused by memory guard.`
-          );
-        }
+      if (!isRequestCurrent()) {
+        return;
       }
+
+      setPlayerUiState((prev) => {
+        if (prev.identityKey !== requestIdentityKey) {
+          return prev;
+        }
+        return {
+          ...prev,
+          loadedTimelines:
+            Object.keys(newlyLoaded).length > 0
+              ? { ...prev.loadedTimelines, ...newlyLoaded }
+              : prev.loadedTimelines,
+          timelineFetchError:
+            failedCount > 0
+              ? `Could not load ${failedCount} of ${matchIdsToFetch.length} match timeline(s) from the timeline endpoint.`
+              : null,
+        };
+      });
     } finally {
-      if (requestIdentityKey === `${region.toLowerCase()}::${puuid}`) {
-        setLoadingTimelines(false);
+      if (isRequestCurrent()) {
+        setPlayerUiState((prev) =>
+          prev.identityKey === requestIdentityKey
+            ? { ...prev, loadingTimelines: false }
+            : prev
+        );
       }
     }
   };
@@ -298,8 +415,6 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                     value={selectedPair?.pairKey ?? ''}
                     onChange={(e) => {
                       setSelectedPairKey(e.target.value);
-                      setSelectedMatchId('ALL');
-                      setTimelineFetchError(null);
                     }}
                     className="w-full min-w-0 truncate rounded bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                   >
