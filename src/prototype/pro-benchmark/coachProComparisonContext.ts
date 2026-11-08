@@ -50,8 +50,10 @@ export type ChallengeAvailabilityStatus =
  * - Missing, `null`, `undefined`, `NaN`, or negative challenge fields MUST remain `null`
  *   with status `"unknown_missing_challenge"` — NEVER coerced to `0` (unlike legacy
  *   `aiContextBuilder.ts` lines 692/722/761 `|| 0`).
- * - `proReference` is explicitly `null` because the retained pro export (`proBenchmark80.json`)
- *   and LoL Esports `stats_update` feed do not carry Riot `challenges` fields.
+ * - `proReference` is explicitly `null` because the retained derived pro export
+ *   (`src/prototype/pro-benchmark/data/pro_benchmark_sample_baselines.json`,
+ *   git blob `00148c2d3f665559da1a98e9de4afa4bdb41d813`) does not carry Riot `challenges` fields
+ *   (and raw upstream HTTP `livestats` payloads are not retained locally).
  */
 export interface StrictPlayerChallengeMetrics {
   soloKillsStatus: ChallengeAvailabilityStatus;
