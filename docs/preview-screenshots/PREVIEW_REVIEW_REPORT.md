@@ -1,46 +1,32 @@
-# Pro CS Checkpoint Reference UI Preview — Visual & Behavioral Review
+# Pro CS Reference — Streamlined UI Preview Review
 
-- **Branch**: `feature/pro-comparison-ui-preview` (isolated from `master`; production routing in `src/nav/NavigationLayout.tsx`, `src/App.tsx`, `src/main.tsx`, and `index.html` is **100% untouched**)
-- **Standalone Retrievable Single-File HTML Build**: [`./pro-comparison-standalone-artifact.html`](./pro-comparison-standalone-artifact.html) (self-contained 715 KB HTML bundle with inline CSS, React UI, and the verified 8-game / 80-player dataset—can be downloaded and opened directly via `file://` in any browser with zero server or network dependencies)
-- **Local Vite Dev Entry Point**: `/pro-comparison-preview.html` (`npm run dev` -> `http://localhost:5173/pro-comparison-preview.html`)
+## Summary of UX Streamlining
 
----
+Following the visual review of commit `9de662e`, both the **desktop** and **mobile** views were stripped down to what a player actually needs at a glance:
 
-## 1. Rendered Key-Feature Screenshots (Desktop `1280px` & Mobile `390px` / `320px`)
+1. **Main View (Above the Fold)**:
+   - **Compact Header**: Shows `Pro CS Reference · Worlds 2026 Sample · 8 Games (80 Player-Games · 53 Pairs · Patch 16.20)`, the mode badge (`Reference Only (No User Data)` or `Demo Input Mode (Not Live User Stats)`), and the `Reference` / `Demo CS Input` toggle. Removed the `"Private"` header badge (since a label does not enforce access control).
+   - **Single Filter Bar**: Role pill selector (`All Roles (80G) | Top (16G) | Jungle (16G) | Mid (16G) | Bottom (16G) | Support (16G)`), labeled `Champion` select dropdown, and `Quick Champion Filter` input. Removed duplicate role dropdowns and quick-pair chip rows.
+   - **Immediate Checkpoint Grid (`5m / 10m / 15m / 20m / 25m / 30m`)**: Displays mean Total CS (Lane + Jungle), CS/min, min–max range, sample denominator (`reached/totalG`), and an explicit `Unavailable` state at `30m` (`0/totalG (N reached 30m) · Not in 25m sample export`). Removed the extra `14m` pill.
+   - **Concise Interpretation Caveat Beside Numbers**: A single 2-line note sits directly beneath the checkpoint cards with the essential interpretation boundaries:
+     > **Note:** Small pro reference (8 Worlds 2026 games / 80 player-games, patch 16.20)—not a solo-queue target or percentile. No live user stats connected. Ended games excluded (never 0 CS); 30m not in dataset export. CS@10 HUD-checked in 2/8 games.
+2. **On-Demand Disclosures**:
+   - **`Match Evidence (NG)`**: Expands the per-game breakdown table (`5m–25m`, `30m Unavailable`, `End CS`, and `10m HUD Check` status with corrected `t=3695s` / `t=6759s` VOD links for IG vs TES G1+G2).
+   - **`Methodology & Limits`**: Expands the full verification scope (`53` unique pairs in JSON vs `57` in the prior report heading, partial HUD verification in 2/8 games, zero-gold pause heuristic, Data Dragon `16.22.1` vs tournament `16.20` item mismatch, and the IG vs TES G1 105.02s pause audit table).
 
-### 1.1 Desktop (`1280x900`) — Default Reference-Only Mode (`Top · KSante`, `n=3`)
-- Shows `Reference-Only Mode (No Live User Data)` active by default.
-- Displays mean Total CS (lane + jungle combined) at `5m` (`39.0 CS`), `10m` (`93.0 CS`), `15m` (`137.3 CS`), `20m` (`179.7 CS`), `25m` (`223.0 CS`) with `3/3G reached (n=3)` denominators, secondary `@14:00` pill (`131.0 CS`), and honest **`Unavailable`** state at `30m` (`0/3G snapshot (2/3G reached 30:00)`).
-- Inline caveats sit directly above the checkpoint cards.
+## Viewport & Runtime Verification Metrics
 
-![Desktop 1280px — Default Reference-Only Mode](./pro_comparison_desktop_reference.png)
+| Viewport | `scrollWidth === innerWidth` | Total Page Height (Default View) | Top of `5m` Checkpoint Card | Console / Page Errors | External Network Calls |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Desktop (`1280×900`)** | `1280 === 1280` (0 overflow) | `900px` (content `470px`) | **`231px`** | `0` | `0` |
+| **Mobile (`390×844`)** | `390 === 390` (0 overflow) | `963px` | **`472px`** | `0` | `0` |
+| **Mobile (`320×568`)** | `320 === 320` (0 overflow) | `1067px` | **`500px`** (down from `~2500px`) | `0` | `0` |
 
----
+## Screenshots in Repository (`docs/preview-screenshots/`)
 
-### 1.2 Desktop (`1280x900`) — `Mid · Syndra` (`n=3`) with HUD-Verified 10:00 VOD Links, Optional Demo CS Input Mode, and `IG vs TES G1` `105.02s` Pause Audit
-- Demonstrates **Optional Demo CS Input Mode** where every input box and delta is explicitly badged **`DEMO ONLY`** / **`Demo Input Mode (Synthetic / Manual Only)`** (`not live player data or rank percentile`), and `30m` comparison is disabled (`Cannot compare at 30m: pro sample dataset does not include a 30m snapshot`).
-- Per-game evidence table shows `IG Rookie (Syndra)` in `IG vs TES G1` with the green **`CS@10 HUD Verified`** badge and corrected YouTube link (`https://www.youtube.com/watch?v=HtgoZzoC4Lo&t=3695s`), alongside `HLE Zeka (Syndra)` in `BLG vs HLE G2` and `G2 vs HLE G1` marked **`Feed-Derived Only (Unverified)`**.
-- Bottom panel expands the **`IG vs TES G1` `105.02s` Pause Alignment Audit** across all 10 players (`Naive 8:10` vs `True @10:00` HUD-verified at `t=3695s`).
-
-![Desktop 1280px — Demo Mode, HUD Verified VOD Links & Pause Audit](./pro_comparison_desktop_demo_and_pause_audit.png)
-
----
-
-### 1.3 Desktop (`1280x900`) — Honest Empty / Unsupported Role-Champion Selection State (`Top · Syndra`)
-- Selecting or searching `Syndra` under `Top` displays `Unsupported Selection in 8-Game Sample Dataset (0 Player-Games)` (`Syndra has 0 games in Top in this 8-game Worlds 2026 sample, but is present in: Mid (n=3)`), never inventing fallback or zero-filled numbers, and provides a one-click button to switch to `Mid · Syndra (n=3G)`.
-
-![Desktop 1280px — Honest Unsupported Selection State](./pro_comparison_desktop_unsupported_state.png)
-
----
-
-### 1.4 Mobile `390px` (`390x844`) — Zero Horizontal Overflow (`scrollWidth: 390 === innerWidth: 390`)
-- All controls, caveat cards, checkpoint cards, per-game evidence cards, and pause audit cards stack cleanly at `390px` width without horizontal scrolling or clipped text.
-
-![Mobile 390px Viewport](./pro_comparison_mobile_390px.png)
-
----
-
-### 1.5 Mobile `320px` (`320x780`) — Small Phone Viewport, Zero Horizontal Overflow (`scrollWidth: 320 === innerWidth: 320`)
-- Verified at `320px` minimum phone width with `scrollWidth: 320 === innerWidth: 320`.
-
-![Mobile 320px Viewport](./pro_comparison_mobile_320px.png)
+- `pro_comparison_desktop_reference.png`
+- `pro_comparison_mobile_390px.png`
+- `pro_comparison_mobile_320px.png`
+- `pro_comparison_desktop_demo_and_pause_audit.png`
+- `pro_comparison_desktop_unsupported_state.png`
+- `pro-comparison-standalone-artifact.html` (Self-contained single-file HTML bundle for instant browser review without a server)
