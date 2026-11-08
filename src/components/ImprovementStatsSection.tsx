@@ -312,7 +312,7 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
           actual: comp?.actual ?? Math.round(rawLaneCs10 * 10) / 10,
           target: null,
           targetLabel: null,
-          statusBadge: 'Pre-26.1 patch (actual recorded · target null)',
+          statusBadge: 'Pre-26.1 patch (actual recorded · no target)',
           statusTone: 'slate',
         });
       }
@@ -664,212 +664,313 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
         </div>
       )}
 
-      {/* Default Compact 5-Stat Summary */}
+      {/* Default Compact Summary Cards (Metric + Sample + Per-Card Inspect Evidence) */}
       <div
         data-testid="improvement-stats-compact-summary"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 mt-3 text-xs telemetry-nums"
+        className={`grid grid-cols-1 sm:grid-cols-2 ${
+          laneCs10Evidence ? 'lg:grid-cols-3' : 'lg:grid-cols-5'
+        } gap-2.5 mt-3 text-xs telemetry-nums`}
       >
+        {/* Summary 0: Early 10m Lane CS (when match data is provided) */}
+        {laneCs10Evidence && (
+          <div
+            data-testid="summary-lane-cs-10"
+            className="bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-md p-2.5 flex flex-col justify-between gap-1.5"
+          >
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                  10m Lane CS
+                </span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                  {laneCs10Evidence.summary?.matchCount ?? 0}G laner
+                  {laneCs10Evidence.missingLanerCount > 0 &&
+                    ` · ${laneCs10Evidence.missingLanerCount} excl.`}
+                </span>
+              </div>
+              <div className="space-y-0.5 text-[11px]">
+                <div className="flex justify-between gap-1">
+                  <span className="text-slate-500 dark:text-slate-400">Avg @10m:</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">
+                    {laneCs10Evidence.summary
+                      ? `${laneCs10Evidence.summary.avgActual} CS (${laneCs10Evidence.summary.matchCount}G)`
+                      : 'Unavailable (0G)'}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-1">
+                  <span className="text-slate-500 dark:text-slate-400">
+                    Target (&ne; missed CS):
+                  </span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100 text-right">
+                    {laneCs10Evidence.summary?.avgTarget !== null &&
+                    laneCs10Evidence.summary?.avgTarget !== undefined
+                      ? `${laneCs10Evidence.summary.avgTarget} CS (${laneCs10Evidence.summary.targetMatchCount}G)`
+                      : laneCs10Evidence.summary?.avgSupportedActual !== null &&
+                        laneCs10Evidence.summary?.avgSupportedActual !== undefined
+                      ? `${laneCs10Evidence.summary.avgSupportedActual} CS in ${laneCs10Evidence.summary.targetMatchCount}G (mixed patch)`
+                      : 'Pre-26.1 (no target)'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => openSpecificEvidenceCard('LANE_CS_10')}
+              className="self-start text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+            >
+              Inspect evidence ({laneCs10Evidence.rows.length}G) &rarr;
+            </button>
+          </div>
+        )}
+
         {/* Summary 1: Phase Farming */}
         <div
           data-testid="summary-phase-farming"
-          className="bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-md p-2.5 space-y-1"
+          className="bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-md p-2.5 flex flex-col justify-between gap-1.5"
         >
-          <div className="flex items-center justify-between gap-1">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-              1. Phase CS/m
-            </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400">
-              {phaseFarming.min10To20.eligibleGames}G / {phaseFarming.min20ToEnd.eligibleGames}G
-            </span>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                1. Phase CS/m
+              </span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                {phaseFarming.min10To20.eligibleGames}G / {phaseFarming.min20ToEnd.eligibleGames}G
+              </span>
+            </div>
+            {!sliceHasTimelineData && phaseFarming.min10To20.eligibleGames === 0 ? (
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                Unavailable (Analyze Timeline required)
+              </div>
+            ) : (
+              <div className="space-y-0.5 text-[11px]">
+                <div className="flex justify-between gap-1">
+                  <span className="text-slate-500 dark:text-slate-400">10–20m:</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">
+                    {phaseFarming.min10To20.eligibleGames > 0
+                      ? `${formatNumber(phaseFarming.min10To20.avgTotalCsPerMin, '/m', 2)} (${phaseFarming.min10To20.eligibleGames}G)`
+                      : 'Unavailable (0G)'}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-1">
+                  <span className="text-slate-500 dark:text-slate-400">20m–End:</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">
+                    {phaseFarming.min20ToEnd.eligibleGames > 0
+                      ? `${formatNumber(phaseFarming.min20ToEnd.avgTotalCsPerMin, '/m', 2)} (${phaseFarming.min20ToEnd.eligibleGames}G)`
+                      : 'Unavailable (0G)'}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
-          {!sliceHasTimelineData && phaseFarming.min10To20.eligibleGames === 0 ? (
-            <div className="text-[11px] text-slate-500 dark:text-slate-400">
-              Unavailable (Analyze Timeline required)
-            </div>
-          ) : (
-            <div className="space-y-0.5 text-[11px]">
-              <div className="flex justify-between gap-1">
-                <span className="text-slate-500 dark:text-slate-400">10–20m:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-100">
-                  {phaseFarming.min10To20.eligibleGames > 0
-                    ? `${formatNumber(phaseFarming.min10To20.avgTotalCsPerMin, '/m', 2)} (${phaseFarming.min10To20.eligibleGames}G)`
-                    : 'Unavailable (0G)'}
-                </span>
-              </div>
-              <div className="flex justify-between gap-1">
-                <span className="text-slate-500 dark:text-slate-400">20m–End:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-100">
-                  {phaseFarming.min20ToEnd.eligibleGames > 0
-                    ? `${formatNumber(phaseFarming.min20ToEnd.avgTotalCsPerMin, '/m', 2)} (${phaseFarming.min20ToEnd.eligibleGames}G)`
-                    : 'Unavailable (0G)'}
-                </span>
-              </div>
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={() => openSpecificEvidenceCard('PHASE_FARMING')}
+            className="self-start text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+          >
+            Inspect evidence &rarr;
+          </button>
         </div>
 
         {/* Summary 2: 10m & 20m Leads (unmatched samples) */}
         <div
           data-testid="summary-lead-retention"
-          className="bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-md p-2.5 space-y-1"
+          className="bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-md p-2.5 flex flex-col justify-between gap-1.5"
         >
-          <div className="flex items-center justify-between gap-1">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-              2. 10m &amp; 20m Leads
-            </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400">
-              {leadRetention.eligibleGamesAt10}G vs {leadRetention.eligibleGamesAt20}G
-            </span>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                2. 10m &amp; 20m Leads
+              </span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                {leadRetention.eligibleGamesAt10}G vs {leadRetention.eligibleGamesAt20}G
+              </span>
+            </div>
+            {!sliceHasTimelineData && leadRetention.eligibleGamesAt10 === 0 ? (
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                Unavailable (Analyze Timeline required)
+              </div>
+            ) : leadRetention.eligibleGamesAt10 === 0 ? (
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                Unavailable (0G)
+              </div>
+            ) : (
+              <div className="space-y-0.5 text-[11px]">
+                <div className="flex justify-between gap-1">
+                  <span className="text-slate-500 dark:text-slate-400">
+                    Gold ({leadRetention.eligibleGamesAt10}G / {leadRetention.eligibleGamesAt20}G):
+                  </span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">
+                    {formatSignedNumber(leadRetention.avgGoldLeadAt10, 'g', 1)} /{' '}
+                    {formatSignedNumber(leadRetention.avgGoldLeadAt20, 'g', 1)}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-1">
+                  <span className="text-slate-500 dark:text-slate-400">Held @20m:</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">
+                    {leadRetention.goldLeadRetentionRate !== null
+                      ? `${formatRatePct(leadRetention.goldLeadRetentionRate)} (${leadRetention.gamesRetainedGoldLeadAt20}/${leadRetention.gamesAheadInGoldAt10Reaching20}G)`
+                      : 'Unavailable'}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
-          {!sliceHasTimelineData && leadRetention.eligibleGamesAt10 === 0 ? (
-            <div className="text-[11px] text-slate-500 dark:text-slate-400">
-              Unavailable (Analyze Timeline required)
-            </div>
-          ) : leadRetention.eligibleGamesAt10 === 0 ? (
-            <div className="text-[11px] text-slate-500 dark:text-slate-400">
-              Unavailable (0G)
-            </div>
-          ) : (
-            <div className="space-y-0.5 text-[11px]">
-              <div className="flex justify-between gap-1">
-                <span className="text-slate-500 dark:text-slate-400">
-                  Gold ({leadRetention.eligibleGamesAt10}G / {leadRetention.eligibleGamesAt20}G):
-                </span>
-                <span className="font-bold text-slate-800 dark:text-slate-100">
-                  {formatSignedNumber(leadRetention.avgGoldLeadAt10, 'g', 1)} /{' '}
-                  {formatSignedNumber(leadRetention.avgGoldLeadAt20, 'g', 1)}
-                </span>
-              </div>
-              <div className="flex justify-between gap-1">
-                <span className="text-slate-500 dark:text-slate-400">Held @20m:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-100">
-                  {leadRetention.goldLeadRetentionRate !== null
-                    ? `${formatRatePct(leadRetention.goldLeadRetentionRate)} (${leadRetention.gamesRetainedGoldLeadAt20}/${leadRetention.gamesAheadInGoldAt10Reaching20}G)`
-                    : 'Unavailable'}
-                </span>
-              </div>
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={() => openSpecificEvidenceCard('LEAD_RETENTION')}
+            className="self-start text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+          >
+            Inspect evidence &rarr;
+          </button>
         </div>
 
         {/* Summary 3: Death Cost */}
         <div
           data-testid="summary-death-cost"
-          className="bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-md p-2.5 space-y-1"
+          className="bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-md p-2.5 flex flex-col justify-between gap-1.5"
         >
-          <div className="flex items-center justify-between gap-1">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-              3. Death Cost
-            </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400">
-              {deathCost.eligibleTimeDeadGames}G / {bountySummary.eligibleTimelineGames}G
-            </span>
-          </div>
-          <div className="space-y-0.5 text-[11px]">
-            <div className="flex justify-between gap-1">
-              <span className="text-slate-500 dark:text-slate-400">Avg Dead:</span>
-              <span className="font-bold text-slate-800 dark:text-slate-100">
-                {deathCost.eligibleTimeDeadGames > 0
-                  ? `${formatNumber(deathCost.avgTimeSpentDeadSeconds, 's', 1)} (${formatNumber(deathCost.avgDeadTimeGameSharePct, '%', 2)})`
-                  : 'Unavailable'}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                3. Death Cost
+              </span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                {deathCost.eligibleTimeDeadGames}G / {bountySummary.eligibleTimelineGames}G
               </span>
             </div>
-            <div className="flex justify-between gap-1">
-              <span className="text-slate-500 dark:text-slate-400">Bounty Given:</span>
-              <span className="font-bold text-slate-800 dark:text-slate-100">
-                {bountySummary.eligibleTimelineGames > 0
-                  ? `${formatNumber(bountySummary.totalCombinedBountyGold, 'g', 0)} (${bountySummary.totalRecordedDeaths ?? 0}D)`
-                  : !sliceHasTimelineData
-                  ? 'Unavailable (Timeline)'
-                  : 'Unavailable (0G)'}
-              </span>
+            <div className="space-y-0.5 text-[11px]">
+              <div className="flex justify-between gap-1">
+                <span className="text-slate-500 dark:text-slate-400">Avg Dead:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-100">
+                  {deathCost.eligibleTimeDeadGames > 0
+                    ? `${formatNumber(deathCost.avgTimeSpentDeadSeconds, 's', 1)} (${formatNumber(deathCost.avgDeadTimeGameSharePct, '%', 2)})`
+                    : 'Unavailable'}
+                </span>
+              </div>
+              <div className="flex justify-between gap-1">
+                <span className="text-slate-500 dark:text-slate-400">Bounty Given:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-100">
+                  {bountySummary.eligibleTimelineGames > 0
+                    ? `${formatNumber(bountySummary.totalCombinedBountyGold, 'g', 0)} (${bountySummary.totalRecordedDeaths ?? 0}D)`
+                    : !sliceHasTimelineData
+                    ? 'Unavailable (Timeline)'
+                    : 'Unavailable (0G)'}
+                </span>
+              </div>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => openSpecificEvidenceCard('DEATH_COST')}
+            className="self-start text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+          >
+            Inspect evidence &rarr;
+          </button>
         </div>
 
         {/* Summary 4: Unspent Gold (1m snapshots, not mistakes) */}
         <div
           data-testid="summary-unspent-gold"
-          className="bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-md p-2.5 space-y-1"
+          className="bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-md p-2.5 flex flex-col justify-between gap-1.5"
         >
-          <div className="flex items-center justify-between gap-1">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-              4. Unspent Gold
-            </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400">
-              {unspentGold.eligibleGames}G · {unspentGold.sampleCount} snaps
-            </span>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                4. Unspent Gold
+              </span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                {unspentGold.eligibleGames}G · {unspentGold.sampleCount} snaps
+              </span>
+            </div>
+            {!sliceHasTimelineData && unspentGold.eligibleGames === 0 ? (
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                Unavailable (Analyze Timeline required)
+              </div>
+            ) : unspentGold.eligibleGames === 0 || unspentGold.sampleCount === 0 ? (
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                Unavailable (0 snapshots)
+              </div>
+            ) : (
+              <div className="space-y-0.5 text-[11px]">
+                <div className="flex justify-between gap-1">
+                  <span className="text-slate-500 dark:text-slate-400">Med / Avg:</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">
+                    {formatNumber(unspentGold.medianCurrentGold, 'g', 1)} /{' '}
+                    {formatNumber(unspentGold.avgCurrentGold, 'g', 1)}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-1">
+                  <span className="text-slate-500 dark:text-slate-400">
+                    &ge;{unspentGold.highBalanceThresholdGold}g (neutral):
+                  </span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">
+                    {unspentGold.highBalanceSampleCount ?? 'Unavailable'}/{unspentGold.sampleCount}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
-          {!sliceHasTimelineData && unspentGold.eligibleGames === 0 ? (
-            <div className="text-[11px] text-slate-500 dark:text-slate-400">
-              Unavailable (Analyze Timeline required)
-            </div>
-          ) : unspentGold.eligibleGames === 0 || unspentGold.sampleCount === 0 ? (
-            <div className="text-[11px] text-slate-500 dark:text-slate-400">
-              Unavailable (0 snapshots)
-            </div>
-          ) : (
-            <div className="space-y-0.5 text-[11px]">
-              <div className="flex justify-between gap-1">
-                <span className="text-slate-500 dark:text-slate-400">Med / Avg:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-100">
-                  {formatNumber(unspentGold.medianCurrentGold, 'g', 1)} /{' '}
-                  {formatNumber(unspentGold.avgCurrentGold, 'g', 1)}
-                </span>
-              </div>
-              <div className="flex justify-between gap-1">
-                <span className="text-slate-500 dark:text-slate-400">
-                  &ge;{unspentGold.highBalanceThresholdGold}g (neutral):
-                </span>
-                <span className="font-bold text-slate-800 dark:text-slate-100">
-                  {unspentGold.highBalanceSampleCount ?? 'Unavailable'}/{unspentGold.sampleCount}
-                </span>
-              </div>
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={() => openSpecificEvidenceCard('UNSPENT_GOLD')}
+            className="self-start text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+          >
+            Inspect evidence &rarr;
+          </button>
         </div>
 
         {/* Summary 5: Team Objectives */}
         <div
           data-testid="summary-team-objectives"
-          className="bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-md p-2.5 space-y-1 sm:col-span-2 lg:col-span-1"
+          className={`bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-md p-2.5 flex flex-col justify-between gap-1.5 ${
+            laneCs10Evidence ? '' : 'sm:col-span-2 lg:col-span-1'
+          }`}
         >
-          <div className="flex items-center justify-between gap-1">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-              5. Objectives
-            </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400">
-              {teamObjectives.eligibleTeamObjectiveGames}G eligible
-            </span>
-          </div>
-          <div className="space-y-0.5 text-[11px]">
-            <div className="flex justify-between gap-1">
-              <span className="text-slate-500 dark:text-slate-400">
-                Towers ({teamObjectives.tower.eligibleGamesWithKills}G):
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                5. Objectives
               </span>
-              <span className="font-bold text-slate-800 dark:text-slate-100">
-                {teamObjectives.tower.eligibleGamesWithKills > 0 &&
-                teamObjectives.tower.teamAvgKills !== null
-                  ? `${formatNumber(teamObjectives.tower.teamAvgKills, '', 2)} vs ${formatNumber(teamObjectives.tower.enemyTeamAvgKills, '', 2)}`
-                  : 'Unavailable'}
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                {teamObjectives.eligibleTeamObjectiveGames}G eligible
               </span>
             </div>
-            <div className="flex justify-between gap-1">
-              <span className="text-slate-500 dark:text-slate-400">
-                Dragons ({teamObjectives.dragon.eligibleGamesWithKills}G):
-              </span>
-              <span className="font-bold text-slate-800 dark:text-slate-100">
-                {teamObjectives.dragon.eligibleGamesWithKills > 0 &&
-                teamObjectives.dragon.teamAvgKills !== null
-                  ? `${formatNumber(teamObjectives.dragon.teamAvgKills, '', 2)} vs ${formatNumber(teamObjectives.dragon.enemyTeamAvgKills, '', 2)}`
-                  : 'Unavailable'}
-              </span>
+            <div className="space-y-0.5 text-[11px]">
+              <div className="flex justify-between gap-1">
+                <span className="text-slate-500 dark:text-slate-400">
+                  Towers ({teamObjectives.tower.eligibleGamesWithKills}G):
+                </span>
+                <span className="font-bold text-slate-800 dark:text-slate-100">
+                  {teamObjectives.tower.eligibleGamesWithKills > 0 &&
+                  teamObjectives.tower.teamAvgKills !== null
+                    ? `${formatNumber(teamObjectives.tower.teamAvgKills, '', 2)} vs ${formatNumber(teamObjectives.tower.enemyTeamAvgKills, '', 2)}`
+                    : 'Unavailable'}
+                </span>
+              </div>
+              <div className="flex justify-between gap-1">
+                <span className="text-slate-500 dark:text-slate-400">
+                  Dragons ({teamObjectives.dragon.eligibleGamesWithKills}G):
+                </span>
+                <span className="font-bold text-slate-800 dark:text-slate-100">
+                  {teamObjectives.dragon.eligibleGamesWithKills > 0 &&
+                  teamObjectives.dragon.teamAvgKills !== null
+                    ? `${formatNumber(teamObjectives.dragon.teamAvgKills, '', 2)} vs ${formatNumber(teamObjectives.dragon.enemyTeamAvgKills, '', 2)}`
+                    : 'Unavailable'}
+                </span>
+              </div>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => openSpecificEvidenceCard('TEAM_OBJECTIVES')}
+            className="self-start text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+          >
+            Inspect evidence &rarr;
+          </button>
         </div>
       </div>
 
-      {/* Action Bar: Collapsible Details + Inspectable Coach Evidence Cards Toggle */}
+      {/* Action Bar: Inspect Evidence Toggle */}
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -884,33 +985,28 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
           }`}
         >
           <span className="text-[10px]">{showEvidenceCards ? '▼' : '▶'}</span>
-          <span>Coach Evidence Cards (Matches &amp; Checkpoints)</span>
+          <span>Inspect Evidence (Matches &amp; Checkpoints)</span>
         </button>
       </div>
 
-      {/* Inspectable Coach Evidence Cards Panel */}
+      {/* Inspectable Coach Evidence Cards Panel (Compact Summary Cards + Expandable Per-Card Evidence) */}
       {showEvidenceCards && (
         <div
           id="inspectable-evidence-cards-panel"
           data-testid="inspectable-evidence-cards-panel"
-          className="mt-3 bg-white/90 dark:bg-slate-950/70 border border-indigo-200/80 dark:border-indigo-900/60 rounded-lg p-3.5 space-y-3"
+          className="mt-3 bg-white/90 dark:bg-slate-950/70 border border-indigo-200/80 dark:border-indigo-900/60 rounded-lg p-3 space-y-2.5"
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-slate-100">
-                  Coach Evidence Cards
-                </h4>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
-                  Observed Data
-                </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
-                  Coach Guardrails
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Inspect per-match numbers, 10m/20m checkpoints, and what the AI Coach can vs cannot claim.
-              </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-slate-100">
+                Match &amp; Checkpoint Evidence
+              </h4>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                Observed Stats
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
+                Coach Boundary
+              </span>
             </div>
 
             {/* Category filter tabs for keyboard/mobile navigation */}
@@ -952,17 +1048,17 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
             </div>
           </div>
 
-          <div className="space-y-2.5">
-            {/* Evidence Card 0: Early Lane CS @ 10m Benchmark Contract */}
+          <div className="space-y-2">
+            {/* Evidence Card 0: Early Lane CS @ 10m Benchmark (Table collapsed by default in All Cards) */}
             {laneCs10Evidence &&
               (activeEvidenceTab === 'ALL' || activeEvidenceTab === 'LANE_CS_10') && (
                 <div
                   data-testid="evidence-card-lane-cs-10"
-                  className="bg-slate-50/90 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-md p-3 space-y-2 text-xs telemetry-nums"
+                  className="bg-slate-50/90 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-md p-2.5 space-y-1.5 text-xs telemetry-nums"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-1.5">
                     <span className="font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                      Early Lane CS @ 10m Benchmark
+                      Early Lane CS @ 10m
                     </span>
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
                       Eligible Laner Games: {laneCs10Evidence.summary?.matchCount ?? 0}G · Target-Supported:{' '}
@@ -971,131 +1067,120 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded p-2 space-y-1">
-                      <div className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                        Observed (Match 10m Lane CS)
-                      </div>
-                      <p className="text-[11px] text-slate-700 dark:text-slate-200 leading-snug">
-                        Avg 10m Lane CS:{' '}
-                        <strong>
-                          {laneCs10Evidence.summary
-                            ? `${laneCs10Evidence.summary.avgActual} CS (${laneCs10Evidence.summary.matchCount}G)`
-                            : 'Unavailable (0 eligible laner games)'}
-                        </strong>
-                        {' · '}
-                        Role Target:{' '}
-                        <strong>
-                          {laneCs10Evidence.summary?.avgTarget !== null &&
-                          laneCs10Evidence.summary?.avgTarget !== undefined
-                            ? `${laneCs10Evidence.summary.avgTarget} (${laneCs10Evidence.summary.targetMatchCount}G on Patch 26.1+)`
-                            : `Unavailable (${laneCs10Evidence.pre26LanerCount} pre-26.1 / mixed-patch${
-                                laneCs10Evidence.summary?.avgSupportedActual !== null &&
-                                laneCs10Evidence.summary?.avgSupportedActual !== undefined
-                                  ? ` · supported actual ${laneCs10Evidence.summary.avgSupportedActual} CS in ${laneCs10Evidence.summary.targetMatchCount}G`
-                                  : ''
-                              })`}
-                        </strong>
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-700 dark:text-slate-200">
+                    <div>
+                      <span className="inline-block text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 mr-1.5">
+                        Observed
+                      </span>
+                      Avg 10m Lane CS:{' '}
+                      <strong>
+                        {laneCs10Evidence.summary
+                          ? `${laneCs10Evidence.summary.avgActual} CS (${laneCs10Evidence.summary.matchCount}G)`
+                          : 'Unavailable (0 eligible laner games)'}
+                      </strong>
+                      {' · '}
+                      Role Target:{' '}
+                      <strong>
+                        {laneCs10Evidence.summary?.avgTarget !== null &&
+                        laneCs10Evidence.summary?.avgTarget !== undefined
+                          ? `${laneCs10Evidence.summary.avgTarget} (${laneCs10Evidence.summary.targetMatchCount}G on Patch 26.1+)`
+                          : `Unavailable (${laneCs10Evidence.pre26LanerCount} pre-26.1 / mixed-patch${
+                              laneCs10Evidence.summary?.avgSupportedActual !== null &&
+                              laneCs10Evidence.summary?.avgSupportedActual !== undefined
+                                ? ` · supported actual ${laneCs10Evidence.summary.avgSupportedActual} CS in ${laneCs10Evidence.summary.targetMatchCount}G`
+                                : ''
+                            })`}
+                      </strong>
+                    </div>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
+                      Target &ne; missed CS (114 Top/Bot, 120 Mid benchmark)
+                    </span>
+                  </div>
+
+                  <details open={activeEvidenceTab !== 'ALL'} className="group pt-0.5">
+                    <summary className="cursor-pointer select-none text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+                      Inspect evidence ({laneCs10Evidence.rows.length} matches · role, patch, duration &amp; guardrail)
+                    </summary>
+                    <div className="mt-2 space-y-2">
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 bg-amber-500/5 border border-amber-500/20 rounded px-2.5 py-1.5 leading-snug">
+                        <strong className="text-amber-700 dark:text-amber-300">Coach boundary:</strong>{' '}
+                        Role targets (114 Top/Bot, 120 Mid on Patch 26.1+) are 10m benchmarks, not farmable supply—never subtract{' '}
+                        <code className="text-[10px]">target - actual</code> as missed CS. Short (&lt;10:00) and early-surrender games are excluded, never counted as 0.
                       </p>
-                      {laneCs10Evidence.summary && (
-                        <div className="flex flex-wrap gap-1.5 pt-0.5">
-                          {Object.entries(laneCs10Evidence.summary.roleBreakdown)
-                            .filter(([, count]) => count > 0)
-                            .map(([roleKey, count]) => (
-                              <span
-                                key={roleKey}
-                                className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200"
+                      <div className="sm:overflow-x-auto">
+                        <table className="block sm:table w-full text-left border-collapse text-[11px]">
+                          <thead className="hidden sm:table-header-group text-[10px] uppercase text-slate-400 dark:text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                            <tr>
+                              <th className="py-1 pr-2">Match / Champion</th>
+                              <th className="py-1 px-2">Role &amp; Patch</th>
+                              <th className="py-1 px-2">Duration</th>
+                              <th className="py-1 px-2">Observed 10m CS</th>
+                              <th className="py-1 px-2">Role Target (&ne; missed CS)</th>
+                              <th className="py-1 pl-2">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="block sm:table-row-group divide-y divide-slate-200/60 dark:divide-slate-800/70">
+                            {laneCs10Evidence.rows.slice(0, 10).map(row => (
+                              <tr
+                                key={row.matchId}
+                                data-testid={`evidence-lane-cs-row-${row.matchId}`}
+                                className="block sm:table-row py-1.5 sm:py-0"
                               >
-                                {formatRoleName(roleKey)}: {count}G eligible
-                              </span>
+                                <td className="block sm:table-cell sm:py-1.5 sm:pr-2 font-bold text-slate-800 dark:text-slate-100">
+                                  <span
+                                    className={`inline-block w-4 text-center mr-1 rounded text-[10px] ${
+                                      row.win
+                                        ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                                        : 'bg-rose-500/15 text-rose-700 dark:text-rose-300'
+                                    }`}
+                                  >
+                                    {row.win ? 'W' : 'L'}
+                                  </span>
+                                  {row.championName}{' '}
+                                  <span className="text-[10px] font-normal text-slate-400">
+                                    ({row.matchId})
+                                  </span>
+                                </td>
+                                <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-600 dark:text-slate-300">
+                                  <span className="sm:hidden text-[10px] text-slate-400 mr-1">Role/Patch:</span>
+                                  {formatRoleName(row.role)} · Patch {row.patch}
+                                </td>
+                                <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-600 dark:text-slate-300">
+                                  <span className="sm:hidden text-[10px] text-slate-400 mr-1">Duration:</span>
+                                  {formatDurationClock(row.durationSeconds)}
+                                </td>
+                                <td className="block sm:table-cell sm:py-1.5 sm:px-2 font-bold text-slate-800 dark:text-slate-100">
+                                  <span className="sm:hidden text-[10px] font-normal text-slate-400 mr-1">
+                                    Observed 10m CS:
+                                  </span>
+                                  {row.actual !== null ? `${row.actual} CS` : 'Unavailable'}
+                                </td>
+                                <td className="block sm:table-cell sm:py-1.5 sm:px-2 font-semibold text-slate-700 dark:text-slate-200">
+                                  <span className="sm:hidden text-[10px] font-normal text-slate-400 mr-1">
+                                    Target:
+                                  </span>
+                                  {row.target !== null ? `${row.target} CS` : 'No target'}
+                                </td>
+                                <td className="block sm:table-cell sm:py-1.5 sm:pl-2">
+                                  <span
+                                    className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                                      row.statusTone === 'emerald'
+                                        ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                                        : row.statusTone === 'amber'
+                                        ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                                        : 'bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                                    }`}
+                                  >
+                                    {row.statusBadge}
+                                  </span>
+                                </td>
+                              </tr>
                             ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="bg-amber-500/5 border border-amber-500/20 rounded p-2 space-y-1">
-                      <div className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                        Coach Guardrail (Target &ne; Missed CS)
+                          </tbody>
+                        </table>
                       </div>
-                      <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
-                        Role targets (<strong>114 Top/Bot</strong>, <strong>120 Mid</strong> on Patch 26.1+) are 10m benchmarks, not farmable supply—never subtract <code className="text-[10px]">target - actual</code> as missed CS. Short (&lt;10:00) and early-surrender games are excluded, never counted as 0.
-                      </p>
                     </div>
-                  </div>
-
-                  {/* Per-Match 10m Lane CS Inspection Rows */}
-                  <div className="sm:overflow-x-auto">
-                    <table className="block sm:table w-full text-left border-collapse text-[11px]">
-                      <thead className="hidden sm:table-header-group text-[10px] uppercase text-slate-400 dark:text-slate-500 border-b border-slate-200 dark:border-slate-800">
-                        <tr>
-                          <th className="py-1 pr-2">Match / Champion</th>
-                          <th className="py-1 px-2">Role &amp; Patch</th>
-                          <th className="py-1 px-2">Duration</th>
-                          <th className="py-1 px-2">Observed 10m Lane CS</th>
-                          <th className="py-1 px-2">Role Target</th>
-                          <th className="py-1 pl-2">Benchmark Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="block sm:table-row-group divide-y divide-slate-200/60 dark:divide-slate-800/70">
-                        {laneCs10Evidence.rows.slice(0, 10).map(row => (
-                          <tr
-                            key={row.matchId}
-                            data-testid={`evidence-lane-cs-row-${row.matchId}`}
-                            className="block sm:table-row py-1.5 sm:py-0"
-                          >
-                            <td className="block sm:table-cell sm:py-1.5 sm:pr-2 font-bold text-slate-800 dark:text-slate-100">
-                              <span
-                                className={`inline-block w-4 text-center mr-1 rounded text-[10px] ${
-                                  row.win
-                                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-                                    : 'bg-rose-500/15 text-rose-700 dark:text-rose-300'
-                                }`}
-                              >
-                                {row.win ? 'W' : 'L'}
-                              </span>
-                              {row.championName}{' '}
-                              <span className="text-[10px] font-normal text-slate-400">
-                                ({row.matchId})
-                              </span>
-                            </td>
-                            <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-600 dark:text-slate-300">
-                              <span className="sm:hidden text-[10px] text-slate-400 mr-1">Role/Patch:</span>
-                              {formatRoleName(row.role)} · Patch {row.patch}
-                            </td>
-                            <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-600 dark:text-slate-300">
-                              <span className="sm:hidden text-[10px] text-slate-400 mr-1">Duration:</span>
-                              {formatDurationClock(row.durationSeconds)}
-                            </td>
-                            <td className="block sm:table-cell sm:py-1.5 sm:px-2 font-bold text-slate-800 dark:text-slate-100">
-                              <span className="sm:hidden text-[10px] font-normal text-slate-400 mr-1">
-                                Observed 10m CS:
-                              </span>
-                              {row.actual !== null ? `${row.actual} CS` : 'Unavailable'}
-                            </td>
-                            <td className="block sm:table-cell sm:py-1.5 sm:px-2 font-semibold text-slate-700 dark:text-slate-200">
-                              <span className="sm:hidden text-[10px] font-normal text-slate-400 mr-1">
-                                Target:
-                              </span>
-                              {row.target !== null ? `${row.target} CS` : 'null'}
-                            </td>
-                            <td className="block sm:table-cell sm:py-1.5 sm:pl-2">
-                              <span
-                                className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-                                  row.statusTone === 'emerald'
-                                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                                    : row.statusTone === 'amber'
-                                    ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
-                                    : 'bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-                                }`}
-                              >
-                                {row.statusBadge}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  </details>
                 </div>
               )}
 
@@ -1103,11 +1188,11 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
             {(activeEvidenceTab === 'ALL' || activeEvidenceTab === 'PHASE_FARMING') && (
               <div
                 data-testid="evidence-card-phase-farming"
-                className="bg-slate-50/90 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-md p-3 space-y-2 text-xs telemetry-nums"
+                className="bg-slate-50/90 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-md p-2.5 space-y-1.5 text-xs telemetry-nums"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
                   <span className="font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                    1. Phase Farming Checkpoints (10–20m &amp; 20m–End)
+                    1. Phase Farming (10–20m &amp; 20m–End)
                   </span>
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
                     10–20m: {phaseFarming.min10To20.eligibleGames}G ({phaseFarming.min10To20.excludedShortGames} short excl.) · 20m–End:{' '}
@@ -1116,117 +1201,111 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <div className="bg-emerald-500/5 border border-emerald-500/20 rounded p-2 space-y-1">
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                      Observed (10m, 20m &amp; End Checkpoints)
-                    </div>
-                    <p className="text-[11px] text-slate-700 dark:text-slate-200 leading-snug">
-                      10–20m:{' '}
-                      <strong>
-                        {phaseFarming.min10To20.eligibleGames > 0
-                          ? `${formatNumber(phaseFarming.min10To20.avgTotalCsPerMin, '/m', 2)} (Lane ${formatNumber(phaseFarming.min10To20.avgLaneCsPerMin, '/m', 2)}, Jg ${formatNumber(phaseFarming.min10To20.avgJungleCsPerMin, '/m', 2)})`
-                          : 'Unavailable'}
-                      </strong>
-                      {' · '}20m–End:{' '}
-                      <strong>
-                        {phaseFarming.min20ToEnd.eligibleGames > 0
-                          ? `${formatNumber(phaseFarming.min20ToEnd.avgTotalCsPerMin, '/m', 2)} (Lane ${formatNumber(phaseFarming.min20ToEnd.avgLaneCsPerMin, '/m', 2)}, Jg ${formatNumber(phaseFarming.min20ToEnd.avgJungleCsPerMin, '/m', 2)})`
-                          : 'Unavailable'}
-                      </strong>
-                    </p>
-                  </div>
-                  <div className="bg-amber-500/5 border border-amber-500/20 rounded p-2 space-y-1">
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                      Coach Guardrail
-                    </div>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
-                      Counts lane and jungle CS gained between 10:00, 20:00, and game end. Short games are excluded; missed last-hits or wave states are never guessed.
-                    </p>
-                  </div>
+                <div className="text-[11px] text-slate-700 dark:text-slate-200">
+                  <span className="inline-block text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 mr-1.5">
+                    Observed
+                  </span>
+                  10–20m:{' '}
+                  <strong>
+                    {phaseFarming.min10To20.eligibleGames > 0
+                      ? `${formatNumber(phaseFarming.min10To20.avgTotalCsPerMin, '/m', 2)} (Lane ${formatNumber(phaseFarming.min10To20.avgLaneCsPerMin, '/m', 2)}, Jg ${formatNumber(phaseFarming.min10To20.avgJungleCsPerMin, '/m', 2)})`
+                      : 'Unavailable'}
+                  </strong>
+                  {' · '}20m–End:{' '}
+                  <strong>
+                    {phaseFarming.min20ToEnd.eligibleGames > 0
+                      ? `${formatNumber(phaseFarming.min20ToEnd.avgTotalCsPerMin, '/m', 2)} (Lane ${formatNumber(phaseFarming.min20ToEnd.avgLaneCsPerMin, '/m', 2)}, Jg ${formatNumber(phaseFarming.min20ToEnd.avgJungleCsPerMin, '/m', 2)})`
+                      : 'Unavailable'}
+                  </strong>
                 </div>
 
-                <details open={activeEvidenceTab !== 'ALL'} className="group">
+                <details open={activeEvidenceTab !== 'ALL'} className="group pt-0.5">
                   <summary className="cursor-pointer select-none text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
-                    Per-Match Checkpoints ({(phaseFarming.perMatch ?? []).length}G)
+                    Inspect evidence ({(phaseFarming.perMatch ?? []).length}G checkpoints &amp; guardrail)
                   </summary>
-                  <div className="sm:overflow-x-auto mt-1.5">
-                    <table className="block sm:table w-full text-left border-collapse text-[11px]">
-                      <thead className="hidden sm:table-header-group text-[10px] uppercase text-slate-400 dark:text-slate-500 border-b border-slate-200 dark:border-slate-800">
-                        <tr>
-                          <th className="py-1 pr-2">Match</th>
-                          <th className="py-1 px-2">Duration</th>
-                          <th className="py-1 px-2">10m → 20m → End CS</th>
-                          <th className="py-1 px-2">10–20m CS/m (Lane + Jg)</th>
-                          <th className="py-1 px-2">20m–End CS/m</th>
-                          <th className="py-1 pl-2">Checkpoint Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="block sm:table-row-group divide-y divide-slate-200/60 dark:divide-slate-800/70">
-                        {(phaseFarming.perMatch ?? []).slice(0, 8).map(m => {
-                          const csAt10 =
-                            m.laneCsAt10 !== null || m.jungleCsAt10 !== null
-                              ? (m.laneCsAt10 ?? 0) + (m.jungleCsAt10 ?? 0)
-                              : null;
-                          const csAt20 =
-                            m.laneCsAt20 !== null || m.jungleCsAt20 !== null
-                              ? (m.laneCsAt20 ?? 0) + (m.jungleCsAt20 ?? 0)
-                              : null;
-                          const csAtEnd =
-                            m.laneCsAtEnd !== null || m.jungleCsAtEnd !== null
-                              ? (m.laneCsAtEnd ?? 0) + (m.jungleCsAtEnd ?? 0)
-                              : null;
-                          const statusLabel = !m.reached10To20
-                            ? m.gameDurationSeconds < 1200
-                              ? 'Short game <20:00 (10–20m & 20m+ excluded)'
-                              : 'Timeline not analyzed'
-                            : !m.reached20ToEnd
-                            ? 'Reached 20:00 (20m–End window short/excluded)'
-                            : 'Full 10m & 20m checkpoints';
-                          return (
-                            <tr
-                              key={`pf-${m.matchId}`}
-                              data-testid={`evidence-phase-row-${m.matchId}`}
-                              className="block sm:table-row py-1.5 sm:py-0"
-                            >
-                              <td className="block sm:table-cell sm:py-1.5 sm:pr-2 font-bold text-slate-800 dark:text-slate-100">
-                                {m.championName} ({formatRoleName(m.role)}){' '}
-                                <span className="text-[10px] font-normal text-slate-400">
-                                  {m.matchId}
-                                </span>
-                              </td>
-                              <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-600 dark:text-slate-300">
-                                {formatDurationClock(m.gameDurationSeconds)}
-                              </td>
-                              <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-700 dark:text-slate-200">
-                                {csAt10 ?? '—'} → {csAt20 ?? '—'} → {csAtEnd ?? '—'}
-                              </td>
-                              <td className="block sm:table-cell sm:py-1.5 sm:px-2 font-semibold text-slate-800 dark:text-slate-100">
-                                {m.totalCsPerMin10To20 !== null
-                                  ? `${formatNumber(m.totalCsPerMin10To20, '/m', 2)} (+${m.laneCsGained10To20 ?? 0}L / +${m.jungleCsGained10To20 ?? 0}J)`
-                                  : 'Unavailable'}
-                              </td>
-                              <td className="block sm:table-cell sm:py-1.5 sm:px-2 font-semibold text-slate-800 dark:text-slate-100">
-                                {m.totalCsPerMin20ToEnd !== null
-                                  ? `${formatNumber(m.totalCsPerMin20ToEnd, '/m', 2)} (+${m.laneCsGained20ToEnd ?? 0}L / +${m.jungleCsGained20ToEnd ?? 0}J)`
-                                  : 'Unavailable'}
-                              </td>
-                              <td className="block sm:table-cell sm:py-1.5 sm:pl-2">
-                                <span
-                                  className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-                                    m.reached10To20 && m.reached20ToEnd
-                                      ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                                      : 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
-                                  }`}
-                                >
-                                  {statusLabel}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                  <div className="mt-2 space-y-2">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 bg-amber-500/5 border border-amber-500/20 rounded px-2.5 py-1.5 leading-snug">
+                      <strong className="text-amber-700 dark:text-amber-300">Coach boundary:</strong>{' '}
+                      Counts lane and jungle CS gained between 10:00, 20:00, and game end. Short games are excluded; missed last-hits or wave states are never guessed.
+                    </p>
+                    <div className="sm:overflow-x-auto">
+                      <table className="block sm:table w-full text-left border-collapse text-[11px]">
+                        <thead className="hidden sm:table-header-group text-[10px] uppercase text-slate-400 dark:text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                          <tr>
+                            <th className="py-1 pr-2">Match</th>
+                            <th className="py-1 px-2">Duration</th>
+                            <th className="py-1 px-2">10m → 20m → End CS</th>
+                            <th className="py-1 px-2">10–20m CS/m (Lane + Jg)</th>
+                            <th className="py-1 px-2">20m–End CS/m</th>
+                            <th className="py-1 pl-2">Checkpoint Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="block sm:table-row-group divide-y divide-slate-200/60 dark:divide-slate-800/70">
+                          {(phaseFarming.perMatch ?? []).slice(0, 8).map(m => {
+                            const csAt10 =
+                              m.laneCsAt10 !== null || m.jungleCsAt10 !== null
+                                ? (m.laneCsAt10 ?? 0) + (m.jungleCsAt10 ?? 0)
+                                : null;
+                            const csAt20 =
+                              m.laneCsAt20 !== null || m.jungleCsAt20 !== null
+                                ? (m.laneCsAt20 ?? 0) + (m.jungleCsAt20 ?? 0)
+                                : null;
+                            const csAtEnd =
+                              m.laneCsAtEnd !== null || m.jungleCsAtEnd !== null
+                                ? (m.laneCsAtEnd ?? 0) + (m.jungleCsAtEnd ?? 0)
+                                : null;
+                            const statusLabel = !m.reached10To20
+                              ? m.gameDurationSeconds < 1200
+                                ? 'Short game <20:00 (10–20m & 20m+ excluded)'
+                                : 'Timeline not analyzed'
+                              : !m.reached20ToEnd
+                              ? 'Reached 20:00 (20m–End window short/excluded)'
+                              : 'Full 10m & 20m checkpoints';
+                            return (
+                              <tr
+                                key={`pf-${m.matchId}`}
+                                data-testid={`evidence-phase-row-${m.matchId}`}
+                                className="block sm:table-row py-1.5 sm:py-0"
+                              >
+                                <td className="block sm:table-cell sm:py-1.5 sm:pr-2 font-bold text-slate-800 dark:text-slate-100">
+                                  {m.championName} ({formatRoleName(m.role)}){' '}
+                                  <span className="text-[10px] font-normal text-slate-400">
+                                    {m.matchId}
+                                  </span>
+                                </td>
+                                <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-600 dark:text-slate-300">
+                                  {formatDurationClock(m.gameDurationSeconds)}
+                                </td>
+                                <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-700 dark:text-slate-200">
+                                  {csAt10 ?? '—'} → {csAt20 ?? '—'} → {csAtEnd ?? '—'}
+                                </td>
+                                <td className="block sm:table-cell sm:py-1.5 sm:px-2 font-semibold text-slate-800 dark:text-slate-100">
+                                  {m.totalCsPerMin10To20 !== null
+                                    ? `${formatNumber(m.totalCsPerMin10To20, '/m', 2)} (+${m.laneCsGained10To20 ?? 0}L / +${m.jungleCsGained10To20 ?? 0}J)`
+                                    : 'Unavailable'}
+                                </td>
+                                <td className="block sm:table-cell sm:py-1.5 sm:px-2 font-semibold text-slate-800 dark:text-slate-100">
+                                  {m.totalCsPerMin20ToEnd !== null
+                                    ? `${formatNumber(m.totalCsPerMin20ToEnd, '/m', 2)} (+${m.laneCsGained20ToEnd ?? 0}L / +${m.jungleCsGained20ToEnd ?? 0}J)`
+                                    : 'Unavailable'}
+                                </td>
+                                <td className="block sm:table-cell sm:py-1.5 sm:pl-2">
+                                  <span
+                                    className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                                      m.reached10To20 && m.reached20ToEnd
+                                        ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                                        : 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                                    }`}
+                                  >
+                                    {statusLabel}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </details>
               </div>
@@ -1236,11 +1315,11 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
             {(activeEvidenceTab === 'ALL' || activeEvidenceTab === 'LEAD_RETENTION') && (
               <div
                 data-testid="evidence-card-lead-retention"
-                className="bg-slate-50/90 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-md p-3 space-y-2 text-xs telemetry-nums"
+                className="bg-slate-50/90 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-md p-2.5 space-y-1.5 text-xs telemetry-nums"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
                   <span className="font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                    2. 10m &amp; 20m Lane Leads &amp; Retention
+                    2. 10m &amp; 20m Lane Leads
                   </span>
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
                     @10m: {leadRetention.eligibleGamesAt10}G · @20m: {leadRetention.eligibleGamesAt20}G · Missing Opp:{' '}
@@ -1248,101 +1327,95 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <div className="bg-emerald-500/5 border border-emerald-500/20 rounded p-2 space-y-1">
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                      Observed (10m &amp; 20m Role-Opponent Diffs)
-                    </div>
-                    <p className="text-[11px] text-slate-700 dark:text-slate-200 leading-snug">
-                      Gold @10m: <strong>{formatSignedNumber(leadRetention.avgGoldLeadAt10, 'g', 1)}</strong> ({leadRetention.eligibleGamesAt10}G) · @20m:{' '}
-                      <strong>{formatSignedNumber(leadRetention.avgGoldLeadAt20, 'g', 1)}</strong> ({leadRetention.eligibleGamesAt20}G) · Held @20m:{' '}
-                      <strong>
-                        {leadRetention.goldLeadRetentionRate !== null
-                          ? `${formatRatePct(leadRetention.goldLeadRetentionRate)} (${leadRetention.gamesRetainedGoldLeadAt20}/${leadRetention.gamesAheadInGoldAt10Reaching20}G)`
-                          : 'Unavailable'}
-                      </strong>
-                    </p>
-                  </div>
-                  <div className="bg-amber-500/5 border border-amber-500/20 rounded p-2 space-y-1">
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                      Coach Guardrail
-                    </div>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
-                      10m and 20m averages use different game counts when matches end before 20:00. Mid-game 10–20m objective/turret events are temporal associations only—never proof of a throw.
-                    </p>
-                  </div>
+                <div className="text-[11px] text-slate-700 dark:text-slate-200">
+                  <span className="inline-block text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 mr-1.5">
+                    Observed
+                  </span>
+                  Gold @10m: <strong>{formatSignedNumber(leadRetention.avgGoldLeadAt10, 'g', 1)}</strong> ({leadRetention.eligibleGamesAt10}G) · @20m:{' '}
+                  <strong>{formatSignedNumber(leadRetention.avgGoldLeadAt20, 'g', 1)}</strong> ({leadRetention.eligibleGamesAt20}G) · Held @20m:{' '}
+                  <strong>
+                    {leadRetention.goldLeadRetentionRate !== null
+                      ? `${formatRatePct(leadRetention.goldLeadRetentionRate)} (${leadRetention.gamesRetainedGoldLeadAt20}/${leadRetention.gamesAheadInGoldAt10Reaching20}G)`
+                      : 'Unavailable'}
+                  </strong>
                 </div>
 
-                <details open={activeEvidenceTab !== 'ALL'} className="group">
+                <details open={activeEvidenceTab !== 'ALL'} className="group pt-0.5">
                   <summary className="cursor-pointer select-none text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
-                    Per-Match Lead Checkpoints ({(leadRetention.perMatch ?? []).length}G)
+                    Inspect evidence ({(leadRetention.perMatch ?? []).length}G lead checkpoints &amp; 10–20m events)
                   </summary>
-                  <div className="sm:overflow-x-auto mt-1.5">
-                    <table className="block sm:table w-full text-left border-collapse text-[11px]">
-                      <thead className="hidden sm:table-header-group text-[10px] uppercase text-slate-400 dark:text-slate-500 border-b border-slate-200 dark:border-slate-800">
-                        <tr>
-                          <th className="py-1 pr-2">Match</th>
-                          <th className="py-1 px-2">10m Gold / XP Lead</th>
-                          <th className="py-1 px-2">20m Gold / XP Lead</th>
-                          <th className="py-1 px-2">Retention Outcome</th>
-                          <th className="py-1 pl-2">10–20m Team Events</th>
-                        </tr>
-                      </thead>
-                      <tbody className="block sm:table-row-group divide-y divide-slate-200/60 dark:divide-slate-800/70">
-                        {(leadRetention.perMatch ?? []).slice(0, 8).map(m => {
-                          const retentionBadge =
-                            m.goldLeadAt10 === null
-                              ? 'No matched 10m checkpoint'
-                              : m.goldLeadAt10 > 0 && m.goldLeadAt20 === null
-                              ? 'Ahead @10m · Ended <20:00'
-                              : m.retainedGoldLeadAt20 === true
-                              ? 'Ahead @10m → Held Lead @20m'
-                              : m.retainedGoldLeadAt20 === false
-                              ? 'Ahead @10m → Lost Lead @20m'
-                              : 'Even / Behind @10m';
-                          return (
-                            <tr
-                              key={`lr-${m.matchId}`}
-                              data-testid={`evidence-lead-row-${m.matchId}`}
-                              className="block sm:table-row py-1.5 sm:py-0"
-                            >
-                              <td className="block sm:table-cell sm:py-1.5 sm:pr-2 font-bold text-slate-800 dark:text-slate-100">
-                                {m.championName}
-                                {m.opponentChampionName ? ` vs ${m.opponentChampionName}` : ''} (
-                                {formatRoleName(m.role)}){' '}
-                                <span className="text-[10px] font-normal text-slate-400">
-                                  {m.matchId}
-                                </span>
-                              </td>
-                              <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-700 dark:text-slate-200">
-                                {formatSignedNumber(m.goldLeadAt10, 'g', 0)} /{' '}
-                                {formatSignedNumber(m.xpLeadAt10, ' XP', 0)}
-                              </td>
-                              <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-700 dark:text-slate-200">
-                                {formatSignedNumber(m.goldLeadAt20, 'g', 0)} /{' '}
-                                {formatSignedNumber(m.xpLeadAt20, ' XP', 0)}
-                              </td>
-                              <td className="block sm:table-cell sm:py-1.5 sm:px-2">
-                                <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
-                                  {retentionBadge}
-                                </span>
-                              </td>
-                              <td className="block sm:table-cell sm:py-1.5 sm:pl-2 text-slate-600 dark:text-slate-300">
-                                {m.temporalEvents10To20 && m.temporalEvents10To20.length > 0
-                                  ? m.temporalEvents10To20
-                                      .slice(0, 2)
-                                      .map(
-                                        ev =>
-                                          `${ev.minuteMark}:${String(ev.secondMark).padStart(2, '0')} ${formatTemporalEventDescription(ev)}`
-                                      )
-                                      .join(' · ')
-                                  : 'None recorded'}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                  <div className="mt-2 space-y-2">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 bg-amber-500/5 border border-amber-500/20 rounded px-2.5 py-1.5 leading-snug">
+                      <strong className="text-amber-700 dark:text-amber-300">Coach boundary:</strong>{' '}
+                      10m and 20m averages use different game counts when matches end before 20:00. Mid-game 10–20m objective/turret events are temporal associations only—never proof of a throw.
+                    </p>
+                    <div className="sm:overflow-x-auto">
+                      <table className="block sm:table w-full text-left border-collapse text-[11px]">
+                        <thead className="hidden sm:table-header-group text-[10px] uppercase text-slate-400 dark:text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                          <tr>
+                            <th className="py-1 pr-2">Match</th>
+                            <th className="py-1 px-2">10m Gold / XP Lead</th>
+                            <th className="py-1 px-2">20m Gold / XP Lead</th>
+                            <th className="py-1 px-2">Retention Outcome</th>
+                            <th className="py-1 pl-2">10–20m Team Events</th>
+                          </tr>
+                        </thead>
+                        <tbody className="block sm:table-row-group divide-y divide-slate-200/60 dark:divide-slate-800/70">
+                          {(leadRetention.perMatch ?? []).slice(0, 8).map(m => {
+                            const retentionBadge =
+                              m.goldLeadAt10 === null
+                                ? 'No matched 10m checkpoint'
+                                : m.goldLeadAt10 > 0 && m.goldLeadAt20 === null
+                                ? 'Ahead @10m · Ended <20:00'
+                                : m.retainedGoldLeadAt20 === true
+                                ? 'Ahead @10m → Held Lead @20m'
+                                : m.retainedGoldLeadAt20 === false
+                                ? 'Ahead @10m → Lost Lead @20m'
+                                : 'Even / Behind @10m';
+                            return (
+                              <tr
+                                key={`lr-${m.matchId}`}
+                                data-testid={`evidence-lead-row-${m.matchId}`}
+                                className="block sm:table-row py-1.5 sm:py-0"
+                              >
+                                <td className="block sm:table-cell sm:py-1.5 sm:pr-2 font-bold text-slate-800 dark:text-slate-100">
+                                  {m.championName}
+                                  {m.opponentChampionName ? ` vs ${m.opponentChampionName}` : ''} (
+                                  {formatRoleName(m.role)}){' '}
+                                  <span className="text-[10px] font-normal text-slate-400">
+                                    {m.matchId}
+                                  </span>
+                                </td>
+                                <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-700 dark:text-slate-200">
+                                  {formatSignedNumber(m.goldLeadAt10, 'g', 0)} /{' '}
+                                  {formatSignedNumber(m.xpLeadAt10, ' XP', 0)}
+                                </td>
+                                <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-700 dark:text-slate-200">
+                                  {formatSignedNumber(m.goldLeadAt20, 'g', 0)} /{' '}
+                                  {formatSignedNumber(m.xpLeadAt20, ' XP', 0)}
+                                </td>
+                                <td className="block sm:table-cell sm:py-1.5 sm:px-2">
+                                  <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+                                    {retentionBadge}
+                                  </span>
+                                </td>
+                                <td className="block sm:table-cell sm:py-1.5 sm:pl-2 text-slate-600 dark:text-slate-300">
+                                  {m.temporalEvents10To20 && m.temporalEvents10To20.length > 0
+                                    ? m.temporalEvents10To20
+                                        .slice(0, 2)
+                                        .map(
+                                          ev =>
+                                            `${ev.minuteMark}:${String(ev.secondMark).padStart(2, '0')} ${formatTemporalEventDescription(ev)}`
+                                        )
+                                        .join(' · ')
+                                    : 'None recorded'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </details>
               </div>
@@ -1352,9 +1425,9 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
             {(activeEvidenceTab === 'ALL' || activeEvidenceTab === 'DEATH_COST') && (
               <div
                 data-testid="evidence-card-death-cost"
-                className="bg-slate-50/90 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-md p-3 space-y-2 text-xs telemetry-nums"
+                className="bg-slate-50/90 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-md p-2.5 space-y-1.5 text-xs telemetry-nums"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
                   <span className="font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
                     3. Death Cost (Time Dead &amp; Bounty Gold)
                   </span>
@@ -1365,82 +1438,76 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <div className="bg-emerald-500/5 border border-emerald-500/20 rounded p-2 space-y-1">
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                      Observed (Grey-Screen Time &amp; Kill Rewards)
-                    </div>
-                    <p className="text-[11px] text-slate-700 dark:text-slate-200 leading-snug">
-                      Avg Dead: <strong>{formatNumber(deathCost.avgTimeSpentDeadSeconds, 's', 1)}</strong> ({formatNumber(deathCost.avgDeadTimeGameSharePct, '%', 2)}) · Bounty Given:{' '}
-                      <strong>
-                        {bountySummary.eligibleTimelineGames > 0
-                          ? `${formatNumber(bountySummary.totalCombinedBountyGold, 'g', 0)} (Base ${formatNumber(bountySummary.totalBaseKillBountyGold, 'g', 0)} + Shutdown ${formatNumber(bountySummary.totalShutdownBountyGold, 'g', 0)})`
-                          : 'Unavailable (Analyze Timeline required)'}
-                      </strong>
-                    </p>
-                  </div>
-                  <div className="bg-amber-500/5 border border-amber-500/20 rounded p-2 space-y-1">
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                      Coach Guardrail
-                    </div>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
-                      Reports recorded grey-screen time and direct kill/shutdown reward gold on deaths. Never estimates lost minion waves, indirect map pressure, or whether a death was avoidable.
-                    </p>
-                  </div>
+                <div className="text-[11px] text-slate-700 dark:text-slate-200">
+                  <span className="inline-block text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 mr-1.5">
+                    Observed
+                  </span>
+                  Avg Dead: <strong>{formatNumber(deathCost.avgTimeSpentDeadSeconds, 's', 1)}</strong> ({formatNumber(deathCost.avgDeadTimeGameSharePct, '%', 2)}) · Bounty Given:{' '}
+                  <strong>
+                    {bountySummary.eligibleTimelineGames > 0
+                      ? `${formatNumber(bountySummary.totalCombinedBountyGold, 'g', 0)} (Base ${formatNumber(bountySummary.totalBaseKillBountyGold, 'g', 0)} + Shutdown ${formatNumber(bountySummary.totalShutdownBountyGold, 'g', 0)})`
+                      : 'Unavailable (Analyze Timeline required)'}
+                  </strong>
                 </div>
 
-                <details open={activeEvidenceTab !== 'ALL'} className="group">
+                <details open={activeEvidenceTab !== 'ALL'} className="group pt-0.5">
                   <summary className="cursor-pointer select-none text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
-                    Per-Match Death Cost ({(deathCost.perMatch ?? []).length}G)
+                    Inspect evidence ({(deathCost.perMatch ?? []).length}G death cost &amp; guardrail)
                   </summary>
-                  <div className="sm:overflow-x-auto mt-1.5">
-                    <table className="block sm:table w-full text-left border-collapse text-[11px]">
-                      <thead className="hidden sm:table-header-group text-[10px] uppercase text-slate-400 dark:text-slate-500 border-b border-slate-200 dark:border-slate-800">
-                        <tr>
-                          <th className="py-1 pr-2">Match</th>
-                          <th className="py-1 px-2">Time Dead (Game Share)</th>
-                          <th className="py-1 px-2">Recorded Deaths</th>
-                          <th className="py-1 px-2">Base + Shutdown Given</th>
-                          <th className="py-1 pl-2">Combined Bounty Given</th>
-                        </tr>
-                      </thead>
-                      <tbody className="block sm:table-row-group divide-y divide-slate-200/60 dark:divide-slate-800/70">
-                        {(deathCost.perMatch ?? []).slice(0, 8).map(m => (
-                          <tr
-                            key={`dc-${m.matchId}`}
-                            data-testid={`evidence-death-row-${m.matchId}`}
-                            className="block sm:table-row py-1.5 sm:py-0"
-                          >
-                            <td className="block sm:table-cell sm:py-1.5 sm:pr-2 font-bold text-slate-800 dark:text-slate-100">
-                              {m.championName} ({formatRoleName(m.role)}){' '}
-                              <span className="text-[10px] font-normal text-slate-400">
-                                {m.matchId}
-                              </span>
-                            </td>
-                            <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-700 dark:text-slate-200">
-                              {m.totalTimeSpentDeadSeconds !== null
-                                ? `${m.totalTimeSpentDeadSeconds}s (${formatNumber(m.deadTimeGameSharePct, '%', 2)})`
-                                : 'Unavailable'}
-                            </td>
-                            <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-700 dark:text-slate-200">
-                              {m.recordedDeathsCount !== null
-                                ? `${m.recordedDeathsCount} recorded`
-                                : 'Timeline required'}
-                            </td>
-                            <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-700 dark:text-slate-200">
-                              {m.totalBaseKillBountyGold !== null || m.totalShutdownBountyGold !== null
-                                ? `${formatNumber(m.totalBaseKillBountyGold, 'g', 0)} + ${formatNumber(m.totalShutdownBountyGold, 'g', 0)}`
-                                : 'Unavailable'}
-                            </td>
-                            <td className="block sm:table-cell sm:py-1.5 sm:pl-2 font-bold text-slate-800 dark:text-slate-100">
-                              {m.totalCombinedBountyGold !== null
-                                ? formatNumber(m.totalCombinedBountyGold, 'g', 0)
-                                : 'Unavailable'}
-                            </td>
+                  <div className="mt-2 space-y-2">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 bg-amber-500/5 border border-amber-500/20 rounded px-2.5 py-1.5 leading-snug">
+                      <strong className="text-amber-700 dark:text-amber-300">Coach boundary:</strong>{' '}
+                      Reports recorded grey-screen time and direct kill/shutdown reward gold on deaths. Never estimates lost minion waves, indirect map pressure, or whether a death was avoidable.
+                    </p>
+                    <div className="sm:overflow-x-auto">
+                      <table className="block sm:table w-full text-left border-collapse text-[11px]">
+                        <thead className="hidden sm:table-header-group text-[10px] uppercase text-slate-400 dark:text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                          <tr>
+                            <th className="py-1 pr-2">Match</th>
+                            <th className="py-1 px-2">Time Dead (Game Share)</th>
+                            <th className="py-1 px-2">Recorded Deaths</th>
+                            <th className="py-1 px-2">Base + Shutdown Given</th>
+                            <th className="py-1 pl-2">Combined Bounty Given</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="block sm:table-row-group divide-y divide-slate-200/60 dark:divide-slate-800/70">
+                          {(deathCost.perMatch ?? []).slice(0, 8).map(m => (
+                            <tr
+                              key={`dc-${m.matchId}`}
+                              data-testid={`evidence-death-row-${m.matchId}`}
+                              className="block sm:table-row py-1.5 sm:py-0"
+                            >
+                              <td className="block sm:table-cell sm:py-1.5 sm:pr-2 font-bold text-slate-800 dark:text-slate-100">
+                                {m.championName} ({formatRoleName(m.role)}){' '}
+                                <span className="text-[10px] font-normal text-slate-400">
+                                  {m.matchId}
+                                </span>
+                              </td>
+                              <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-700 dark:text-slate-200">
+                                {m.totalTimeSpentDeadSeconds !== null
+                                  ? `${m.totalTimeSpentDeadSeconds}s (${formatNumber(m.deadTimeGameSharePct, '%', 2)})`
+                                  : 'Unavailable'}
+                              </td>
+                              <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-700 dark:text-slate-200">
+                                {m.recordedDeathsCount !== null
+                                  ? `${m.recordedDeathsCount} recorded`
+                                  : 'Timeline required'}
+                              </td>
+                              <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-700 dark:text-slate-200">
+                                {m.totalBaseKillBountyGold !== null || m.totalShutdownBountyGold !== null
+                                  ? `${formatNumber(m.totalBaseKillBountyGold, 'g', 0)} + ${formatNumber(m.totalShutdownBountyGold, 'g', 0)}`
+                                  : 'Unavailable'}
+                              </td>
+                              <td className="block sm:table-cell sm:py-1.5 sm:pl-2 font-bold text-slate-800 dark:text-slate-100">
+                                {m.totalCombinedBountyGold !== null
+                                  ? formatNumber(m.totalCombinedBountyGold, 'g', 0)
+                                  : 'Unavailable'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </details>
               </div>
@@ -1450,11 +1517,11 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
             {(activeEvidenceTab === 'ALL' || activeEvidenceTab === 'UNSPENT_GOLD') && (
               <div
                 data-testid="evidence-card-unspent-gold"
-                className="bg-slate-50/90 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-md p-3 space-y-2 text-xs telemetry-nums"
+                className="bg-slate-50/90 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-md p-2.5 space-y-1.5 text-xs telemetry-nums"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
                   <span className="font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                    4. Unspent Gold Checkpoints (1m Snapshots)
+                    4. Unspent Gold (1m Checkpoints)
                   </span>
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
                     Eligible: {unspentGold.eligibleGames}G · 1m Checkpoints: {unspentGold.sampleCount} · &ge;
@@ -1463,54 +1530,53 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <div className="bg-emerald-500/5 border border-emerald-500/20 rounded p-2 space-y-1">
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                      Observed (1-Minute Gold-in-Hand)
-                    </div>
-                    <p className="text-[11px] text-slate-700 dark:text-slate-200 leading-snug">
-                      Median: <strong>{formatNumber(unspentGold.medianCurrentGold, 'g', 1)}</strong> · Avg:{' '}
-                      <strong>{formatNumber(unspentGold.avgCurrentGold, 'g', 1)}</strong> · Max:{' '}
-                      <strong>{formatNumber(unspentGold.maxCurrentGold, 'g', 0)}</strong> · Followed by Purchase:{' '}
-                      <strong>{unspentGold.highBalanceBeforePurchaseSampleCount ?? 'Unavailable'}</strong>
-                    </p>
-                  </div>
-                  <div className="bg-amber-500/5 border border-amber-500/20 rounded p-2 space-y-1">
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                      Coach Guardrail
-                    </div>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
-                      Sampled at 1-minute timeline marks—never recall events or continuous time held. Holding {unspentGold.highBalanceThresholdGold}g+ before buying an item is a neutral snapshot, never an automatic mistake score.
-                    </p>
-                  </div>
+                <div className="text-[11px] text-slate-700 dark:text-slate-200">
+                  <span className="inline-block text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 mr-1.5">
+                    Observed
+                  </span>
+                  Median: <strong>{formatNumber(unspentGold.medianCurrentGold, 'g', 1)}</strong> · Avg:{' '}
+                  <strong>{formatNumber(unspentGold.avgCurrentGold, 'g', 1)}</strong> · Max:{' '}
+                  <strong>{formatNumber(unspentGold.maxCurrentGold, 'g', 0)}</strong> · Followed by Purchase:{' '}
+                  <strong>{unspentGold.highBalanceBeforePurchaseSampleCount ?? 'Unavailable'}</strong>
                 </div>
 
-                {(unspentGold.highBalanceBeforePurchaseSamples ?? []).length > 0 && (
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2 space-y-1">
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      &ge;{unspentGold.highBalanceThresholdGold}g Pre-Purchase Samples (
-                      {(unspentGold.highBalanceBeforePurchaseSamples ?? []).length})
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {(unspentGold.highBalanceBeforePurchaseSamples ?? []).slice(0, 6).map((s, idx) => {
-                        const itemLabel = formatPurchaseItemLabel(s.nextPurchaseItemId, itemMap);
-                        return (
-                          <span
-                            key={`${s.matchId}-${s.sampledMinute}-${idx}`}
-                            data-testid={`evidence-unspent-sample-${s.matchId}-${s.sampledMinute}`}
-                            className="text-[11px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700"
-                          >
-                            {s.championName} ({s.matchId}) @{s.sampledMinute}m:{' '}
-                            <strong>{s.currentGoldAtSample}g</strong>
-                            {itemLabel && s.nextPurchaseMinute !== null
-                              ? ` → bought ${itemLabel} @${s.nextPurchaseMinute}m`
-                              : ' (no purchase within 2m)'}
-                          </span>
-                        );
-                      })}
-                    </div>
+                <details open={activeEvidenceTab !== 'ALL'} className="group pt-0.5">
+                  <summary className="cursor-pointer select-none text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+                    Inspect evidence ({(unspentGold.highBalanceBeforePurchaseSamples ?? []).length} high-balance samples &amp; guardrail)
+                  </summary>
+                  <div className="mt-2 space-y-2">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 bg-amber-500/5 border border-amber-500/20 rounded px-2.5 py-1.5 leading-snug">
+                      <strong className="text-amber-700 dark:text-amber-300">Coach boundary:</strong>{' '}
+                      Sampled at 1-minute timeline marks—never recall events or continuous time held. Holding {unspentGold.highBalanceThresholdGold}g+ before buying an item is a neutral snapshot, never an automatic mistake score.
+                    </p>
+                    {(unspentGold.highBalanceBeforePurchaseSamples ?? []).length > 0 && (
+                      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2 space-y-1">
+                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          &ge;{unspentGold.highBalanceThresholdGold}g Pre-Purchase Samples (
+                          {(unspentGold.highBalanceBeforePurchaseSamples ?? []).length})
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {(unspentGold.highBalanceBeforePurchaseSamples ?? []).slice(0, 6).map((s, idx) => {
+                            const itemLabel = formatPurchaseItemLabel(s.nextPurchaseItemId, itemMap);
+                            return (
+                              <span
+                                key={`${s.matchId}-${s.sampledMinute}-${idx}`}
+                                data-testid={`evidence-unspent-sample-${s.matchId}-${s.sampledMinute}`}
+                                className="text-[11px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700"
+                              >
+                                {s.championName} ({s.matchId}) @{s.sampledMinute}m:{' '}
+                                <strong>{s.currentGoldAtSample}g</strong>
+                                {itemLabel && s.nextPurchaseMinute !== null
+                                  ? ` → bought ${itemLabel} @${s.nextPurchaseMinute}m`
+                                  : ' (no purchase within 2m)'}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
+                </details>
               </div>
             )}
 
@@ -1518,11 +1584,11 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
             {(activeEvidenceTab === 'ALL' || activeEvidenceTab === 'TEAM_OBJECTIVES') && (
               <div
                 data-testid="evidence-card-team-objectives"
-                className="bg-slate-50/90 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-md p-3 space-y-2 text-xs telemetry-nums"
+                className="bg-slate-50/90 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-md p-2.5 space-y-1.5 text-xs telemetry-nums"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
                   <span className="font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                    5. Team Objectives vs Personal Takedowns
+                    5. Objectives (Team vs Personal)
                   </span>
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
                     Team Eligible: {teamObjectives.eligibleTeamObjectiveGames}G · Missing Team Data:{' '}
@@ -1530,78 +1596,72 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <div className="bg-emerald-500/5 border border-emerald-500/20 rounded p-2 space-y-1">
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                      Observed (Team Totals vs Personal Credits)
-                    </div>
-                    <p className="text-[11px] text-slate-700 dark:text-slate-200 leading-snug">
-                      Towers: Team {formatNumber(teamObjectives.tower.teamAvgKills, '/g', 2)} vs Enemy{' '}
-                      {formatNumber(teamObjectives.tower.enemyTeamAvgKills, '/g', 2)} · Dragons: Team{' '}
-                      {formatNumber(teamObjectives.dragon.teamAvgKills, '/g', 2)} vs Enemy{' '}
-                      {formatNumber(teamObjectives.dragon.enemyTeamAvgKills, '/g', 2)} · Baron: Team{' '}
-                      {formatNumber(teamObjectives.baron.teamAvgKills, '/g', 2)} vs Enemy{' '}
-                      {formatNumber(teamObjectives.baron.enemyTeamAvgKills, '/g', 2)}
-                    </p>
-                  </div>
-                  <div className="bg-amber-500/5 border border-amber-500/20 rounded p-2 space-y-1">
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                      Coach Guardrail
-                    </div>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
-                      Team objective totals and first-objective rates are 5v5 team outcomes and are kept strictly separate from personal last-hits and takedowns. Missing fields remain Unavailable rather than 0.
-                    </p>
-                  </div>
+                <div className="text-[11px] text-slate-700 dark:text-slate-200">
+                  <span className="inline-block text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 mr-1.5">
+                    Observed
+                  </span>
+                  Towers: Team {formatNumber(teamObjectives.tower.teamAvgKills, '/g', 2)} vs Enemy{' '}
+                  {formatNumber(teamObjectives.tower.enemyTeamAvgKills, '/g', 2)} · Dragons: Team{' '}
+                  {formatNumber(teamObjectives.dragon.teamAvgKills, '/g', 2)} vs Enemy{' '}
+                  {formatNumber(teamObjectives.dragon.enemyTeamAvgKills, '/g', 2)} · Baron: Team{' '}
+                  {formatNumber(teamObjectives.baron.teamAvgKills, '/g', 2)} vs Enemy{' '}
+                  {formatNumber(teamObjectives.baron.enemyTeamAvgKills, '/g', 2)}
                 </div>
 
-                <details open={activeEvidenceTab !== 'ALL'} className="group">
+                <details open={activeEvidenceTab !== 'ALL'} className="group pt-0.5">
                   <summary className="cursor-pointer select-none text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
-                    Per-Match Objectives ({(teamObjectives.perMatch ?? []).length}G)
+                    Inspect evidence ({(teamObjectives.perMatch ?? []).length}G objectives &amp; guardrail)
                   </summary>
-                  <div className="sm:overflow-x-auto mt-1.5">
-                    <table className="block sm:table w-full text-left border-collapse text-[11px]">
-                      <thead className="hidden sm:table-header-group text-[10px] uppercase text-slate-400 dark:text-slate-500 border-b border-slate-200 dark:border-slate-800">
-                        <tr>
-                          <th className="py-1 pr-2">Match</th>
-                          <th className="py-1 px-2">Towers (Team:Enemy · Personal TD)</th>
-                          <th className="py-1 px-2">Dragons (Team:Enemy · Personal TD)</th>
-                          <th className="py-1 px-2">Grubs / Herald (Team:Enemy)</th>
-                          <th className="py-1 pl-2">Baron (Team:Enemy · Personal LH)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="block sm:table-row-group divide-y divide-slate-200/60 dark:divide-slate-800/70">
-                        {(teamObjectives.perMatch ?? []).slice(0, 8).map(m => (
-                          <tr
-                            key={`to-${m.matchId}`}
-                            data-testid={`evidence-objective-row-${m.matchId}`}
-                            className="block sm:table-row py-1.5 sm:py-0"
-                          >
-                            <td className="block sm:table-cell sm:py-1.5 sm:pr-2 font-bold text-slate-800 dark:text-slate-100">
-                              {m.championName} ({formatRoleName(m.role)}){' '}
-                              <span className="text-[10px] font-normal text-slate-400">
-                                {m.matchId}
-                              </span>
-                            </td>
-                            <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-700 dark:text-slate-200">
-                              {m.allyObjectives?.tower?.kills ?? '—'}:{m.enemyObjectives?.tower?.kills ?? '—'} (TD:{' '}
-                              {m.personalTurretTakedowns ?? 'Unavailable'})
-                            </td>
-                            <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-700 dark:text-slate-200">
-                              {m.allyObjectives?.dragon?.kills ?? '—'}:{m.enemyObjectives?.dragon?.kills ?? '—'} (TD:{' '}
-                              {m.personalDragonTakedowns ?? 'Unavailable'})
-                            </td>
-                            <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-700 dark:text-slate-200">
-                              Grubs {m.allyObjectives?.horde?.kills ?? '—'}:{m.enemyObjectives?.horde?.kills ?? '—'} · Herald{' '}
-                              {m.allyObjectives?.riftHerald?.kills ?? '—'}:{m.enemyObjectives?.riftHerald?.kills ?? '—'}
-                            </td>
-                            <td className="block sm:table-cell sm:py-1.5 sm:pl-2 text-slate-700 dark:text-slate-200">
-                              {m.allyObjectives?.baron?.kills ?? '—'}:{m.enemyObjectives?.baron?.kills ?? '—'} (LH:{' '}
-                              {m.personalBaronKills ?? 'Unavailable'})
-                            </td>
+                  <div className="mt-2 space-y-2">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 bg-amber-500/5 border border-amber-500/20 rounded px-2.5 py-1.5 leading-snug">
+                      <strong className="text-amber-700 dark:text-amber-300">Coach boundary:</strong>{' '}
+                      Team objective totals and first-objective rates are 5v5 team outcomes and are kept strictly separate from personal last-hits and takedowns. Missing fields remain Unavailable rather than 0.
+                    </p>
+                    <div className="sm:overflow-x-auto">
+                      <table className="block sm:table w-full text-left border-collapse text-[11px]">
+                        <thead className="hidden sm:table-header-group text-[10px] uppercase text-slate-400 dark:text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                          <tr>
+                            <th className="py-1 pr-2">Match</th>
+                            <th className="py-1 px-2">Towers (Team:Enemy · Personal TD)</th>
+                            <th className="py-1 px-2">Dragons (Team:Enemy · Personal TD)</th>
+                            <th className="py-1 px-2">Grubs / Herald (Team:Enemy)</th>
+                            <th className="py-1 pl-2">Baron (Team:Enemy · Personal LH)</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="block sm:table-row-group divide-y divide-slate-200/60 dark:divide-slate-800/70">
+                          {(teamObjectives.perMatch ?? []).slice(0, 8).map(m => (
+                            <tr
+                              key={`to-${m.matchId}`}
+                              data-testid={`evidence-objective-row-${m.matchId}`}
+                              className="block sm:table-row py-1.5 sm:py-0"
+                            >
+                              <td className="block sm:table-cell sm:py-1.5 sm:pr-2 font-bold text-slate-800 dark:text-slate-100">
+                                {m.championName} ({formatRoleName(m.role)}){' '}
+                                <span className="text-[10px] font-normal text-slate-400">
+                                  {m.matchId}
+                                </span>
+                              </td>
+                              <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-700 dark:text-slate-200">
+                                {m.allyObjectives?.tower?.kills ?? '—'}:{m.enemyObjectives?.tower?.kills ?? '—'} (TD:{' '}
+                                {m.personalTurretTakedowns ?? 'Unavailable'})
+                              </td>
+                              <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-700 dark:text-slate-200">
+                                {m.allyObjectives?.dragon?.kills ?? '—'}:{m.enemyObjectives?.dragon?.kills ?? '—'} (TD:{' '}
+                                {m.personalDragonTakedowns ?? 'Unavailable'})
+                              </td>
+                              <td className="block sm:table-cell sm:py-1.5 sm:px-2 text-slate-700 dark:text-slate-200">
+                                Grubs {m.allyObjectives?.horde?.kills ?? '—'}:{m.enemyObjectives?.horde?.kills ?? '—'} · Herald{' '}
+                                {m.allyObjectives?.riftHerald?.kills ?? '—'}:{m.enemyObjectives?.riftHerald?.kills ?? '—'}
+                              </td>
+                              <td className="block sm:table-cell sm:py-1.5 sm:pl-2 text-slate-700 dark:text-slate-200">
+                                {m.allyObjectives?.baron?.kills ?? '—'}:{m.enemyObjectives?.baron?.kills ?? '—'} (LH:{' '}
+                                {m.personalBaronKills ?? 'Unavailable'})
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </details>
               </div>

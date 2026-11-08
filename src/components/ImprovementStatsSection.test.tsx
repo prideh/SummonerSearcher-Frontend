@@ -551,6 +551,13 @@ describe('ImprovementStatsSection', () => {
       />
     );
 
+    const summaryLaneCs10 = screen.getByTestId('summary-lane-cs-10');
+    expect(summaryLaneCs10).toHaveTextContent('2G laner · 1 excl.');
+    expect(summaryLaneCs10).toHaveTextContent('79 CS (2G)');
+    expect(summaryLaneCs10).toHaveTextContent('Target (≠ missed CS):');
+    expect(summaryLaneCs10).toHaveTextContent('82 CS in 1G (mixed patch)');
+    expect(summaryLaneCs10).toHaveTextContent('Inspect evidence (4G) →');
+
     const toggleBtn = screen.getByTestId('inspect-evidence-cards-toggle');
     expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByTestId('inspectable-evidence-cards-panel')).not.toBeInTheDocument();
@@ -561,14 +568,23 @@ describe('ImprovementStatsSection', () => {
     const panel = screen.getByTestId('inspectable-evidence-cards-panel');
     expect(panel).toBeInTheDocument();
 
-    // Default tab is ALL (shows all cards including Early Lane CS@10)
+    // Default tab is ALL: cards show concise Observed metrics with per-card Inspect evidence disclosure collapsed by default
     const laneCs10Card = screen.getByTestId('evidence-card-lane-cs-10');
     expect(laneCs10Card).toHaveTextContent('79 CS (2G)');
+    expect(laneCs10Card).toHaveTextContent('Target ≠ missed CS (114 Top/Bot, 120 Mid benchmark)');
     expect(laneCs10Card).toHaveTextContent(
       'Unavailable (1 pre-26.1 / mixed-patch · supported actual 82 CS in 1G)'
     );
     expect(laneCs10Card).toHaveTextContent('Missing/Short Laner Excl: 1G');
     expect(laneCs10Card).toHaveTextContent('never subtract target - actual');
+    const laneCs10Details = laneCs10Card.querySelector('details');
+    expect(laneCs10Details).not.toHaveAttribute('open');
+
+    // Focusing '10m Lane CS' tab opens the per-match table disclosure
+    fireEvent.click(screen.getByTestId('evidence-tab-LANE_CS_10'));
+    expect(screen.getByTestId('evidence-card-lane-cs-10').querySelector('details')).toHaveAttribute(
+      'open'
+    );
 
     // Inspect per-match rows in Early Lane CS@10
     expect(screen.getByTestId('evidence-lane-cs-row-EUW1_101')).toHaveTextContent('Ahri');
@@ -584,7 +600,7 @@ describe('ImprovementStatsSection', () => {
     expect(screen.getByTestId('evidence-lane-cs-row-EUW1_103')).toHaveTextContent('Viktor');
     expect(screen.getByTestId('evidence-lane-cs-row-EUW1_103')).toHaveTextContent('76 CS');
     expect(screen.getByTestId('evidence-lane-cs-row-EUW1_103')).toHaveTextContent(
-      'Pre-26.1 patch (actual recorded · target null)'
+      'Pre-26.1 patch (actual recorded · no target)'
     );
 
     expect(screen.getByTestId('evidence-lane-cs-row-EUW1_104')).toHaveTextContent('LeeSin');

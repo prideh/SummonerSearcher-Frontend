@@ -180,9 +180,14 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
 
       // Default initialization if no valid history
       const personalizedSuggestions = generatePersonalizedSuggestions(context);
+      const matchCount = context.totalGamesAnalyzed || 0;
+      const impCtx = context.improvementStats as { hasTimelineAnalysis?: boolean } | undefined;
+      const timelineReady = context.timelineStatus === 'ANALYZED' || Boolean(impCtx?.hasTimelineAnalysis);
       setMessages([{ 
         role: 'model', 
-        content: `Hi! I'm your AI Coach. I've analyzed ${context.totalGamesAnalyzed || 0} of your recent games. Ask me anything about your playstyle, strengths, or areas for improvement!` 
+        content: timelineReady
+          ? `Hi! I'm your AI Coach. Match summaries and 10m/20m timeline checkpoints from ${matchCount} recent games are ready. Ask a question below to generate coaching feedback!`
+          : `Hi! I'm your AI Coach. Match summaries from ${matchCount} recent games are loaded (deep timeline analysis not run yet). Ask a question below to generate coaching feedback!`
       }]);
       setSuggestions(personalizedSuggestions);
     }
@@ -216,9 +221,14 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
   const handleClearChat = () => {
     localStorage.removeItem(STORAGE_KEY);
     const personalizedSuggestions = generatePersonalizedSuggestions(context);
+    const matchCount = context.totalGamesAnalyzed || 0;
+    const impCtx = context.improvementStats as { hasTimelineAnalysis?: boolean } | undefined;
+    const timelineReady = context.timelineStatus === 'ANALYZED' || Boolean(impCtx?.hasTimelineAnalysis);
     setMessages([{ 
       role: 'model', 
-      content: `Hi! I'm your AI Coach. I've analyzed ${context.totalGamesAnalyzed || 0} of your recent games. Ask me anything about your playstyle, strengths, or areas for improvement!` 
+      content: timelineReady
+        ? `Hi! I'm your AI Coach. Match summaries and 10m/20m timeline checkpoints from ${matchCount} recent games are ready. Ask a question below to generate coaching feedback!`
+        : `Hi! I'm your AI Coach. Match summaries from ${matchCount} recent games are loaded (deep timeline analysis not run yet). Ask a question below to generate coaching feedback!`
     }]);
     setSuggestions(personalizedSuggestions);
   };
@@ -233,6 +243,7 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
     | {
         avgActual?: number;
         matchCount?: number;
+        avgSupportedActual?: number | null;
         avgTarget?: number | null;
         targetMatchCount?: number;
         targetLabel?: string;
@@ -275,6 +286,8 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
         };
       }
     | undefined;
+  const timelineAnalyzedInContext =
+    context.timelineStatus === 'ANALYZED' || Boolean(imp?.hasTimelineAnalysis);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm p-2 sm:p-4 transition-all">
@@ -321,7 +334,7 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
           </div>
         </div>
 
-        {/* Collapsible Structured Coach Input & Evidence Drawer */}
+        {/* Collapsible Coach Evidence Drawer */}
         {showEvidenceDrawer && (
           <div
             id="ai-coach-evidence-drawer"
@@ -330,14 +343,17 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
           >
             <div className="flex flex-wrap items-center justify-between gap-1.5">
               <span className="font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                Structured Coach Evidence Sent in Context
+                What Your Coach Sees (Observed Stats &amp; Guardrails)
               </span>
               <div className="flex flex-wrap gap-1.5">
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
-                  Observed Facts: {context.totalGamesAnalyzed || 0}G ({String(context.timelineStatus || 'NOT_ANALYZED')})
+                  Observed: {context.totalGamesAnalyzed || 0} matches ·{' '}
+                  {timelineAnalyzedInContext
+                    ? '10m/20m timelines loaded'
+                    : 'Match summaries only (timeline not run)'}
                 </span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
-                  Coach Inference Guardrails Active
+                  Guardrails: Target &ne; missed CS · No guessed wave states
                 </span>
               </div>
             </div>
@@ -345,15 +361,21 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 telemetry-nums">
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2">
                 <div className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
-                  Early Lane CS@10 Contract
+                  Early 10m Lane CS
                 </div>
                 <div className="mt-0.5 text-slate-800 dark:text-slate-100 font-semibold">
                   {avgLaneCs10
-                    ? `Actual ${avgLaneCs10.avgActual} (${avgLaneCs10.matchCount}G) · Target ${avgLaneCs10.avgTarget ?? 'null'} (${avgLaneCs10.targetMatchCount}G)`
+                    ? `Avg ${avgLaneCs10.avgActual} CS (${avgLaneCs10.matchCount}G) · ${
+                        avgLaneCs10.avgTarget !== null && avgLaneCs10.avgTarget !== undefined
+                          ? `Target ${avgLaneCs10.avgTarget} CS (${avgLaneCs10.targetMatchCount}G)`
+                          : avgLaneCs10.targetMatchCount
+                          ? `${avgLaneCs10.avgSupportedActual ?? avgLaneCs10.avgActual} CS in ${avgLaneCs10.targetMatchCount}G w/ target (mixed patch)`
+                          : 'No target (pre-26.1)'
+                      }`
                     : 'No eligible laner games'}
                 </div>
                 <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                  Missing/Short Laner Excl: {missingCs10}G · Target != missed CS
+                  {missingCs10 > 0 ? `${missingCs10}G short/missing excl. · ` : ''}Role target &ne; missed CS
                 </div>
               </div>
 
@@ -361,25 +383,25 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
                 <>
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2">
                     <div className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
-                      1. Phase Farming (10–20m / 20m+)
+                      1. Mid &amp; Late CS/m
                     </div>
                     <div className="mt-0.5 text-slate-800 dark:text-slate-100 font-semibold">
                       10–20m: {imp.phaseFarming?.min10To20?.avgTotalCsPerMin ?? 'Unavailable'}/m ({imp.phaseFarming?.min10To20?.eligibleGames ?? 0}G)
                     </div>
                     <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                      20m+: {imp.phaseFarming?.min20ToEnd?.avgTotalCsPerMin ?? 'Unavailable'}/m ({imp.phaseFarming?.min20ToEnd?.eligibleGames ?? 0}G)
+                      20m+: {imp.phaseFarming?.min20ToEnd?.avgTotalCsPerMin ?? 'Unavailable'}/m ({imp.phaseFarming?.min20ToEnd?.eligibleGames ?? 0}G) · Short games excluded
                     </div>
                   </div>
 
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2">
                     <div className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
-                      2. Lead Retention (10m → 20m)
+                      2. 10m &amp; 20m Lane Leads
                     </div>
                     <div className="mt-0.5 text-slate-800 dark:text-slate-100 font-semibold">
                       @10m: {imp.leadRetention?.avgGoldLeadAt10 ?? 'Unavailable'}g ({imp.leadRetention?.eligibleGamesAt10 ?? 0}G) · @20m: {imp.leadRetention?.avgGoldLeadAt20 ?? 'Unavailable'}g ({imp.leadRetention?.eligibleGamesAt20 ?? 0}G)
                     </div>
                     <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                      10–20m events are temporal associations only
+                      10–20m events are timing context, not proof of a throw
                     </div>
                   </div>
 
@@ -391,19 +413,19 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ isOpen, onClose, summ
                       Dead: {imp.deathCost?.avgTimeSpentDeadSeconds ?? 'Unavailable'}s/g ({imp.deathCost?.eligibleTimeDeadGames ?? 0}G) · Bounty: {imp.deathCost?.bounty?.totalCombinedBountyGold ?? 'Unavailable'}g
                     </div>
                     <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                      Unspent Med: {imp.unspentGold?.medianCurrentGold ?? 'Unavailable'}g ({imp.unspentGold?.sampleCount ?? 0} 1m snaps, neutral)
+                      Unspent med: {imp.unspentGold?.medianCurrentGold ?? 'Unavailable'}g ({imp.unspentGold?.sampleCount ?? 0} 1m checks, neutral)
                     </div>
                   </div>
 
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2 sm:col-span-2">
                     <div className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
-                      5. Team Objectives vs Personal Participation ({imp.teamObjectives?.eligibleTeamObjectiveGames ?? 0}G)
+                      5. Objectives ({imp.teamObjectives?.eligibleTeamObjectiveGames ?? 0}G)
                     </div>
                     <div className="mt-0.5 text-slate-800 dark:text-slate-100 font-semibold">
                       Towers: {imp.teamObjectives?.tower?.teamAvg ?? '—'} vs {imp.teamObjectives?.tower?.enemyAvg ?? '—'} · Dragons: {imp.teamObjectives?.dragon?.teamAvg ?? '—'} vs {imp.teamObjectives?.dragon?.enemyAvg ?? '—'}
                     </div>
                     <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                      Team outcomes and personal takedowns are kept distinct; null fields are never coerced to 0.
+                      5v5 team totals kept separate from personal takedowns; missing stats stay Unavailable
                     </div>
                   </div>
                 </>
