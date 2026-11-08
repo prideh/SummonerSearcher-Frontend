@@ -64,14 +64,23 @@ const generatePersonalizedSuggestions = (context: AiContextData): string[] => {
     suggestions.push("How is my wave management?");
   }
 
-  // Conditionally format the winrate prompt
-  const winRate = parseFloat(context.winRate as string || '0');
+  // Conditionally format the winrate prompt from scoped sample records (falling back to legacy winRate if present)
+  const savedHistory = context.savedHistory as { winRate?: string } | null | undefined;
+  const rankedRecord = context.rankedRecord as { winRate?: string } | null | undefined;
+  const recentMatchSample = context.recentMatchSample as { winRate?: string | null } | null | undefined;
+  const rawWinRate =
+    savedHistory?.winRate ??
+    rankedRecord?.winRate ??
+    recentMatchSample?.winRate ??
+    (context.winRate as string | undefined) ??
+    '0';
+  const winRate = parseFloat(rawWinRate);
   if (winRate > 55) {
     suggestions.push("How can I snowball my leads?");
   } else {
     suggestions.push("Why is my win rate low?");
   }
-  
+
   // Return exactly 5 suggestions
   return suggestions.slice(0, 5);
 };

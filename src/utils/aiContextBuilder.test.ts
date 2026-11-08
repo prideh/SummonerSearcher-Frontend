@@ -1215,12 +1215,12 @@ describe('aiContextBuilder (#14)', () => {
       )
     ).byteLength;
 
-    // Exact measured deterministic UTF-8 payload sizes & upper bounds (with 5-stat improvementStats context)
-    expect(oneMatchNotAnalyzedBytes).toBe(4928);
-    expect(oneMatchAnalyzedBytes).toBe(5991);
-    expect(notAnalyzedBytes).toBe(24932);
-    expect(analyzedBytes).toBe(38345);
-    expect(notAnalyzedBytes).toBeLessThan(25000);
+    // Exact measured deterministic UTF-8 payload sizes & upper bounds (with 5-stat improvementStats + scoped sample records)
+    expect(oneMatchNotAnalyzedBytes).toBe(5171);
+    expect(oneMatchAnalyzedBytes).toBe(6234);
+    expect(notAnalyzedBytes).toBe(25177);
+    expect(analyzedBytes).toBe(38590);
+    expect(notAnalyzedBytes).toBeLessThan(26000);
     expect(analyzedBytes).toBeLessThan(40000);
   });
 
@@ -1324,5 +1324,191 @@ describe('aiContextBuilder (#14)', () => {
     expect(ctx.improvementStats).not.toHaveProperty('perMatch');
     expect(ctx.improvementStats).not.toHaveProperty('byChampion');
     expect(ctx.improvementStats).not.toHaveProperty('byRole');
+  });
+
+  it('scopes Spear Shot rankedRecord (1020W 884L = 1904G, 53.6%), savedHistory (462W 421L = 883G, 52.3%), and recentMatchSample (20G) without mixing denominators or emitting unscoped scalar winRate/totalWins/totalLosses (#34)', () => {
+    const twentyMatches = Array.from({ length: 20 }, (_, idx) =>
+      createMatch({
+        matchId: `EUW1_${8000 + idx}`,
+        gameVersion: '26.1.1',
+        playerOverrides: {
+          championName: 'Pantheon',
+          teamPosition: 'TOP',
+          win: idx < 11, // 11 wins, 9 losses in recent 20 games (55.0%)
+        },
+      })
+    );
+
+    const spearShotOverallStats: OverallStats = {
+      ...BASE_OVERALL_STATS,
+      wins: 462,
+      losses: 421,
+      winRate: (462 / 883) * 100,
+      blueSide: { games: 440, wins: 240, winRate: (240 / 440) * 100 },
+      redSide: { games: 443, wins: 222, winRate: (222 / 443) * 100 },
+    };
+
+    const spearShotChampions: ChampionStats[] = [
+      {
+        championName: 'Pantheon',
+        games: 790,
+        wins: 418,
+        losses: 372,
+        kills: 4500,
+        deaths: 3900,
+        assists: 4100,
+        soloKills: 950,
+        winRate: 52.91139,
+        kda: 2.21,
+        averageKills: 5.7,
+        averageDeaths: 4.9,
+        averageAssists: 5.2,
+        averageCsPerMinute: 7.1,
+        averageSoloKills: 1.2,
+        averageTurretPlates: 2.1,
+      },
+    ];
+
+    const ctx = buildAiContext(
+      'Spear Shot',
+      'EUW',
+      twentyMatches,
+      'player-puuid',
+      { tier: 'CHALLENGER', rank: 'I', leaguePoints: 1120, wins: 1020, losses: 884 },
+      spearShotChampions,
+      spearShotOverallStats,
+      null
+    );
+
+    expect(ctx.rankedRecord).toEqual({
+      wins: 1020,
+      losses: 884,
+      games: 1904,
+      winRate: '53.6',
+    });
+    expect(ctx.savedHistory).toEqual({
+      wins: 462,
+      losses: 421,
+      games: 883,
+      winRate: '52.3',
+    });
+    expect(ctx.recentMatchSample).toEqual({
+      games: 20,
+      wins: 11,
+      losses: 9,
+      winRate: '55.0',
+    });
+    expect(ctx.blueSide).toEqual({
+      games: 440,
+      wins: 240,
+      losses: 200,
+      winRate: '54.5',
+    });
+    expect(ctx.redSide).toEqual({
+      games: 443,
+      wins: 222,
+      losses: 221,
+      winRate: '50.1',
+    });
+    expect(ctx.topChampions[0]).toEqual({
+      name: 'Pantheon',
+      games: 790,
+      wins: 418,
+      losses: 372,
+      winRate: '53',
+      kda: '2.21',
+    });
+
+    // Reject unscoped top-level scalars that previously caused LLM sample conflation
+    expect(ctx).not.toHaveProperty('totalWins');
+    expect(ctx).not.toHaveProperty('totalLosses');
+    expect(ctx).not.toHaveProperty('winRate');
+    expect(ctx).not.toHaveProperty('blueSideWinRate');
+    expect(ctx).not.toHaveProperty('redSideWinRate');
+  });
+
+  it('marks rankedRecord or savedHistory as null when absent, zero-game, or counter-mismatched, and never borrows another sample denominator (#34)', () => {
+    const match = createMatch({ matchId: 'EUW1_9001' });
+
+    // 1. Missing overallStats (savedHistory null) while rankedRecord (1020W 884L) and recentMatchSample (1G) exist
+    const ctxMissingSaved = buildAiContext(
+      'Spear Shot',
+      'EUW',
+      [match],
+      'player-puuid',
+      { tier: 'CHALLENGER', rank: 'I', leaguePoints: 1120, wins: 1020, losses: 884 },
+      BASE_CHAMPION_STATS,
+      null,
+      null
+    );
+    expect(ctxMissingSaved.rankedRecord).toEqual({
+      wins: 1020,
+      losses: 884,
+      games: 1904,
+      winRate: '53.6',
+    });
+    expect(ctxMissingSaved.savedHistory).toBeNull();
+    expect(ctxMissingSaved.blueSide).toBeNull();
+    expect(ctxMissingSaved.redSide).toBeNull();
+    expect(ctxMissingSaved.topChampions).toEqual([]);
+    expect(ctxMissingSaved.recentMatchSample).toEqual({
+      games: 1,
+      wins: 1,
+      losses: 0,
+      winRate: '100.0',
+    });
+
+    // 2. Unranked / zero-game rankInfo and zero-game overallStats
+    const ctxZeroSamples = buildAiContext(
+      'NewPlayer',
+      'NA1',
+      [],
+      'player-puuid',
+      { tier: 'UNRANKED', rank: '', leaguePoints: 0, wins: 0, losses: 0 },
+      [],
+      { ...BASE_OVERALL_STATS, wins: 0, losses: 0, winRate: 0 },
+      null
+    );
+    expect(ctxZeroSamples.rank).toBe('Unranked');
+    expect(ctxZeroSamples.rankedRecord).toBeNull();
+    expect(ctxZeroSamples.savedHistory).toBeNull();
+    expect(ctxZeroSamples.recentMatchSample).toEqual({
+      games: 0,
+      wins: 0,
+      losses: 0,
+      winRate: null,
+    });
+
+    // 3. Mismatched overallStats (winRate 52.3% paired with 1020W 884L or mismatched explicit totalMatches) -> savedHistory rejected as null
+    const ctxMismatchedRate = buildAiContext(
+      'CorruptCache',
+      'EUW',
+      [match],
+      'player-puuid',
+      null,
+      BASE_CHAMPION_STATS,
+      { ...BASE_OVERALL_STATS, wins: 1020, losses: 884, winRate: 52.3 },
+      null
+    );
+    expect(ctxMismatchedRate.rankedRecord).toBeNull();
+    expect(ctxMismatchedRate.savedHistory).toBeNull();
+
+    const ctxMismatchedTotal = buildAiContext(
+      'CorruptTotal',
+      'EUW',
+      [match],
+      'player-puuid',
+      null,
+      BASE_CHAMPION_STATS,
+      {
+        ...BASE_OVERALL_STATS,
+        wins: 462,
+        losses: 421,
+        winRate: 52.3216308,
+        totalMatches: 1904,
+      } as OverallStats,
+      null
+    );
+    expect(ctxMismatchedTotal.savedHistory).toBeNull();
   });
 });

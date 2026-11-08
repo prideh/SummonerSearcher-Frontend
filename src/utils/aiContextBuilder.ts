@@ -784,6 +784,142 @@ export function buildCoachImprovementStatsContext(
   };
 }
 
+export interface CoachWinLossSample {
+  wins: number;
+  losses: number;
+  games: number;
+  winRate: string;
+}
+
+export interface CoachRecentMatchSample {
+  games: number;
+  wins: number;
+  losses: number;
+  winRate: string | null;
+}
+
+export interface CoachSideSample {
+  games: number;
+  wins: number;
+  losses: number;
+  winRate: string;
+}
+
+export function buildRankedRecordSample(
+  rankInfo: { tier: string; rank: string; leaguePoints: number; wins: number; losses: number } | null | undefined
+): CoachWinLossSample | null {
+  if (!rankInfo) return null;
+  const { wins, losses } = rankInfo;
+  if (
+    typeof wins !== 'number' ||
+    typeof losses !== 'number' ||
+    !Number.isFinite(wins) ||
+    !Number.isFinite(losses) ||
+    wins < 0 ||
+    losses < 0
+  ) {
+    return null;
+  }
+  const roundedWins = Math.round(wins);
+  const roundedLosses = Math.round(losses);
+  const games = roundedWins + roundedLosses;
+  if (games <= 0) return null;
+  return {
+    wins: roundedWins,
+    losses: roundedLosses,
+    games,
+    winRate: ((roundedWins / games) * 100).toFixed(1),
+  };
+}
+
+export function buildSavedHistorySample(
+  overallStats: (OverallStats & { totalMatches?: number; games?: number }) | null | undefined
+): CoachWinLossSample | null {
+  if (!overallStats) return null;
+  const { wins, losses, winRate } = overallStats;
+  if (
+    typeof wins !== 'number' ||
+    typeof losses !== 'number' ||
+    !Number.isFinite(wins) ||
+    !Number.isFinite(losses) ||
+    wins < 0 ||
+    losses < 0
+  ) {
+    return null;
+  }
+  const roundedWins = Math.round(wins);
+  const roundedLosses = Math.round(losses);
+  const games = roundedWins + roundedLosses;
+  if (games <= 0) return null;
+
+  const explicitTotal = overallStats.totalMatches ?? overallStats.games;
+  if (explicitTotal !== undefined && explicitTotal !== null) {
+    if (
+      typeof explicitTotal !== 'number' ||
+      !Number.isFinite(explicitTotal) ||
+      Math.round(explicitTotal) !== games
+    ) {
+      return null;
+    }
+  }
+
+  const computedWinRate = (roundedWins / games) * 100;
+  if (typeof winRate === 'number') {
+    if (!Number.isFinite(winRate) || Math.abs(winRate - computedWinRate) > 0.55) {
+      return null;
+    }
+  }
+
+  return {
+    wins: roundedWins,
+    losses: roundedLosses,
+    games,
+    winRate: computedWinRate.toFixed(1),
+  };
+}
+
+function buildSideSample(
+  side: { games: number; wins: number; winRate: number } | null | undefined
+): CoachSideSample | null {
+  if (!side) return null;
+  const { games, wins, winRate } = side;
+  if (
+    typeof games !== 'number' ||
+    typeof wins !== 'number' ||
+    !Number.isFinite(games) ||
+    !Number.isFinite(wins) ||
+    games <= 0 ||
+    wins < 0 ||
+    wins > games
+  ) {
+    return null;
+  }
+  const roundedGames = Math.round(games);
+  const roundedWins = Math.round(wins);
+  const losses = roundedGames - roundedWins;
+  if (losses < 0) return null;
+  const computedWinRate = (roundedWins / roundedGames) * 100;
+  if (typeof winRate === 'number' && (!Number.isFinite(winRate) || Math.abs(winRate - computedWinRate) > 0.55)) {
+    return null;
+  }
+  return {
+    games: roundedGames,
+    wins: roundedWins,
+    losses,
+    winRate: computedWinRate.toFixed(1),
+  };
+}
+
+function formatRankLabel(
+  rankInfo: { tier: string; rank: string; leaguePoints: number; wins: number; losses: number } | null | undefined
+): string {
+  if (!rankInfo || !rankInfo.tier || rankInfo.tier.toUpperCase() === 'UNRANKED') {
+    return 'Unranked';
+  }
+  const lp = Number.isFinite(rankInfo.leaguePoints) ? rankInfo.leaguePoints : 0;
+  return `${rankInfo.tier} ${rankInfo.rank || ''}`.trim() + ` (${lp} LP)`;
+}
+
 /**
  * Builds comprehensive, token-bounded AI context from matches, Data Dragon maps, and optional TimelineAnalysisDto / ImprovementStatsDto.
  */
@@ -800,8 +936,9 @@ export function buildAiContext(
 ): {
   summonerName: string;
   rank: string;
-  totalWins: number;
-  totalLosses: number;
+  rankedRecord: CoachWinLossSample | null;
+  savedHistory: CoachWinLossSample | null;
+  recentMatchSample: CoachRecentMatchSample;
   primaryRole: string;
   totalGamesAnalyzed: number;
   timelineStatus: 'ANALYZED' | 'NOT_ANALYZED';
@@ -810,7 +947,6 @@ export function buildAiContext(
   missingLaneCsAt10Matches: number;
   timelineInsights?: EnrichedTimelineInsights;
   improvementStats?: CoachImprovementStatsContext;
-  winRate: string;
   kda: string;
   avgKills: string;
   avgDeaths: string;
@@ -820,9 +956,9 @@ export function buildAiContext(
   avgSoloKills: string;
   avgTurretPlates: string;
   avgVisionScore: string;
-  topChampions: Array<{ name: string; games: number; winRate: string; kda: string }>;
-  blueSideWinRate: string;
-  redSideWinRate: string;
+  topChampions: Array<{ name: string; games: number; wins: number; losses: number; winRate: string; kda: string }>;
+  blueSide: CoachSideSample | null;
+  redSide: CoachSideSample | null;
   recentMatches: MatchDetail[];
   opponentStats: {
     avgKda: string;
@@ -843,58 +979,9 @@ export function buildAiContext(
   const runeMap = ddState?.runeMap ?? null;
   const summonerSpellMap = ddState?.summonerSpellMap ?? null;
   const timelineStatus: 'ANALYZED' | 'NOT_ANALYZED' = timelineAnalysis ? 'ANALYZED' : 'NOT_ANALYZED';
-
-  if (!overallStats) {
-    const fallbackResolvedImprovement = resolveImprovementStats(
-      improvementStats,
-      timelineAnalysis,
-      allMatches.slice(0, MAX_RECENT_MATCHES),
-      puuid
-    );
-    const fallbackCoachImprovementStats = buildCoachImprovementStatsContext(
-      fallbackResolvedImprovement.stats,
-      fallbackResolvedImprovement.hasTimelineAnalysis,
-      itemMap
-    );
-    return {
-      summonerName: `${summonerName}#${tagLine}`,
-      rank: 'Unranked',
-      totalWins: 0,
-      totalLosses: 0,
-      primaryRole: 'UNKNOWN',
-      totalGamesAnalyzed: allMatches.length || fallbackResolvedImprovement.stats.totalGamesConsidered,
-      timelineStatus,
-      visionDataPrecision: VISION_DATA_PRECISION_NOTE,
-      avgLaneCsAt10: null,
-      missingLaneCsAt10Matches: 0,
-      improvementStats: fallbackCoachImprovementStats,
-      winRate: '0.0',
-      kda: '0.00',
-      avgKills: '0.0',
-      avgDeaths: '0.0',
-      avgAssists: '0.0',
-      avgCsPerMin: '0.0',
-      avgKillParticipation: '0.0',
-      avgSoloKills: '0.0',
-      avgTurretPlates: '0.0',
-      avgVisionScore: '0.0',
-      topChampions: [],
-      blueSideWinRate: '0.0',
-      redSideWinRate: '0.0',
-      recentMatches: [],
-      opponentStats: {
-        avgKda: '0.00',
-        avgCsPerMin: '0.0',
-        avgKillParticipation: '0.0',
-        avgSoloKills: '0.0',
-        avgTurretPlates: '0.0',
-        avgVisionScore: '0.0',
-      },
-      topStrengths: [],
-      topWeaknesses: [],
-      championMatchups: {},
-    };
-  }
+  const rankedRecord = buildRankedRecordSample(rankInfo);
+  const savedHistory = buildSavedHistorySample(overallStats);
+  const rankLabel = formatRankLabel(rankInfo);
 
   // Index optional timeline per-match DTOs strictly by matchId (NEVER use positional index fallback across match IDs)
   const spikeByMatchId = new Map<string, MatchPowerSpikeDto>();
@@ -1235,50 +1322,96 @@ export function buildAiContext(
     };
   }
 
+  const recentGames = primaryRoleMatches.length;
+  const recentWins = primaryRoleMatches.filter(m => m.win).length;
+  const recentLosses = recentGames - recentWins;
+  const recentMatchSample: CoachRecentMatchSample = {
+    games: recentGames,
+    wins: recentWins,
+    losses: recentLosses,
+    winRate: recentGames > 0 ? ((recentWins / recentGames) * 100).toFixed(1) : null,
+  };
+  const validSavedStats = savedHistory !== null && overallStats !== null ? overallStats : null;
+
   return {
     summonerName: `${summonerName}#${tagLine}`,
-    rank: rankInfo ? `${rankInfo.tier} ${rankInfo.rank} (${rankInfo.leaguePoints} LP)` : 'Unranked',
-    totalWins: rankInfo ? rankInfo.wins : 0,
-    totalLosses: rankInfo ? rankInfo.losses : 0,
+    rank: rankLabel,
+    rankedRecord,
+    savedHistory,
+    recentMatchSample,
     primaryRole,
-    totalGamesAnalyzed: allMatches.length,
+    totalGamesAnalyzed: allMatches.length || resolvedImprovement.stats.totalGamesConsidered,
     timelineStatus,
     visionDataPrecision: VISION_DATA_PRECISION_NOTE,
     avgLaneCsAt10,
     missingLaneCsAt10Matches,
     ...(timelineInsights ? { timelineInsights } : {}),
     improvementStats: coachImprovementStats,
-    // Aggregate stats
-    winRate: Number(overallStats.winRate).toFixed(1),
-    kda: Number(overallStats.kda) === Infinity ? 'Perfect' : Number(overallStats.kda).toFixed(2),
-    avgKills: Number(overallStats.avgKills).toFixed(1),
-    avgDeaths: Number(overallStats.avgDeaths).toFixed(1),
-    avgAssists: Number(overallStats.avgAssists).toFixed(1),
-    avgCsPerMin: Number(overallStats.avgCsPerMinute).toFixed(1),
-    avgKillParticipation: Number(overallStats.avgKillParticipation).toFixed(1),
-    avgSoloKills: Number(overallStats.avgSoloKills).toFixed(1),
-    avgTurretPlates: Number(overallStats.avgTurretPlates).toFixed(1),
-    avgVisionScore: Number(overallStats.avgVisionScore).toFixed(1),
-    // Champion pool
-    topChampions: championStats.slice(0, 5).map(c => ({
-      name: c.championName,
-      games: c.games,
-      winRate: ((c.wins / c.games) * 100).toFixed(0),
-      kda: c.deaths > 0 ? ((c.kills + c.assists) / c.deaths).toFixed(2) : 'Perfect',
-    })),
-    // Side preference
-    blueSideWinRate: Number(overallStats.blueSide.winRate).toFixed(1),
-    redSideWinRate: Number(overallStats.redSide.winRate).toFixed(1),
+    // Saved-history aggregate stats (valid only when savedHistory sample is valid)
+    kda: validSavedStats
+      ? Number(validSavedStats.kda) === Infinity
+        ? 'Perfect'
+        : Number(validSavedStats.kda).toFixed(2)
+      : '0.00',
+    avgKills: validSavedStats ? Number(validSavedStats.avgKills).toFixed(1) : '0.0',
+    avgDeaths: validSavedStats ? Number(validSavedStats.avgDeaths).toFixed(1) : '0.0',
+    avgAssists: validSavedStats ? Number(validSavedStats.avgAssists).toFixed(1) : '0.0',
+    avgCsPerMin: validSavedStats ? Number(validSavedStats.avgCsPerMinute).toFixed(1) : '0.0',
+    avgKillParticipation: validSavedStats ? Number(validSavedStats.avgKillParticipation).toFixed(1) : '0.0',
+    avgSoloKills: validSavedStats ? Number(validSavedStats.avgSoloKills).toFixed(1) : '0.0',
+    avgTurretPlates: validSavedStats ? Number(validSavedStats.avgTurretPlates).toFixed(1) : '0.0',
+    avgVisionScore: validSavedStats ? Number(validSavedStats.avgVisionScore).toFixed(1) : '0.0',
+    // Champion pool (savedHistory sample)
+    topChampions: validSavedStats
+      ? championStats
+          .filter(
+            c =>
+              typeof c.games === 'number' &&
+              Number.isFinite(c.games) &&
+              c.games > 0 &&
+              typeof c.wins === 'number' &&
+              Number.isFinite(c.wins) &&
+              c.wins >= 0 &&
+              c.wins <= c.games
+          )
+          .slice(0, 5)
+          .map(c => ({
+            name: c.championName,
+            games: c.games,
+            wins: c.wins,
+            losses:
+              typeof c.losses === 'number' && Number.isFinite(c.losses) && c.losses >= 0
+                ? c.losses
+                : c.games - c.wins,
+            winRate: ((c.wins / c.games) * 100).toFixed(0),
+            kda: c.deaths > 0 ? ((c.kills + c.assists) / c.deaths).toFixed(2) : 'Perfect',
+          }))
+      : [],
+    // Side performance (savedHistory sample)
+    blueSide: validSavedStats ? buildSideSample(validSavedStats.blueSide) : null,
+    redSide: validSavedStats ? buildSideSample(validSavedStats.redSide) : null,
     // Detailed match history (capped at 20 games)
     recentMatches: primaryRoleMatches,
-    opponentStats: {
-      avgKda: Number(overallStats.oppAvgKda) === Infinity ? 'Perfect' : Number(overallStats.oppAvgKda).toFixed(2),
-      avgCsPerMin: Number(overallStats.oppAvgCsPerMinute).toFixed(1),
-      avgKillParticipation: Number(overallStats.oppAvgKillParticipation).toFixed(1),
-      avgSoloKills: Number(overallStats.oppAvgSoloKills).toFixed(1),
-      avgTurretPlates: Number(overallStats.oppAvgTurretPlates).toFixed(1),
-      avgVisionScore: Number(overallStats.oppAvgVisionScore).toFixed(1),
-    },
+    opponentStats: validSavedStats
+      ? {
+          avgKda:
+            Number(validSavedStats.oppAvgKda) === Infinity
+              ? 'Perfect'
+              : Number(validSavedStats.oppAvgKda).toFixed(2),
+          avgCsPerMin: Number(validSavedStats.oppAvgCsPerMinute).toFixed(1),
+          avgKillParticipation: Number(validSavedStats.oppAvgKillParticipation).toFixed(1),
+          avgSoloKills: Number(validSavedStats.oppAvgSoloKills).toFixed(1),
+          avgTurretPlates: Number(validSavedStats.oppAvgTurretPlates).toFixed(1),
+          avgVisionScore: Number(validSavedStats.oppAvgVisionScore).toFixed(1),
+        }
+      : {
+          avgKda: '0.00',
+          avgCsPerMin: '0.0',
+          avgKillParticipation: '0.0',
+          avgSoloKills: '0.0',
+          avgTurretPlates: '0.0',
+          avgVisionScore: '0.0',
+        },
     topStrengths: bestStats.map(s => ({
       name: camelCaseToTitleCase(s.key),
       consistency: s.consistency.toFixed(0) + '%',
