@@ -17,6 +17,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import SummonerInfo from '../components/SummonerInfo';
 import PlayerProfile from '../components/PlayerProfile';
 import { toApiRegion, toUrlRegion } from '../utils/regionUtils';
+import { COACH_EVIDENCE_REVIEW_FIXTURE } from '../utils/coachEvidenceReviewFixture';
 import SEO from '../components/SEO';
 import Footer from '../components/Footer';
 
@@ -246,7 +247,19 @@ const SearchPage: React.FC = () => {
    * Effect to handle search based on URL parameters.
    * This acts as the source of truth for the current search state.
    */
+  const isCoachEvidenceFixture = searchParams.get('fixture') === 'coach-evidence';
+
   useEffect(() => {
+    if (isCoachEvidenceFixture) {
+      setError(null);
+      setLoading(false);
+      setSummonerData(COACH_EVIDENCE_REVIEW_FIXTURE);
+      setMatches(COACH_EVIDENCE_REVIEW_FIXTURE.recentMatches);
+      setPage(1);
+      setHasMore(false);
+      return;
+    }
+
     let gameNameFromUrl = searchParams.get('gameName');
     let tagLineFromUrl = searchParams.get('tagLine');
     let regionFromUrl = searchParams.get('region');
@@ -517,6 +530,19 @@ const SearchPage: React.FC = () => {
           )}
           {summonerData && (
             <>
+              {isCoachEvidenceFixture && (
+                <div
+                  data-testid="coach-evidence-fixture-banner"
+                  className="mb-3 rounded-lg border border-amber-500/40 bg-amber-950/30 px-3.5 py-2 text-xs text-amber-200 flex flex-wrap items-center justify-between gap-2"
+                >
+                  <span className="font-bold uppercase tracking-wider text-amber-300">
+                    Deterministic Review Fixture · CoachContractFixture#TEST
+                  </span>
+                  <span className="text-[11px] text-amber-200/90">
+                    Synthetic 4-match contract sample (1 eligible 26.1+ Mid, 1 short &lt;10m Mid, 1 pre-26.1 Mid, 1 Jungle) · No live Riot API calls
+                  </span>
+                </div>
+              )}
               <AnimatePresence>
                 {showFullProfile && (
                     <PlayerProfile 
