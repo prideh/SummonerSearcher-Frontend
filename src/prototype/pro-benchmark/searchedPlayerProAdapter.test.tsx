@@ -22,6 +22,8 @@ import {
   listSelectableProPlayers,
   resolveSelectableProPlayer,
 } from './proBenchmarkEngine';
+import * as timelineApi from '../../api/timeline';
+import apiClient from '../../api/apiClient';
 import type { MatchDto } from '../../types/match';
 import type { MatchTimelineDto } from '../../types/timeline';
 
@@ -1907,6 +1909,163 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
       'Client Local JSON · Zero Live API Calls'
     );
   });
+
+  it('strictly blocks timelineApi / apiClient / fetch calls in synthetic_test_profile and local_json modes (including unloaded fixtures) while keeping live_profile API loading intact', async () => {
+    const getMatchTimelineSpy = vi
+      .spyOn(timelineApi, 'getMatchTimeline')
+      .mockImplementation(async () => {
+        throw new Error('Unexpected timelineApi.getMatchTimeline network call in private mode');
+      });
+    const apiClientGetSpy = vi.spyOn(apiClient, 'get').mockImplementation(async () => {
+      throw new Error('Unexpected apiClient.get network call in private mode');
+    });
+    const globalFetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      throw new Error('Unexpected global fetch call in private mode');
+    });
+
+    try {
+      // 1. ProComparisonPreview default FullContract#EUW (synthetic_test_profile) has EUW1_FULL_016 intentionally unloaded (15/16G)
+      const previewRender = render(<ProComparisonPreview initialSurface="profile" />);
+
+      const defaultBtn = screen.getByTestId('load-pair-timelines-btn') as HTMLButtonElement;
+      expect(defaultBtn).toBeDisabled();
+      expect(defaultBtn).toHaveTextContent('15/16G timelines (1G unloaded in fixture · Network Off)');
+
+      // Attempt both normal click and forced-enabled click to verify handler guard
+      fireEvent.click(defaultBtn);
+      defaultBtn.disabled = false;
+      fireEvent.click(defaultBtn);
+      defaultBtn.disabled = true;
+
+      // Select Top · Garen and specifically the unloaded match EUW1_FULL_016
+      fireEvent.change(screen.getByTestId('player-pair-select'), {
+        target: { value: 'top::Garen' },
+      });
+      fireEvent.change(screen.getByTestId('player-match-scope-select'), {
+        target: { value: 'EUW1_FULL_016' },
+      });
+
+      const unloadedMatchBtn = screen.getByTestId('load-pair-timelines-btn') as HTMLButtonElement;
+      expect(unloadedMatchBtn).toBeDisabled();
+      expect(unloadedMatchBtn).toHaveTextContent(
+        '1/2G timelines (1G unloaded in fixture · Network Off)'
+      );
+      expect(screen.getByTestId('player-unavailable-10m')).toHaveTextContent(
+        'Missing Timeline (Offline)'
+      );
+
+      fireEvent.click(unloadedMatchBtn);
+      unloadedMatchBtn.disabled = false;
+      fireEvent.click(unloadedMatchBtn);
+      unloadedMatchBtn.disabled = true;
+
+      // 2. Switch to Local JSON Inspector inside ProComparisonPreview with 0 loaded timelines
+      fireEvent.click(screen.getByTestId('toggle-review-controls'));
+      fireEvent.click(screen.getByTestId('toggle-local-json-inspector'));
+
+      const krSample = RECORDED_REVIEW_PROFILES.kr_mid_specialist;
+      fireEvent.change(screen.getByTestId('local-json-textarea'), {
+        target: {
+          value: JSON.stringify({
+            puuid: krSample.puuid,
+            region: krSample.region,
+            gameName: 'OfflineJsonUser',
+            tagLine: 'LOCAL',
+            visibleMatches: krSample.visibleMatches,
+            timelinesByMatchId: {},
+          }),
+        },
+      });
+      fireEvent.click(screen.getByTestId('apply-local-json-btn'));
+
+      expect(screen.getByTestId('profile-pro-comparison-tab')).toHaveAttribute(
+        'data-source-mode',
+        'local_json'
+      );
+      const localJsonBtn = screen.getByTestId('load-pair-timelines-btn') as HTMLButtonElement;
+      expect(localJsonBtn).toBeDisabled();
+      expect(localJsonBtn).toHaveTextContent('0/1G timelines (1G missing in JSON · Network Off)');
+      expect(screen.getByTestId('player-unavailable-10m')).toHaveTextContent(
+        'Missing Timeline (Offline)'
+      );
+
+      fireEvent.click(localJsonBtn);
+      localJsonBtn.disabled = false;
+      fireEvent.click(localJsonBtn);
+      localJsonBtn.disabled = true;
+
+      previewRender.unmount();
+
+      // 3. Direct ProfileProComparisonTab renders in synthetic_test_profile and local_json WITHOUT fetchTimeline prop override
+      const euwSample = RECORDED_REVIEW_PROFILES.euw_top_specialist;
+      for (const offlineMode of ['synthetic_test_profile', 'local_json'] as const) {
+        const directRender = render(
+          <ProfileProComparisonTab
+            puuid={euwSample.puuid}
+            region={euwSample.region}
+            gameName={euwSample.gameName}
+            tagLine={euwSample.tagLine}
+            visibleMatches={euwSample.visibleMatches}
+            initialTimelinesByMatchId={{}}
+            dataSourceMode={offlineMode}
+          />
+        );
+        const btn = screen.getByTestId('load-pair-timelines-btn') as HTMLButtonElement;
+        expect(btn).toBeDisabled();
+        expect(btn).toHaveTextContent('Network Off');
+        expect(screen.getByTestId('player-unavailable-10m')).toHaveTextContent(
+          'Missing Timeline (Offline)'
+        );
+
+        fireEvent.click(btn);
+        btn.disabled = false;
+        fireEvent.click(btn);
+        directRender.unmount();
+      }
+
+      expect(getMatchTimelineSpy).not.toHaveBeenCalled();
+      expect(apiClientGetSpy).not.toHaveBeenCalled();
+      expect(globalFetchSpy).not.toHaveBeenCalled();
+
+      // 4. Confirm public live_profile default path remains completely intact and uses timelineApi.getMatchTimeline on click
+      getMatchTimelineSpy.mockImplementation(async (_region: string, matchId: string) => {
+        return krSample.timelinesByMatchId[matchId] ?? null;
+      });
+
+      const liveRender = render(
+        <ProfileProComparisonTab
+          puuid={krSample.puuid}
+          region={krSample.region}
+          gameName={krSample.gameName}
+          tagLine={krSample.tagLine}
+          visibleMatches={krSample.visibleMatches}
+          initialTimelinesByMatchId={{}}
+          dataSourceMode="live_profile"
+          initialScope="champion_pair"
+        />
+      );
+
+      const liveBtn = screen.getByTestId('load-pair-timelines-btn') as HTMLButtonElement;
+      expect(liveBtn).not.toBeDisabled();
+      expect(liveBtn).toHaveTextContent('Load Timelines (1G)');
+      expect(screen.getByTestId('player-unavailable-10m')).toHaveTextContent('Load Timeline');
+
+      fireEvent.click(liveBtn);
+      await waitFor(() => {
+        expect(screen.getByTestId('player-mean-cs-10m')).toHaveTextContent('94.0');
+      });
+      expect(getMatchTimelineSpy).toHaveBeenCalledTimes(1);
+      expect(getMatchTimelineSpy).toHaveBeenCalledWith('KR', 'KR_8102001');
+      expect(apiClientGetSpy).not.toHaveBeenCalled();
+
+      liveRender.unmount();
+    } finally {
+      getMatchTimelineSpy.mockRestore();
+      apiClientGetSpy.mockRestore();
+      globalFetchSpy.mockRestore();
+    }
+  });
 });
+
 
 

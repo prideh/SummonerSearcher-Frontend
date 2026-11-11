@@ -129,6 +129,8 @@ const defaultFetchTimeline = async (
   return null;
 };
 
+const offlinePrivateNoopFetchTimeline = async (): Promise<MatchTimelineDto | null> => null;
+
 export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = ({
   puuid,
   region,
@@ -138,9 +140,14 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
   initialTimelinesByMatchId,
   dataSourceMode = 'live_profile',
   initialScope = 'role_first',
-  fetchTimeline = defaultFetchTimeline,
+  fetchTimeline,
   dataset = DEFAULT_PRO_BENCHMARK_DATASET,
 }) => {
+  const isLiveNetworkAllowed = dataSourceMode === 'live_profile';
+  const effectiveFetchTimeline = isLiveNetworkAllowed
+    ? (fetchTimeline ?? defaultFetchTimeline)
+    : offlinePrivateNoopFetchTimeline;
+
   const allSupportedProPairs = useMemo(
     () => getSupportedRoleChampionOptions(dataset, 'ALL'),
     [dataset]
@@ -322,6 +329,9 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
   );
 
   const handleLoadTimelinesForSelectedPair = async () => {
+    if (!isLiveNetworkAllowed) {
+      return;
+    }
     if (!selectedPair || loadingTimelines) return;
     const matchIdsToFetch = comparison.unloadedMatchIdsForSelectedPair.slice(
       0,
@@ -362,7 +372,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
           return;
         }
         try {
-          const dto = await fetchTimeline(requestRegion, matchId);
+          const dto = await effectiveFetchTimeline(requestRegion, matchId);
           if (!isRequestCurrent()) {
             return;
           }
@@ -735,19 +745,37 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                       {comparison.unloadedMatchIdsForSelectedPair.length > 0 ? (
-                        <button
-                          type="button"
-                          data-testid="load-pair-timelines-btn"
-                          disabled={loadingTimelines}
-                          onClick={handleLoadTimelinesForSelectedPair}
-                          className="px-2 py-0.5 rounded text-[11px] font-extrabold bg-sky-600 hover:bg-sky-500 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950 border border-sky-500 dark:border-cyan-400 transition-colors disabled:opacity-60"
-                        >
-                          {loadingTimelines
-                            ? 'Loading...'
-                            : `Load Timelines (${comparison.unloadedMatchIdsForSelectedPair.length}G)`}
-                        </button>
+                        isLiveNetworkAllowed ? (
+                          <button
+                            type="button"
+                            data-testid="load-pair-timelines-btn"
+                            disabled={loadingTimelines}
+                            onClick={handleLoadTimelinesForSelectedPair}
+                            className="px-2 py-0.5 rounded text-[11px] font-extrabold bg-sky-600 hover:bg-sky-500 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950 border border-sky-500 dark:border-cyan-400 transition-colors disabled:opacity-60"
+                          >
+                            {loadingTimelines
+                              ? 'Loading...'
+                              : `Load Timelines (${comparison.unloadedMatchIdsForSelectedPair.length}G)`}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            data-testid="load-pair-timelines-btn"
+                            disabled
+                            aria-disabled="true"
+                            onClick={handleLoadTimelinesForSelectedPair}
+                            className="px-2 py-0.5 rounded text-[10px] font-semibold text-left leading-snug break-words bg-slate-200/80 dark:bg-slate-900 text-amber-800 dark:text-amber-300 border border-amber-500/40 cursor-not-allowed"
+                          >
+                            {selectedPair.loadedTimelineCount}/{selectedPair.playerGameCount}G
+                            timelines ({comparison.unloadedMatchIdsForSelectedPair.length}G{' '}
+                            {dataSourceMode === 'local_json'
+                              ? 'missing in JSON'
+                              : 'unloaded in fixture'}{' '}
+                            · Network Off)
+                          </button>
+                        )
                       ) : (
                         <span
                           data-testid="timelines-loaded-indicator"
@@ -954,9 +982,11 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                             ) : cp.playerStatus === 'timeline_not_loaded' ? (
                               <p
                                 data-testid={`player-unavailable-${cp.label}`}
-                                className="text-[11px] font-semibold text-amber-600 dark:text-amber-300 py-0.5"
+                                className="text-[11px] font-semibold text-amber-600 dark:text-amber-300 py-0.5 leading-snug break-words"
                               >
-                                Load Timeline
+                                {isLiveNetworkAllowed
+                                  ? 'Load Timeline'
+                                  : 'Missing Timeline (Offline)'}
                               </p>
                             ) : (
                               <p

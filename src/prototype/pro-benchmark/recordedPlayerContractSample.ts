@@ -424,7 +424,7 @@ function buildFullContractSampleProfile(): SyntheticTestPlayerProfile {
       },
     });
 
-    // Leave rank 16 unloaded so the private preview also demonstrates bounded on-demand timeline loading
+    // Leave rank 16 unloaded so private review exercises missing-timeline denominators with network OFF
     if (rank !== 16 && rank <= 20) {
       const targetMarks = [5, 10, 14, 15, 20, 25, 30].filter(
         (m) => m * 60 <= durationSec

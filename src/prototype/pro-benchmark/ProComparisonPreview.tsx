@@ -68,6 +68,8 @@ function resolveDefaultProfileKey(): string {
   return 'euw_full_contract_sample';
 }
 
+const offlinePreviewFetchTimeline = async (): Promise<MatchTimelineDto | null> => null;
+
 export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
   dataset = DEFAULT_PRO_BENCHMARK_DATASET,
   initialRole = 'top',
@@ -744,6 +746,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                   visibleMatches={activeReviewProfile.visibleMatches}
                   initialTimelinesByMatchId={activeReviewProfile.timelinesByMatchId}
                   dataSourceMode={customProfile ? 'local_json' : 'synthetic_test_profile'}
+                  fetchTimeline={offlinePreviewFetchTimeline}
                   dataset={dataset}
                 />
               )}
