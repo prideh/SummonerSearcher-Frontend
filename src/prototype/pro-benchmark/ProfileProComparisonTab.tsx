@@ -455,7 +455,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
     {
       key: 'killParticipation',
       shortTitle: 'Kill Participation',
-      subtitle: '(K + A) / Same-5 Team Kills',
+      subtitle: 'Kills + Assists / Team Kills',
       metric: comparison.wholeGameComparison.killParticipation,
       formatValue: (v) => `${(v * 100).toFixed(1)}%`,
       formatDelta: formatSignedPoints,
@@ -463,7 +463,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
     {
       key: 'championDamageShare',
       shortTitle: 'Damage Share',
-      subtitle: 'Champ Dmg / Same-5 Team Dmg',
+      subtitle: 'Champion Damage / Team Damage',
       metric: comparison.wholeGameComparison.championDamageShare,
       formatValue: (v) => `${(v * 100).toFixed(1)}%`,
       formatDelta: formatSignedPoints,
@@ -471,7 +471,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
     {
       key: 'totalDeaths',
       shortTitle: 'Full-Game Deaths',
-      subtitle: 'MatchDto.deaths vs finalDeaths',
+      subtitle: 'Total Deaths per Game',
       metric: comparison.wholeGameComparison.totalDeaths,
       formatValue: (v) => `${v.toFixed(2)}`,
       formatDelta: (d) => formatSignedNumber(d, 2, '/G'),
@@ -480,7 +480,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
     {
       key: 'csPerMin',
       shortTitle: 'Whole-Game CS / Min',
-      subtitle: '(Lane + Jungle) / Game Mins',
+      subtitle: 'Lane + Jungle CS per Minute',
       metric: comparison.wholeGameComparison.csPerMin,
       formatValue: (v) => `${v.toFixed(2)}/m`,
       formatDelta: (d) => formatSignedNumber(d, 2, '/m'),
@@ -515,7 +515,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
               data-testid="no-positional-matches-state"
               className="rounded-lg border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-3 text-xs text-slate-600 dark:text-slate-300"
             >
-              No positional Summoner&apos;s Rift matches found in recent 20 match window for{' '}
+              No positional Summoner&apos;s Rift matches found in the recent 20 match window for{' '}
               <span className="font-bold">
                 {gameName}#{tagLine}
               </span>
@@ -525,7 +525,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                 onClick={() => setSurfaceMode('pro_catalog')}
                 className="underline font-bold text-sky-600 dark:text-cyan-400"
               >
-                Pro Catalog ({allSupportedProPairs.length} pairs)
+                Pro Catalog ({allSupportedProPairs.length} matchups)
               </button>{' '}
               or load more matches.
             </div>
@@ -540,7 +540,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                   <span className="px-1.5 py-0.5 rounded bg-cyan-500/15 text-sky-800 dark:text-cyan-300 border border-cyan-500/30 font-extrabold text-[10px] uppercase tracking-wide">
                     {comparison.comparisonScope === 'role_first'
                       ? 'Role-First Default'
-                      : 'Champion · Role Slice'}
+                      : 'Champion · Role Matchup'}
                   </span>
                   <span className="font-semibold text-slate-700 dark:text-slate-200">
                     Recent {comparison.recentMatchWindow.analyzedRecentMatchCount}/
@@ -562,10 +562,10 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                   }`}
                 >
                   {dataSourceMode === 'synthetic_test_profile'
-                    ? 'Prototype Synthetic Fixture · Not Real Player Data'
+                    ? 'Sample player · Not real account data (Offline)'
                     : dataSourceMode === 'local_json'
-                      ? 'Client Local JSON · Zero Live API Calls'
-                      : 'Searched Player MatchDto + Bounded Timeline Contract'}
+                      ? 'Sample player · Loaded match data (Offline)'
+                      : 'Searched Player Match History & Timelines'}
                 </span>
               </div>
 
@@ -620,7 +620,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                         {opt.championId} · {opt.roleDisplay} ({opt.playerGameCount}G Player ·{' '}
                         {opt.proReferenceAvailable
                           ? `${opt.proSampleGameCount}G Pro Ref`
-                          : 'No Pro Ref in Sample'}
+                          : 'No Pro Sample'}
                         )
                       </option>
                     ))}
@@ -669,12 +669,12 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                     className="w-full min-w-0 truncate rounded bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                   >
                     <option value="ALL">
-                      All Selected ({selectedPair?.playerGameCount ?? 0}G Mean)
+                      All Selected Games ({selectedPair?.playerGameCount ?? 0}G Average)
                     </option>
-                    {selectedPair?.matches.map((m) => (
+                    {selectedPair?.matches.map((m, idx) => (
                       <option key={m.matchId} value={m.matchId}>
-                        {m.matchId} ({m.championId} · {m.gameDurationFormatted} ·{' '}
-                        {m.win ? 'W' : 'L'})
+                        Game {idx + 1} · {m.championId} ({m.gameDurationFormatted} ·{' '}
+                        {m.win ? 'Win' : 'Loss'})
                       </option>
                     ))}
                   </select>
@@ -769,11 +769,8 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                             className="px-2 py-0.5 rounded text-[10px] font-semibold text-left leading-snug break-words bg-slate-200/80 dark:bg-slate-900 text-amber-800 dark:text-amber-300 border border-amber-500/40 cursor-not-allowed"
                           >
                             {selectedPair.loadedTimelineCount}/{selectedPair.playerGameCount}G
-                            timelines ({comparison.unloadedMatchIdsForSelectedPair.length}G{' '}
-                            {dataSourceMode === 'local_json'
-                              ? 'missing in JSON'
-                              : 'unloaded in fixture'}{' '}
-                            · Network Off)
+                            timelines · Missing match timeline (
+                            {comparison.unloadedMatchIdsForSelectedPair.length}G · Offline)
                           </button>
                         )
                       ) : (
@@ -802,18 +799,18 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                         :
                       </span>{' '}
                       {comparison.proPlayerSelection.unavailableReason ??
-                        `0 games in the finite 8-game Worlds 2026 sample (${allSupportedProPairs.length} pairs total).`}{' '}
-                      Player metrics remain visible without unrelated fallback.
+                        `0 games in the finite 8-game Worlds 2026 sample (${allSupportedProPairs.length} matchups total).`}{' '}
+                      Player stats remain visible without unrelated fallback.
                     </div>
                   )}
 
                   {/* WHOLE-GAME COMPARABLE METRICS (KP, Damage Share, Full-Game Deaths, CS/Min) */}
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center justify-between gap-1 text-[10px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">
-                      <span>Whole-Game Same-Formula Metrics (MatchDto vs Pro Final Summary)</span>
+                      <span>Full-Game Averages vs Pro Reference</span>
                       <span className="normal-case font-normal text-slate-500 dark:text-slate-400">
-                        Gold compared at 5m–25m timeline frames (whole-game goldEarned vs finalGold
-                        not assumed identical)
+                        Gold is compared at 5m–25m checkpoints only (end-of-game total gold rules
+                        are not verified identical)
                       </span>
                     </div>
                     <div
@@ -857,7 +854,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                                   className={`shrink-0 text-[10px] font-extrabold px-1.5 py-0.5 rounded border ${
                                     deltaGood
                                       ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
-                                      : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                                      : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'
                                   }`}
                                 >
                                   {card.formatDelta(m.deltaMean)}
@@ -892,7 +889,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                                   data-testid={`whole-game-pro-${card.key}`}
                                   className="font-extrabold text-sky-700 dark:text-cyan-300"
                                 >
-                                  {m.proMean !== null ? card.formatValue(m.proMean) : 'Unavailable'}
+                                  {m.proMean !== null ? card.formatValue(m.proMean) : 'Not available'}
                                 </div>
                               </div>
                             </div>
@@ -986,14 +983,14 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                               >
                                 {isLiveNetworkAllowed
                                   ? 'Load Timeline'
-                                  : 'Missing Timeline (Offline)'}
+                                  : 'Missing match timeline (Offline)'}
                               </p>
                             ) : (
                               <p
                                 data-testid={`player-unavailable-${cp.label}`}
                                 className="text-[11px] font-semibold text-amber-600 dark:text-amber-300 py-0.5"
                               >
-                                Counter Missing
+                                Not available
                               </p>
                             )}
                           </div>
@@ -1034,7 +1031,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                                 data-testid={`pro-unavailable-${cp.label}`}
                                 className="text-[11px] font-semibold text-amber-600 dark:text-amber-300"
                               >
-                                Not in 25m export
+                                Not available at 30m
                               </p>
                             ) : cp.proStatus === 'unsupported_pair' ? (
                               <p
@@ -1156,10 +1153,8 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                                 className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 ml-auto"
                               >
                                 {cp.proEarlyTotalDeathsStatus === 'all_reached_games_paused'
-                                  ? 'Paused G1 excl.'
-                                  : cp.proEarlyTotalDeathsStatus === 'not_in_sample_export'
-                                    ? 'Not exported'
-                                    : 'Unavailable'}
+                                  ? 'Paused game excluded'
+                                  : 'Not available'}
                               </span>
                             )}
                           </div>
@@ -1168,17 +1163,17 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                     ))}
                   </div>
 
-                  {/* EXCLUDED / UNAVAILABLE METRICS STRIP (Solo Kills, Turret Plates, Solo Deaths = NULL, NOT 0) */}
+                  {/* STATS NOT AVAILABLE IN PRO REFERENCE (Solo Kills, Turret Plates, Solo Deaths = Unknown, Never 0) */}
                   <div
                     data-testid="excluded-metrics-strip"
                     className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/75 p-2 space-y-1.5"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-1 text-[10px]">
                       <span className="font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                        Excluded / Unavailable Pro Metrics (Preserved as Unknown / null — Never 0)
+                        Stats Not Available in Pro Reference (Shown as Unknown, Never 0)
                       </span>
                       <span className="text-slate-500 dark:text-slate-400">
-                        Excluded unless both sources cover the exact same formula and time window
+                        Only stats measured the exact same way over the same game time are compared
                       </span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
@@ -1196,15 +1191,15 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                               data-testid={`excluded-metric-status-${item.metricKey}`}
                               className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30"
                             >
-                              UNAVAILABLE · null
+                              Not available
                             </span>
                           </div>
                           <p className="text-[10px] text-slate-600 dark:text-slate-400 leading-snug">
                             {item.metricKey === 'soloKills'
-                              ? 'Not in retained 8-game pro export; Riot challenges.soloKills window is undocumented and 0-assist timeline kills are not proven 1v1.'
+                              ? 'Not tracked in the 8-game pro reference; solo-kill time windows are not consistently recorded across match history and timelines (shown as Unknown, never 0).'
                               : item.metricKey === 'turretPlates'
-                                ? 'Not in retained 8-game pro export; Patch 26.1+ plates exist permanently on inner/inhibitor turrets beyond 14:00 with unverified assist credit.'
-                                : 'No soloDeaths field in Riot ChallengesDto or pro export; opponent soloKills includes teammates and backend null-assist fallback is never reused.'}
+                                ? 'Not tracked in the 8-game pro reference; turret plates extend beyond 14:00 onto inner and inhibitor turrets with unverified assist credit (shown as Unknown, never 0).'
+                                : 'Not tracked in match summaries or the 8-game pro reference; opponent solo kills include kills against teammates, and unassisted kills can miss faded assists (shown as Unknown, never 0).'}
                           </p>
                         </div>
                       ))}
@@ -1223,7 +1218,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
           <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-slate-200 dark:border-slate-800">
             <span className="text-xs font-extrabold text-slate-900 dark:text-white">
               {surfaceMode === 'pro_catalog'
-                ? `Worlds 2026 Pro Catalog (${allSupportedProPairs.length} Pairs)`
+                ? `Worlds 2026 Pro Catalog (${allSupportedProPairs.length} Matchups)`
                 : 'Manual Demo Scratchpad (Not Searched Player Stats)'}
             </span>
             <button
@@ -1330,7 +1325,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                     </div>
                   ) : (
                     <p className="text-xs font-bold text-amber-600 dark:text-amber-300">
-                      Unavailable
+                      Not available
                     </p>
                   )}
 
@@ -1372,12 +1367,13 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
       >
         <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
           <strong className="text-amber-600 dark:text-amber-300 font-semibold">Caveats:</strong>{' '}
-          Finite 8-game Worlds 2026 sample (80 player-games, {allSupportedProPairs.length} pairs,
-          Patch 16.20; n=16/role, n=1–4/pro)—not broad proof and not a solo-queue percentile.
-          Public esports feed permission/ToS unresolved (private offline preview only). Clock
-          alignment uses spawn anchor + zero-gold pause heuristic (±0.50s; CS@10 HUD-checked in 2/8
-          games; *paused G1 excluded from early deaths = 70/80 unpaused rows; 30m not exported;
-          missing/ended = null, never 0).
+          Finite 8-game Worlds 2026 sample (80 player-games, {allSupportedProPairs.length}{' '}
+          champion-role matchups, Patch 16.20; 16 games per role, 1–4 per pro)—not broad proof and
+          not a solo-queue percentile. Public esports data permission/terms remain unresolved
+          (private offline preview only). Game clock alignment adjusts for champion spawn and match
+          pauses (±0.50s; CS@10 HUD-checked in 2/8 games; *paused Game 1 excluded from early deaths
+          = 70/80 unpaused player-games; 30m pro stats not available; ended games and missing stats
+          stay Unknown, never 0).
         </p>
 
         <div className="flex flex-wrap items-center gap-1.5 shrink-0">
@@ -1414,7 +1410,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
         >
           <div>
             <h4 className="text-xs font-extrabold text-slate-900 dark:text-white mb-1">
-              Searched Player Matches ({gameName}#{tagLine} ·{' '}
+              Player Matches ({gameName}#{tagLine} ·{' '}
               {selectedPair.championId === 'ALL'
                 ? `All ${selectedPair.roleDisplay}`
                 : `${selectedPair.championId} · ${selectedPair.roleDisplay}`}
@@ -1423,8 +1419,8 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-500">
-                  <th className="py-1 pr-2">Match ID</th>
-                  <th className="py-1 px-2">Champ / Context</th>
+                  <th className="py-1 pr-2">Game</th>
+                  <th className="py-1 px-2">Champ / Result</th>
                   {PRO_CHECKPOINT_MINUTES.map((m) => (
                     <th key={m} className="py-1 px-2 text-right">
                       {m}m CS
@@ -1436,16 +1432,16 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60">
-                {selectedPair.matches.map((m) => (
+                {selectedPair.matches.map((m, idx) => (
                   <tr key={m.matchId} data-testid={`player-match-row-${m.matchId}`}>
                     <td className="py-1.5 pr-2 font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                      {m.matchId}{' '}
+                      Game {idx + 1}{' '}
                       <span className="text-[11px] font-normal text-slate-500">
                         ({m.gameDurationFormatted})
                       </span>
                     </td>
                     <td className="py-1.5 px-2 text-[11px] text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                      {m.championId} · {m.win ? 'W' : 'L'} · Patch {m.patch}
+                      {m.championId} · {m.win ? 'Win' : 'Loss'} · Patch {m.patch}
                     </td>
                     {PRO_CHECKPOINT_MINUTES.map((min) => {
                       const cell = m.checkpoints[min];
@@ -1464,11 +1460,13 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                             </span>
                           ) : cell.status === 'timeline_not_loaded' ? (
                             <span className="text-[10px] text-amber-600 dark:text-amber-300">
-                              Not Loaded
+                              {isLiveNetworkAllowed
+                                ? 'Timeline not loaded'
+                                : 'Missing match timeline'}
                             </span>
                           ) : (
                             <span className="text-[10px] text-amber-600 dark:text-amber-300">
-                              Missing
+                              Not available
                             </span>
                           )}
                         </td>
@@ -1555,7 +1553,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                                   Ended ({row.trueInGameDurationFormatted})
                                 </span>
                               ) : (
-                                <span className="text-[10px] text-slate-400">Unavailable</span>
+                                <span className="text-[10px] text-slate-400">Not available</span>
                               )}
                             </td>
                           );
@@ -1590,24 +1588,24 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
         >
           <p>
             <strong className="text-slate-900 dark:text-white">
-              Same-Formula Verification (Finite 8-Game Sample):
+              Same-Rule Stat Matching (Finite 8-Game Sample):
             </strong>{' '}
-            Checkpoint CS (`minionsKilled + jungleMinionsKilled`), Gold (`participantFrames.totalGold`
-            vs `aligned_checkpoints.pGolds`, checked at 5m = 500 spawn base in the 8-game sample),
-            and Level (`participantFrames.level` vs `pLevels`) are matched within ±30s on loaded
-            `MatchTimelineDto` frames. Whole-game KP is computed from the exact 5 same-team players
-            (`(K + A) / sum(teamKills)`) on both sides, correcting raw `livestats` KP when executions
-            occur (`G2 vs HLE G2` Red side). Whole-game `MatchDto.goldEarned` vs `finalGold` is not
-            assumed starting-gold/sellback equivalent and is omitted from whole-game deltas.
+            Checkpoint CS (lane minions plus jungle monsters), Total Gold (including 500 starting
+            gold, verified at 5:00 in the 8-game sample), and Champion Level are matched within ±30s
+            on loaded match timelines. Full-game Kill Participation is calculated from all 5
+            teammates&apos; kills and assists on both sides, correcting team kill totals when turret
+            or monster executions occur (such as G2 vs HLE Game 2 Red side). End-of-game total gold
+            is not compared across the full game because starting-gold and item-resale rules are not
+            verified identical at game end.
           </p>
           <p>
             <strong className="text-slate-900 dark:text-white">
               Finite Sample &amp; Permission Caveats:
             </strong>{' '}
             8 Worlds 2026 games (80 player-games, {allSupportedProPairs.length} unique champion-role
-            pairs; 37 pairs have n=1) on Patch 16.20—not a broad proof or solo-queue percentile.
-            Public `lolesports`/`livestats` permission/ToS remains unresolved; this preview uses only
-            the static offline sample.
+            matchups; 37 matchups have 1 game) on Patch 16.20—not broad proof or a solo-queue
+            percentile. Public esports data permission and terms remain unresolved; this preview
+            uses only the static offline sample.
           </p>
           <div className="pt-1.5 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center gap-1.5">
             <span className="text-[11px] font-bold text-slate-500">Alternate Views:</span>

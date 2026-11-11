@@ -272,15 +272,15 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     expect(screen.getByTestId('paired-delta-10m')).toHaveTextContent('No Delta');
   });
 
-  it('defaults to FullContract#EUW (22G / recent20), retains legacy partial fixtures as options preserving Unknown (never hidden or 0), and clears stale selection on switch', () => {
+  it('defaults to Ironclad#EUW (22G / recent20), retains legacy partial sample players as options preserving Unknown (never hidden or 0), and clears stale selection on switch', () => {
     render(<ProComparisonPreview initialSurface="profile" />);
 
-    // Default fixture is FullContract#EUW (explicit 22-match synthetic fixture with full 5v5 teams)
+    // Default sample player is Ironclad#EUW (22-match sample profile with full 5v5 teams)
     expect(screen.getByTestId('pro-comparison-identity-badge')).toHaveTextContent(
-      'FullContract#EUW (EUW1)'
+      'Ironclad#EUW (EUW1)'
     );
     expect(screen.getByTestId('pro-comparison-datasource-badge')).toHaveTextContent(
-      'Synthetic test profile / Not real player data'
+      'Sample player · Not real account data (Offline)'
     );
     expect(screen.getByTestId('paired-selection-title')).toHaveTextContent(
       'Top · All Top Champions'
@@ -1791,14 +1791,14 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     expect(cp30.deltaTotalCs).toBeNull();
     expect(cp30.deltaTotalGold).toBeNull();
 
-    // 2. Render full private preview UI (defaults directly to FullContract#EUW without query params)
+    // 2. Render full private preview UI (defaults directly to Ironclad#EUW without query params)
     const { unmount } = render(<ProComparisonPreview initialSurface="profile" />);
     expect(screen.getByTestId('pro-comparison-datasource-badge')).toHaveTextContent(
-      'Synthetic test profile / Not real player data'
+      'Sample player · Not real account data (Offline)'
     );
 
     expect(screen.getByTestId('pro-comparison-identity-badge')).toHaveTextContent(
-      'FullContract#EUW (EUW1)'
+      'Ironclad#EUW (EUW1)'
     );
     expect(screen.getByTestId('paired-selection-title')).toHaveTextContent(
       'Top · All Top Champions'
@@ -1812,22 +1812,22 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
       {
         key: 'killParticipation',
         title: 'Kill Participation',
-        subtitle: '(K + A) / Same-5 Team Kills',
+        subtitle: 'Kills + Assists / Team Kills',
       },
       {
         key: 'championDamageShare',
         title: 'Damage Share',
-        subtitle: 'Champ Dmg / Same-5 Team Dmg',
+        subtitle: 'Champion Damage / Team Damage',
       },
       {
         key: 'totalDeaths',
         title: 'Full-Game Deaths',
-        subtitle: 'MatchDto.deaths vs finalDeaths',
+        subtitle: 'Total Deaths per Game',
       },
       {
         key: 'csPerMin',
         title: 'Whole-Game CS / Min',
-        subtitle: '(Lane + Jungle) / Game Mins',
+        subtitle: 'Lane + Jungle CS per Minute',
       },
     ];
     for (const item of expectedWholeGameLabels) {
@@ -1841,15 +1841,15 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
       expect(subEl.className).not.toContain('truncate');
     }
     expect(screen.getByTestId('profile-pro-comparison-tab')).toHaveTextContent(
-      'whole-game goldEarned vs finalGold not assumed identical'
+      'Gold is compared at 5m–25m checkpoints only (end-of-game total gold rules are not verified identical)'
     );
 
-    // Checkpoint cards render Gold, Level, and Early Unpaused Deaths alongside CS, and 30m renders Not in 25m export
+    // Checkpoint cards render Gold, Level, and Early Unpaused Deaths alongside CS, and 30m renders Not available at 30m
     expect(screen.getByTestId('paired-gold-row-10m')).toHaveTextContent('Gold');
     expect(screen.getByTestId('paired-level-row-10m')).toHaveTextContent('Level');
     expect(screen.getByTestId('paired-deaths-row-10m')).toHaveTextContent('Deaths');
     expect(screen.getByTestId('player-denom-25m')).toHaveTextContent('14/16G');
-    expect(screen.getByTestId('pro-unavailable-30m')).toHaveTextContent('Not in 25m export');
+    expect(screen.getByTestId('pro-unavailable-30m')).toHaveTextContent('Not available at 30m');
 
     // Optional Named Pro filter narrows Top baseline from 16G to HLE Zeus (4G)
     fireEvent.change(screen.getByTestId('player-pro-select'), {
@@ -1859,7 +1859,7 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
       'Pro 4G Finite 8-Game Sample (HLE Zeus · Patch 16.20)'
     );
 
-    // Switch Role to Mid -> Mid · Syndra -> IG Rookie (1G paused IG vs TES G1) -> Early Deaths shows Paused G1 excl.
+    // Switch Role to Mid -> Mid · Syndra -> IG Rookie (1G paused IG vs TES G1) -> Early Deaths shows Paused game excluded
     fireEvent.change(screen.getByTestId('player-role-select'), {
       target: { value: 'mid' },
     });
@@ -1870,26 +1870,20 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
       target: { value: '99566404811346612' },
     });
     expect(screen.getByTestId('pro-early-deaths-unavailable-10m')).toHaveTextContent(
-      'Paused G1 excl.'
+      'Paused game excluded'
     );
 
-    // Excluded / Unavailable metrics strip explicitly shows UNAVAILABLE · null (never 0) for soloKills, turretPlates, soloDeaths
-    expect(screen.getByTestId('excluded-metric-soloKills')).toHaveTextContent(
-      'UNAVAILABLE · null'
-    );
-    expect(screen.getByTestId('excluded-metric-turretPlates')).toHaveTextContent(
-      'UNAVAILABLE · null'
-    );
-    expect(screen.getByTestId('excluded-metric-soloDeaths')).toHaveTextContent(
-      'UNAVAILABLE · null'
-    );
+    // Excluded / Unavailable metrics strip shows plain League "Not available" (never 0, never null) for soloKills, turretPlates, soloDeaths
+    expect(screen.getByTestId('excluded-metric-soloKills')).toHaveTextContent('Not available');
+    expect(screen.getByTestId('excluded-metric-turretPlates')).toHaveTextContent('Not available');
+    expect(screen.getByTestId('excluded-metric-soloDeaths')).toHaveTextContent('Not available');
 
-    // Caveats explicitly state finite 8-game sample (not broad proof), not solo-queue percentile, and public esports permission/ToS
+    // Caveats explicitly state finite 8-game sample (not broad proof), not solo-queue percentile, and public esports permission/terms
     const caveats = screen.getByTestId('profile-comparison-caveat');
     expect(caveats).toHaveTextContent('Finite 8-game Worlds 2026 sample');
     expect(caveats).toHaveTextContent('not broad proof');
     expect(caveats).toHaveTextContent('not a solo-queue percentile');
-    expect(caveats).toHaveTextContent('permission/ToS unresolved');
+    expect(caveats).toHaveTextContent('permission/terms remain unresolved');
 
     unmount();
 
@@ -1906,11 +1900,11 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
       />
     );
     expect(screen.getByTestId('tab-datasource-pill')).toHaveTextContent(
-      'Client Local JSON · Zero Live API Calls'
+      'Sample player · Loaded match data (Offline)'
     );
   });
 
-  it('strictly blocks timelineApi / apiClient / fetch calls in synthetic_test_profile and local_json modes (including unloaded fixtures) while keeping live_profile API loading intact', async () => {
+  it('strictly blocks timelineApi / apiClient / fetch calls in synthetic_test_profile and local_json modes (including unloaded sample games) while keeping live_profile API loading intact', async () => {
     const getMatchTimelineSpy = vi
       .spyOn(timelineApi, 'getMatchTimeline')
       .mockImplementation(async () => {
@@ -1924,12 +1918,12 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     });
 
     try {
-      // 1. ProComparisonPreview default FullContract#EUW (synthetic_test_profile) has EUW1_FULL_016 intentionally unloaded (15/16G)
+      // 1. ProComparisonPreview default Ironclad#EUW (synthetic_test_profile) has EUW1_FULL_016 intentionally unloaded (15/16G)
       const previewRender = render(<ProComparisonPreview initialSurface="profile" />);
 
       const defaultBtn = screen.getByTestId('load-pair-timelines-btn') as HTMLButtonElement;
       expect(defaultBtn).toBeDisabled();
-      expect(defaultBtn).toHaveTextContent('15/16G timelines (1G unloaded in fixture · Network Off)');
+      expect(defaultBtn).toHaveTextContent('15/16G timelines · Missing match timeline (1G · Offline)');
 
       // Attempt both normal click and forced-enabled click to verify handler guard
       fireEvent.click(defaultBtn);
@@ -1948,10 +1942,10 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
       const unloadedMatchBtn = screen.getByTestId('load-pair-timelines-btn') as HTMLButtonElement;
       expect(unloadedMatchBtn).toBeDisabled();
       expect(unloadedMatchBtn).toHaveTextContent(
-        '1/2G timelines (1G unloaded in fixture · Network Off)'
+        '1/2G timelines · Missing match timeline (1G · Offline)'
       );
       expect(screen.getByTestId('player-unavailable-10m')).toHaveTextContent(
-        'Missing Timeline (Offline)'
+        'Missing match timeline (Offline)'
       );
 
       fireEvent.click(unloadedMatchBtn);
@@ -1959,7 +1953,7 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
       fireEvent.click(unloadedMatchBtn);
       unloadedMatchBtn.disabled = true;
 
-      // 2. Switch to Local JSON Inspector inside ProComparisonPreview with 0 loaded timelines
+      // 2. Switch to Developer JSON Loader inside ProComparisonPreview with 0 loaded timelines
       fireEvent.click(screen.getByTestId('toggle-review-controls'));
       fireEvent.click(screen.getByTestId('toggle-local-json-inspector'));
 
@@ -1984,9 +1978,11 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
       );
       const localJsonBtn = screen.getByTestId('load-pair-timelines-btn') as HTMLButtonElement;
       expect(localJsonBtn).toBeDisabled();
-      expect(localJsonBtn).toHaveTextContent('0/1G timelines (1G missing in JSON · Network Off)');
+      expect(localJsonBtn).toHaveTextContent(
+        '0/1G timelines · Missing match timeline (1G · Offline)'
+      );
       expect(screen.getByTestId('player-unavailable-10m')).toHaveTextContent(
-        'Missing Timeline (Offline)'
+        'Missing match timeline (Offline)'
       );
 
       fireEvent.click(localJsonBtn);
@@ -2012,9 +2008,9 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
         );
         const btn = screen.getByTestId('load-pair-timelines-btn') as HTMLButtonElement;
         expect(btn).toBeDisabled();
-        expect(btn).toHaveTextContent('Network Off');
+        expect(btn).toHaveTextContent('Missing match timeline (3G · Offline)');
         expect(screen.getByTestId('player-unavailable-10m')).toHaveTextContent(
-          'Missing Timeline (Offline)'
+          'Missing match timeline (Offline)'
         );
 
         fireEvent.click(btn);
@@ -2065,7 +2061,135 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
       globalFetchSpy.mockRestore();
     }
   });
+
+  it('never prints variable names, DTO/schema/contract/enum names, null, or fixture jargon in player UI, evidence, methodology, or preview banners across default and missing states', () => {
+    const FORBIDDEN_UI_TOKENS = [
+      'MatchDto',
+      'MatchTimelineDto',
+      'ChallengesDto',
+      'challenges.',
+      'finalDeaths',
+      'finalGold',
+      'goldEarned',
+      'pGolds',
+      'pLevels',
+      'aligned_checkpoints',
+      'minionsKilled',
+      'jungleMinionsKilled',
+      'participantFrames',
+      'assistingParticipantIds',
+      'livestats',
+      'lolesports',
+      'gameState',
+      '/details',
+      'Data Dragon',
+      'UNAVAILABLE',
+      'unloaded in fixture',
+      'missing in JSON',
+      'pairs in JSON',
+      'FullContract',
+      'SummonerInfo',
+      'RankedInfo',
+      'ImprovementStatsSection',
+      'EUW1_FULL_',
+      'EUW1_720',
+      'KR_810',
+    ];
+
+    const assertZeroTechnicalTokensInDom = (root: HTMLElement, stateLabel: string) => {
+      const visibleText = root.textContent ?? '';
+      const ariaAndTitleText = Array.from(root.querySelectorAll('[aria-label], [title]'))
+        .map((el) => `${el.getAttribute('aria-label') ?? ''} ${el.getAttribute('title') ?? ''}`)
+        .join(' ');
+      const combined = `${visibleText}\n${ariaAndTitleText}`;
+
+      for (const token of FORBIDDEN_UI_TOKENS) {
+        expect(combined, `Forbidden token "${token}" leaked in ${stateLabel}`).not.toContain(token);
+      }
+      expect(combined, `Word "null" leaked in ${stateLabel}`).not.toMatch(/\bnull\b/i);
+      expect(combined, `Word "fixture" leaked in ${stateLabel}`).not.toMatch(/\bfixture\b/i);
+    };
+
+    // 1. Default Profile surface (Ironclad#EUW) + Match Breakdown + Methodology + Review Controls (with Developer JSON Loader closed) + Overview tab
+    const profileRender = render(<ProComparisonPreview initialSurface="profile" />);
+    expect(screen.getByTestId('pro-comparison-datasource-badge')).toHaveTextContent(
+      'Sample player · Not real account data (Offline)'
+    );
+    expect(screen.getByTestId('excluded-metric-status-soloKills')).toHaveTextContent(
+      'Not available'
+    );
+    expect(screen.getByTestId('load-pair-timelines-btn')).toHaveTextContent(
+      'Missing match timeline'
+    );
+
+    fireEvent.click(screen.getByTestId('toggle-profile-match-breakdown'));
+    fireEvent.click(screen.getByTestId('toggle-profile-methodology'));
+    fireEvent.click(screen.getByTestId('toggle-review-controls'));
+    assertZeroTechnicalTokensInDom(
+      profileRender.container,
+      'default Ironclad#EUW + breakdown + methodology + review controls'
+    );
+
+    // Check Overview tab placeholder copy as well
+    fireEvent.click(screen.getByTestId('review-profile-tab-overview'));
+    assertZeroTechnicalTokensInDom(profileRender.container, 'overview tab placeholder');
+    fireEvent.click(screen.getByTestId('review-profile-tab-pro-comparison'));
+
+    // 2. Missing timeline + unsupported pro matchup state (Top · Garen -> Game 2 unloaded)
+    fireEvent.change(screen.getByTestId('player-pair-select'), {
+      target: { value: 'top::Garen' },
+    });
+    fireEvent.change(screen.getByTestId('player-match-scope-select'), {
+      target: { value: 'EUW1_FULL_016' },
+    });
+    expect(screen.getByTestId('player-unavailable-10m')).toHaveTextContent(
+      'Missing match timeline (Offline)'
+    );
+    expect(screen.getByTestId('pro-unavailable-10m')).toHaveTextContent('No Pro Sample');
+    assertZeroTechnicalTokensInDom(
+      profileRender.container,
+      'missing match timeline + unsupported matchup'
+    );
+
+    // 3. Paused pro game excluded state (Mid · Syndra · IG Rookie)
+    fireEvent.change(screen.getByTestId('player-role-select'), {
+      target: { value: 'mid' },
+    });
+    fireEvent.change(screen.getByTestId('player-pair-select'), {
+      target: { value: 'mid::Syndra' },
+    });
+    fireEvent.change(screen.getByTestId('player-pro-select'), {
+      target: { value: '99566404811346612' },
+    });
+    expect(screen.getByTestId('pro-early-deaths-unavailable-10m')).toHaveTextContent(
+      'Paused game excluded'
+    );
+    assertZeroTechnicalTokensInDom(profileRender.container, 'paused pro game excluded');
+
+    // 4. Legacy partial sample player (BladeRunner#EUW) -> Unknown preserved (never hidden or 0)
+    fireEvent.click(screen.getByTestId('switch-review-player-euw'));
+    expect(screen.getByTestId('whole-game-player-killParticipation')).toHaveTextContent('Unknown');
+    expect(screen.getByTestId('whole-game-player-championDamageShare')).toHaveTextContent(
+      'Unknown'
+    );
+    expect(screen.getByTestId('whole-game-player-totalDeaths')).toHaveTextContent('Unknown');
+    assertZeroTechnicalTokensInDom(profileRender.container, 'BladeRunner#EUW Unknown team stats');
+
+    profileRender.unmount();
+
+    // 5. Standalone Reference surface + Per-Game Evidence + Methodology & Limits
+    const standaloneRender = render(<ProComparisonPreview initialSurface="standalone" />);
+    expect(screen.getByTestId('checkpoint-unavailable-30m')).toHaveTextContent('Not available');
+    fireEvent.click(screen.getByTestId('btn-toggle-evidence'));
+    fireEvent.click(screen.getByTestId('btn-toggle-methodology'));
+    assertZeroTechnicalTokensInDom(
+      standaloneRender.container,
+      'standalone reference + evidence + methodology'
+    );
+    standaloneRender.unmount();
+  });
 });
+
 
 
 

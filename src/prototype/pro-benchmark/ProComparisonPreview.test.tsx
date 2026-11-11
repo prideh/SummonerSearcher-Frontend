@@ -68,9 +68,9 @@ describe('ProComparisonPreview & proBenchmarkEngine behavioral suite', () => {
 
     // 30m has 0 exported snapshots in JSON (2 of the 3 KSante games lasted >=30:00)
     expect(screen.getByTestId('checkpoint-denom-30m')).toHaveTextContent('0/3G (2 reached 30m)');
-    expect(screen.getByTestId('checkpoint-unavailable-30m')).toHaveTextContent('Unavailable');
+    expect(screen.getByTestId('checkpoint-unavailable-30m')).toHaveTextContent('Not available');
     expect(screen.getByTestId('checkpoint-unavailable-30m')).toHaveTextContent(
-      'Not in 25m sample export'
+      'Not available at 30m (25m pro sample)'
     );
   });
 
@@ -195,7 +195,7 @@ describe('ProComparisonPreview & proBenchmarkEngine behavioral suite', () => {
     const caveats = screen.getByTestId('inline-comparison-caveats');
     expect(caveats).toHaveTextContent('8 Worlds 2026 games / 80 player-games, patch 16.20');
     expect(caveats).toHaveTextContent('No live user stats connected');
-    expect(caveats).toHaveTextContent('30m not in dataset export');
+    expect(caveats).toHaveTextContent('30m pro stats not available');
     expect(caveats).toHaveTextContent('CS@10 HUD-checked in 2/8 games');
 
     // Expand Per-Game Evidence on demand
@@ -211,8 +211,8 @@ describe('ProComparisonPreview & proBenchmarkEngine behavioral suite', () => {
     // Expand Methodology & Verification Limits on demand
     fireEvent.click(screen.getByTestId('btn-toggle-methodology'));
     const methodPanel = screen.getByTestId('methodology-disclosure-panel');
-    expect(methodPanel).toHaveTextContent('53 unique champion-role pairs in JSON');
-    expect(methodPanel).toHaveTextContent('zero-gold freeze heuristic');
+    expect(methodPanel).toHaveTextContent('53 unique champion-role matchups in sample');
+    expect(methodPanel).toHaveTextContent('passive-gold freeze check');
 
     const pausePanel = screen.getByTestId('pause-audit-panel');
     expect(within(pausePanel).getByText(/IG Rookie \(Syndra\)/)).toBeInTheDocument();

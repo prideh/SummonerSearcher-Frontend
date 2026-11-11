@@ -873,7 +873,7 @@ export function computeProComparisonSlice(
         normalizedChamp === "ALL"
           ? formatRoleDisplay(normalizedRole)
           : `${canonicalChampName} (${formatRoleDisplay(normalizedRole)})`;
-      unsupportedReason = `${resolvedProPlayer.summonerName} (${resolvedProPlayer.esportsPlayerId}) has 0 games on ${targetDesc} in this 8-game sample (played ${formatRoleDisplay(
+      unsupportedReason = `${resolvedProPlayer.summonerName} has 0 games on ${targetDesc} in this 8-game sample (played ${formatRoleDisplay(
         resolvedProPlayer.role,
       )}: ${playedSummary}).`;
     } else if (
@@ -1413,7 +1413,7 @@ export function computeProComparisonSlice(
           obs.game.true_in_game_duration_s,
         )} (<${minuteMark}m)`;
       } else {
-        statusLabel = "Unavailable (not in JSON export)";
+        statusLabel = "Not available";
       }
 
       rowCheckpoints[minuteMark] = {

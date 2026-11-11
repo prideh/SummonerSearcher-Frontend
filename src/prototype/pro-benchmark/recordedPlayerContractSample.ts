@@ -513,7 +513,7 @@ function buildFullContractSampleProfile(): SyntheticTestPlayerProfile {
     key: 'euw_full_contract_sample',
     puuid,
     region: 'EUW1',
-    gameName: 'FullContract',
+    gameName: 'Ironclad',
     tagLine: 'EUW',
     summonerLevel: 384,
     profileIconId: 588,

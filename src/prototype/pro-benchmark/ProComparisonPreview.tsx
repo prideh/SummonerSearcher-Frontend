@@ -245,13 +245,15 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                 <div className="flex items-center justify-between gap-1">
                   <span className="text-slate-400">Gold</span>
                   <span data-testid={`checkpoint-mean-gold-${minuteMark}m`} className="font-semibold">
-                    {cp.meanTotalGold !== null ? `${Math.round(cp.meanTotalGold).toLocaleString('en-US')}g` : 'N/A'}
+                    {cp.meanTotalGold !== null
+                      ? `${Math.round(cp.meanTotalGold).toLocaleString('en-US')}g`
+                      : 'Not available'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-1">
                   <span className="text-slate-400">Level</span>
                   <span data-testid={`checkpoint-mean-level-${minuteMark}m`} className="font-semibold">
-                    {cp.meanLevel !== null ? cp.meanLevel.toFixed(1) : 'N/A'}
+                    {cp.meanLevel !== null ? cp.meanLevel.toFixed(1) : 'Not available'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-1">
@@ -267,8 +269,8 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                             : ''
                         }`
                       : cp.earlyTotalDeathsUnavailableReason === 'ALL_REACHED_GAMES_PAUSED'
-                        ? 'Paused excl.'
-                        : 'Not exported'}
+                        ? 'Paused game excluded'
+                        : 'Not available'}
                   </span>
                 </div>
               </div>
@@ -287,11 +289,11 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
               data-testid={`checkpoint-unavailable-${minuteMark}m`}
               className="mt-2 space-y-0.5"
             >
-              <div className="text-sm font-extrabold text-amber-300">Unavailable</div>
+              <div className="text-sm font-extrabold text-amber-300">Not available</div>
               <p className="text-[11px] text-slate-400 leading-tight">
                 {cp.unavailableReason === 'ALL_GAMES_ENDED_BEFORE_MARK'
                   ? `0/${cp.totalSliceGames}G reached ${minuteMark}:00 (no post-game zeros)`
-                  : 'Not in 25m sample export'}
+                  : 'Not available at 30m (25m pro sample)'}
               </p>
             </div>
           )}
@@ -320,7 +322,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
               step={1}
               inputMode="numeric"
               disabled={!isAvailable}
-              placeholder={isAvailable ? `${Math.round(cp.meanTotalCs ?? 80)}` : 'N/A'}
+              placeholder={isAvailable ? `${Math.round(cp.meanTotalCs ?? 80)}` : '—'}
               value={demoInputs[minuteMark] ?? ''}
               onChange={(e) => handleDemoInputChange(minuteMark, e.target.value)}
               className="w-full rounded bg-slate-950 border border-slate-700 px-2 py-1 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -340,7 +342,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                 </span>
               ) : (
                 <span className="text-slate-500">
-                  {isAvailable ? 'Enter demo CS' : 'Unavailable'}
+                  {isAvailable ? 'Enter demo CS' : 'Not available'}
                 </span>
               )}
             </div>
@@ -531,8 +533,8 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                     className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/40"
                   >
                     {customProfile
-                      ? 'Local JSON Data (Not Live API)'
-                      : 'Synthetic test profile / Not real player data'}
+                      ? 'Sample player · Loaded match data (Offline)'
+                      : 'Sample player · Not real account data (Offline)'}
                   </span>
                 </div>
 
@@ -583,7 +585,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                 </div>
               </div>
 
-              {/* Collapsible Review Controls (Fixture Picker + Local JSON + Standalone Surface Switcher) */}
+              {/* Collapsible Review Controls (Sample Player Picker + Optional Developer JSON Loader + Standalone Switcher) */}
               {showReviewControls && (
                 <section
                   aria-label="Review Controls"
@@ -592,7 +594,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="font-bold text-slate-300">Test Profile:</span>
+                      <span className="font-bold text-slate-300">Sample Player:</span>
                       <button
                         type="button"
                         data-testid="switch-review-player-full"
@@ -606,7 +608,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                             : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
                         }`}
                       >
-                        Synthetic: FullContract#EUW (22G / Recent-20 Default)
+                        Sample Player: Ironclad#EUW (22G · Recent 20 Default)
                       </button>
                       <button
                         type="button"
@@ -621,7 +623,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                             : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
                         }`}
                       >
-                        Synthetic: BladeRunner#EUW (3G Partial · Unknown KP/DMG)
+                        Sample Player: BladeRunner#EUW (3G · Unknown Team Stats)
                       </button>
                       <button
                         type="button"
@@ -636,7 +638,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                             : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
                         }`}
                       >
-                        Synthetic: ArcaneWave#KR1 (1G Mid Partial)
+                        Sample Player: ArcaneWave#KR1 (1G · Mid Sample)
                       </button>
                       <button
                         type="button"
@@ -644,7 +646,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                         onClick={() => setShowJsonInspector((prev) => !prev)}
                         className="px-2 py-0.5 rounded text-xs font-bold bg-slate-900 text-amber-300 border border-amber-700/60 hover:bg-slate-800"
                       >
-                        {showJsonInspector ? 'Hide JSON Loader' : 'Load Local JSON'}
+                        {showJsonInspector ? 'Hide Developer Loader' : 'Developer JSON Loader'}
                       </button>
                     </div>
 
@@ -659,7 +661,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                         }}
                         className="px-2 py-0.5 rounded text-xs font-bold bg-slate-900 text-slate-300 border border-slate-700 hover:bg-slate-800"
                       >
-                        Reference (53 Pairs)
+                        Reference (53 Matchups)
                       </button>
                       <button
                         type="button"
@@ -681,7 +683,8 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                       className="rounded border border-slate-800 bg-slate-900/90 p-2 space-y-1.5"
                     >
                       <div className="text-[11px] font-bold text-slate-200">
-                        Client-Side Local JSON Inspector (Paste real exported MatchDto[] + MatchTimelineDto JSON — 100% in-browser)
+                        Optional Developer JSON Loader (Paste local match &amp; timeline JSON — 100%
+                        in-browser, offline)
                       </div>
                       <textarea
                         aria-label="Paste local MatchDto and MatchTimelineDto JSON"
@@ -724,9 +727,8 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                   data-testid="review-profile-overview-placeholder"
                   className="mt-2.5 rounded-lg border border-slate-800 bg-[#0b101d] p-3 text-xs text-slate-300"
                 >
-                  Standard <code className="text-cyan-300">SummonerInfo</code> Overview tab (renders{' '}
-                  <code className="text-slate-200">RankedInfo</code> &amp;{' '}
-                  <code className="text-slate-200">ImprovementStatsSection</code>). Switch to the{' '}
+                  Standard Profile Overview tab (ranked tier, match history, and consistency
+                  summary). Switch to the{' '}
                   <button
                     type="button"
                     onClick={() => setActiveMockProfileTab('pro_comparison')}
@@ -734,7 +736,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                   >
                     Pro CS Comparison
                   </button>{' '}
-                  tab to view searched-player CS vs same champion/role Worlds 2026 pro reference.
+                  tab to compare recent games against the Worlds 2026 pro reference.
                 </div>
               ) : (
                 <ProfileProComparisonTab
@@ -922,19 +924,19 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                   Whole-Game: KP{' '}
                   {slice.wholeGameSummary.killParticipation.mean !== null
                     ? `${(slice.wholeGameSummary.killParticipation.mean * 100).toFixed(1)}%`
-                    : 'N/A'}{' '}
+                    : 'Not available'}{' '}
                   · DMG{' '}
                   {slice.wholeGameSummary.championDamageShare.mean !== null
                     ? `${(slice.wholeGameSummary.championDamageShare.mean * 100).toFixed(1)}%`
-                    : 'N/A'}{' '}
+                    : 'Not available'}{' '}
                   · Deaths{' '}
                   {slice.wholeGameSummary.totalDeaths.mean !== null
                     ? slice.wholeGameSummary.totalDeaths.mean.toFixed(1)
-                    : 'N/A'}{' '}
+                    : 'Not available'}{' '}
                   · CS/m{' '}
                   {slice.wholeGameSummary.csPerMin.mean !== null
                     ? slice.wholeGameSummary.csPerMin.mean.toFixed(2)
-                    : 'N/A'}
+                    : 'Not available'}
                 </span>
               )}
             </div>
@@ -990,7 +992,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
             <p className="leading-snug">
               <strong className="text-amber-300">Note:</strong> Small pro reference (8 Worlds 2026
               games / 80 player-games, patch 16.20)—not a solo-queue target or percentile. No live
-              user stats connected. Ended games excluded (never 0 CS); 30m not in dataset export.
+              user stats connected. Ended games excluded (never 0 CS); 30m pro stats not available.
               CS@10 HUD-checked in 2/8 games.
             </p>
 
@@ -1098,7 +1100,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                         HUD 10:00 VOD
                       </a>
                     ) : (
-                      <span>Unverified</span>
+                      <span>Not HUD-Checked</span>
                     )}
                   </div>
                 </div>
@@ -1143,7 +1145,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                             {cell.hasExportedSnapshot ? (
                               cell.totalCs
                             ) : (
-                              <span className="text-[11px] text-slate-500">Unavailable</span>
+                              <span className="text-[11px] text-slate-500">Not available</span>
                             )}
                           </td>
                         );
@@ -1163,7 +1165,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                             HUD Verified VOD
                           </a>
                         ) : (
-                          <span className="text-[11px] text-slate-400">Feed Only</span>
+                          <span className="text-[11px] text-slate-400">Not HUD-Checked</span>
                         )}
                       </td>
                     </tr>
@@ -1186,13 +1188,13 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
             <ul className="list-disc list-inside space-y-1 leading-relaxed">
               <li>
                 <strong>Sample Coverage:</strong> 8 Worlds 2026 games (80 player-games, 53 unique
-                champion-role pairs in JSON; 37 pairs have n=1; prior report heading listed 57) on
-                patch 16.20.
+                champion-role matchups in sample; 37 matchups have 1 game; prior report heading
+                listed 57) on patch 16.20.
               </li>
               <li>
-                <strong>Partial HUD Verification &amp; Pause Heuristic:</strong> Independent
-                broadcast HUD verification covered only CS@10 for 20 players in{' '}
-                <code>IG vs TES G1+G2</code> (corrected 10:00 VOD timestamps:{' '}
+                <strong>Partial HUD Verification &amp; Pause Adjustment:</strong> Independent
+                broadcast HUD verification covered only CS@10 for 20 players in IG vs TES Game 1 +
+                Game 2 (corrected 10:00 VOD timestamps:{' '}
                 <a
                   href={VERIFIED_HUD_10M_VOD_BY_GAME_ID['115660540726095110'].correctedHud10mUrl}
                   target="_blank"
@@ -1210,14 +1212,13 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                 >
                   t=6759s
                 </a>
-                ; dataset VOD locator was ~73–74s early). Pause subtraction (105.02s in G1) uses a
-                zero-gold freeze heuristic in <code>/details</code>, not an authenticated{' '}
-                <code>gameState</code> clock across all endpoints.
+                ; earlier VOD timestamp was ~73–74s early). Pause subtraction (105.02s in Game 1)
+                uses a passive-gold freeze check rather than an official tournament pause clock.
               </li>
               <li>
-                <strong>Why Item Build Timings Are Excluded:</strong> Ingest classified items with
-                Data Dragon <code>16.22.1</code> against tournament patch <code>16.20</code>, and
-                item completion timestamps were not HUD-verified.
+                <strong>Why Item Build Timings Are Excluded:</strong> Sample item data used Patch
+                16.22 item definitions against tournament Patch 16.20, and item completion times
+                were not HUD-verified.
               </li>
             </ul>
 
