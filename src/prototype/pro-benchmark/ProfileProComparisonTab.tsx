@@ -564,7 +564,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                 <div className="min-w-0">
                   <label
                     htmlFor="player-role-select"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5 truncate"
+                    className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5 leading-snug"
                   >
                     1. Primary Role (Recent 20)
                   </label>
@@ -587,7 +587,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                 <div className="min-w-0">
                   <label
                     htmlFor="player-pair-select"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5 truncate"
+                    className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5 leading-snug"
                   >
                     2. Role Baseline / Optional Champion
                   </label>
@@ -620,7 +620,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                 <div className="min-w-0">
                   <label
                     htmlFor="player-pro-select"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5 truncate"
+                    className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5 leading-snug"
                   >
                     3. Optional Named Pro
                   </label>
@@ -647,7 +647,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                 <div className="min-w-0">
                   <label
                     htmlFor="player-match-scope-select"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5 truncate"
+                    className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5 leading-snug"
                   >
                     4. Match Window
                   </label>
@@ -790,7 +790,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                     </div>
                     <div
                       data-testid="whole-game-comparison-grid"
-                      className="grid grid-cols-2 lg:grid-cols-4 gap-2"
+                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2"
                     >
                       {wholeGameCards.map((card) => {
                         const m = card.metric;
@@ -803,15 +803,23 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                         return (
                           <div
                             key={card.key}
+                            role="group"
+                            aria-label={`${card.shortTitle} (${card.subtitle})`}
                             data-testid={`whole-game-card-${card.key}`}
                             className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-2 flex flex-col justify-between"
                           >
-                            <div className="flex items-start justify-between gap-1 mb-1">
+                            <div className="flex items-start justify-between gap-1.5 mb-1">
                               <div className="min-w-0">
-                                <div className="text-[11px] font-extrabold text-slate-900 dark:text-white truncate">
+                                <div
+                                  data-testid={`whole-game-title-${card.key}`}
+                                  className="text-[11px] font-extrabold text-slate-900 dark:text-white leading-snug break-words"
+                                >
                                   {card.shortTitle}
                                 </div>
-                                <div className="text-[9px] text-slate-500 dark:text-slate-400 truncate">
+                                <div
+                                  data-testid={`whole-game-subtitle-${card.key}`}
+                                  className="text-[9px] text-slate-500 dark:text-slate-400 leading-snug break-words"
+                                >
                                   {card.subtitle}
                                 </div>
                               </div>

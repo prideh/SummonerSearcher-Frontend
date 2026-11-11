@@ -270,19 +270,41 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     expect(screen.getByTestId('paired-delta-10m')).toHaveTextContent('No Delta');
   });
 
-  it('clears stale selection and binds to new player identity when searched player changes, defaulting to Role-First and supporting optional champion & match scope', () => {
+  it('defaults to FullContract#EUW (22G / recent20), retains legacy partial fixtures as options preserving Unknown (never hidden or 0), and clears stale selection on switch', () => {
     render(<ProComparisonPreview initialSurface="profile" />);
 
+    // Default fixture is FullContract#EUW (explicit 22-match synthetic fixture with full 5v5 teams)
     expect(screen.getByTestId('pro-comparison-identity-badge')).toHaveTextContent(
-      'BladeRunner#EUW (EUW1)'
+      'FullContract#EUW (EUW1)'
     );
     expect(screen.getByTestId('pro-comparison-datasource-badge')).toHaveTextContent(
       'Synthetic test profile / Not real player data'
     );
-    // Defaults to Role-First ('Top · All Top Champions' across 3 Top games: 90, 84, 78 -> mean 84.0 CS vs 16G Pro Top)
     expect(screen.getByTestId('paired-selection-title')).toHaveTextContent(
       'Top · All Top Champions'
     );
+    expect(screen.getByTestId('recent20-window-strip')).toHaveTextContent(
+      'Recent 20/20 Matches (2 older excluded)'
+    );
+    expect(screen.getByTestId('whole-game-player-killParticipation')).not.toHaveTextContent(
+      'Unknown'
+    );
+
+    // Open Review Controls and switch to legacy partial-team fixture BladeRunner#EUW -> Unknown is preserved (never hidden or 0)
+    fireEvent.click(screen.getByTestId('toggle-review-controls'));
+    fireEvent.click(screen.getByTestId('switch-review-player-euw'));
+
+    expect(screen.getByTestId('pro-comparison-identity-badge')).toHaveTextContent(
+      'BladeRunner#EUW (EUW1)'
+    );
+    expect(screen.getByTestId('paired-selection-title')).toHaveTextContent(
+      'Top · All Top Champions'
+    );
+    expect(screen.getByTestId('whole-game-player-killParticipation')).toHaveTextContent('Unknown');
+    expect(screen.getByTestId('whole-game-player-championDamageShare')).toHaveTextContent(
+      'Unknown'
+    );
+    expect(screen.getByTestId('whole-game-player-totalDeaths')).toHaveTextContent('Unknown');
     expect(screen.getByTestId('player-mean-cs-10m')).toHaveTextContent('84.0');
 
     // Narrow to optional champion Top · KSante
@@ -299,8 +321,7 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     expect(screen.getByTestId('player-denom-10m')).toHaveTextContent('1/1G');
     expect(screen.getByTestId('player-mean-cs-10m')).toHaveTextContent('90.0');
 
-    // Open Review Controls and switch synthetic test profile to ArcaneWave#KR1 -> clears stale Top/KSante selection and binds to Role-First Mid
-    fireEvent.click(screen.getByTestId('toggle-review-controls'));
+    // Switch synthetic test profile to ArcaneWave#KR1 -> clears stale Top/KSante selection and binds to Role-First Mid
     fireEvent.click(screen.getByTestId('switch-review-player-kr'));
     expect(screen.getByTestId('pro-comparison-identity-badge')).toHaveTextContent(
       'ArcaneWave#KR1 (KR)'
@@ -1768,14 +1789,11 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     expect(cp30.deltaTotalCs).toBeNull();
     expect(cp30.deltaTotalGold).toBeNull();
 
-    // 2. Render full private preview UI and switch to FullContract#EUW
+    // 2. Render full private preview UI (defaults directly to FullContract#EUW without query params)
     const { unmount } = render(<ProComparisonPreview initialSurface="profile" />);
     expect(screen.getByTestId('pro-comparison-datasource-badge')).toHaveTextContent(
       'Synthetic test profile / Not real player data'
     );
-
-    fireEvent.click(screen.getByTestId('toggle-review-controls'));
-    fireEvent.click(screen.getByTestId('switch-review-player-full'));
 
     expect(screen.getByTestId('pro-comparison-identity-badge')).toHaveTextContent(
       'FullContract#EUW (EUW1)'
@@ -1787,19 +1805,39 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
       'Recent 20/20 Matches (2 older excluded)'
     );
 
-    // Whole-game comparable cards render non-null values and deltas (and goldEarned vs finalGold caveat is visible)
-    expect(screen.getByTestId('whole-game-card-killParticipation')).toHaveTextContent(
-      'Kill Participation'
-    );
-    expect(screen.getByTestId('whole-game-card-championDamageShare')).toHaveTextContent(
-      'Damage Share'
-    );
-    expect(screen.getByTestId('whole-game-card-totalDeaths')).toHaveTextContent(
-      'Full-Game Deaths'
-    );
-    expect(screen.getByTestId('whole-game-card-csPerMin')).toHaveTextContent(
-      'Whole-Game CS / Min'
-    );
+    // Whole-game comparable cards render complete non-truncated titles/subtitles and accessible aria-labels
+    const expectedWholeGameLabels: Array<{ key: string; title: string; subtitle: string }> = [
+      {
+        key: 'killParticipation',
+        title: 'Kill Participation',
+        subtitle: '(K + A) / Same-5 Team Kills',
+      },
+      {
+        key: 'championDamageShare',
+        title: 'Damage Share',
+        subtitle: 'Champ Dmg / Same-5 Team Dmg',
+      },
+      {
+        key: 'totalDeaths',
+        title: 'Full-Game Deaths',
+        subtitle: 'MatchDto.deaths vs finalDeaths',
+      },
+      {
+        key: 'csPerMin',
+        title: 'Whole-Game CS / Min',
+        subtitle: '(Lane + Jungle) / Game Mins',
+      },
+    ];
+    for (const item of expectedWholeGameLabels) {
+      const cardEl = screen.getByTestId(`whole-game-card-${item.key}`);
+      const titleEl = screen.getByTestId(`whole-game-title-${item.key}`);
+      const subEl = screen.getByTestId(`whole-game-subtitle-${item.key}`);
+      expect(cardEl).toHaveAttribute('aria-label', `${item.title} (${item.subtitle})`);
+      expect(titleEl).toHaveTextContent(item.title);
+      expect(subEl).toHaveTextContent(item.subtitle);
+      expect(titleEl.className).not.toContain('truncate');
+      expect(subEl.className).not.toContain('truncate');
+    }
     expect(screen.getByTestId('profile-pro-comparison-tab')).toHaveTextContent(
       'whole-game goldEarned vs finalGold not assumed identical'
     );

@@ -65,7 +65,7 @@ function resolveDefaultProfileKey(): string {
       return fixture;
     }
   }
-  return 'euw_top_specialist';
+  return 'euw_full_contract_sample';
 }
 
 export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
@@ -351,7 +351,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
   const activeReviewProfile: RecordedReviewPlayerProfile =
     customProfile ??
     RECORDED_REVIEW_PROFILES[selectedProfileKey] ??
-    RECORDED_REVIEW_PROFILES.euw_top_specialist;
+    RECORDED_REVIEW_PROFILES.euw_full_contract_sample;
 
   const handleLoadCustomJson = () => {
     setCustomJsonError(null);
@@ -604,7 +604,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                             : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
                         }`}
                       >
-                        Synthetic: FullContract#EUW (20G Role-First)
+                        Synthetic: FullContract#EUW (22G / Recent-20 Default)
                       </button>
                       <button
                         type="button"
@@ -619,7 +619,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                             : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
                         }`}
                       >
-                        Synthetic: BladeRunner#EUW (Top)
+                        Synthetic: BladeRunner#EUW (3G Partial · Unknown KP/DMG)
                       </button>
                       <button
                         type="button"
@@ -634,7 +634,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                             : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
                         }`}
                       >
-                        Synthetic: ArcaneWave#KR1 (Mid)
+                        Synthetic: ArcaneWave#KR1 (1G Mid Partial)
                       </button>
                       <button
                         type="button"
