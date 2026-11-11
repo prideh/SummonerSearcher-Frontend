@@ -1,4 +1,3 @@
-import React from 'react';
 import { describe, expect, it, beforeEach } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import {
@@ -105,16 +104,19 @@ describe('Workstream 4: Season 2026 Role Quests, 7th-Slot Boots & Timeline Accur
         3006: {
           name: "Berserker's Greaves",
           description: 'Attack speed boots',
+          plaintext: 'Attack speed boots',
           gold: { base: 500, total: 1100, sell: 770, purchasable: true },
         },
         3172: {
           name: 'Gunmetal Greaves',
           description: 'Tier 3 Attack Speed Boots',
+          plaintext: 'Tier 3 Attack Speed Boots',
           gold: { base: 0, total: 1100, sell: 770, purchasable: true },
         },
         3031: {
           name: 'Infinity Edge',
           description: 'Crit spike',
+          plaintext: 'Crit spike',
           gold: { base: 600, total: 3400, sell: 2380, purchasable: true },
         },
       },
@@ -160,7 +162,7 @@ describe('Workstream 4: Season 2026 Role Quests, 7th-Slot Boots & Timeline Accur
 
   it('reconciles ITEM_UNDO safely including #1174 Tier 3 boot undo where beforeId is 0', () => {
     const timeline: MatchTimelineDto = {
-      metadata: { dataVersion: '2', matchId: 'NA1_1', participants: ['p1'] },
+      metadata: { matchId: 'NA1_1', participants: ['p1'] },
       info: {
         frameInterval: 60000,
         participants: [{ participantId: 1, puuid: 'p1' }],
@@ -195,7 +197,7 @@ describe('Workstream 4: Season 2026 Role Quests, 7th-Slot Boots & Timeline Accur
     }));
 
     const timeline: MatchTimelineDto = {
-      metadata: { dataVersion: '2', matchId: 'NA1_2', participants: ['p1'] },
+      metadata: { matchId: 'NA1_2', participants: ['p1'] },
       info: {
         frameInterval: 60000,
         participants: [{ participantId: 1, puuid: 'p1' }],
@@ -221,7 +223,7 @@ describe('Workstream 4: Season 2026 Role Quests, 7th-Slot Boots & Timeline Accur
 
   it('returns conservative Role Quest completion seconds only when unambiguously proven, and null on legacy/ambiguous states', () => {
     const baseTimeline: MatchTimelineDto = {
-      metadata: { dataVersion: '2', matchId: 'NA1_3', participants: ['p1'] },
+      metadata: { matchId: 'NA1_3', participants: ['p1'] },
       info: {
         frameInterval: 60000,
         participants: [{ participantId: 1, puuid: 'p1' }],
@@ -271,6 +273,7 @@ describe('Workstream 4: Season 2026 Role Quests, 7th-Slot Boots & Timeline Accur
     const botMatch: MatchDto = {
       metadata: { matchId: 'NA1_BOT', participants: ['p1', 'opp1'] },
       info: {
+        gameId: 1,
         gameCreation: 1770000000000,
         gameDuration: 1800,
         gameMode: 'CLASSIC',
@@ -288,12 +291,16 @@ describe('Workstream 4: Season 2026 Role Quests, 7th-Slot Boots & Timeline Accur
     };
 
     const timelineAnalysis: TimelineAnalysisDto = {
-      matchesAnalyzed: 1,
+      heatmapPositions: [],
+      deathPositions: [],
+      wardPositions: [],
+      killPositions: [],
+      assistPositions: [],
       powerSpikeTimelines: [],
       buildOrders: [
         {
           matchId: 'NA1_BOT',
-          championName: 'Jinx',
+          playerChampion: 'Jinx',
           win: true,
           items: [
             { itemId: 3172, timestamp: 840000, minuteMark: 14 },
@@ -303,47 +310,34 @@ describe('Workstream 4: Season 2026 Role Quests, 7th-Slot Boots & Timeline Accur
       ],
       skillOrders: [],
       eventTimelines: [],
-      positionHeatmaps: [],
-      summary: {
-        avgGoldDiffAt10: 200,
-        avgGoldDiffAt15: 450,
-        avgCsDiffAt10: 5,
-        avgCsDiffAt15: 10,
-        avgXpDiffAt10: 150,
-        avgXpDiffAt15: 300,
-        earlyLeadWinRate: 100,
-        comebackRate: 0,
-        throwRate: 0,
-        avgFirstItemMinute: 12,
+      aggregateSummary: {
+        avgFirstDeathMinute: 6.5,
+        mostDangerousZone: 'Bot Lane',
+        avgGoldLeadAt10: 200,
+        avgGoldLeadAt15: 450,
+        wardsPlacedTotal: 8,
+        deathsTotal: 2,
+        killsTotal: 7,
+        assistsTotal: 3,
+        gamesAnalyzed: 1,
       },
     };
 
     const ctx = buildAiContext(
-      {
-        puuid: 'p1',
-        gameName: 'TestADC',
-        tagLine: 'NA1',
-        profileIconId: 1,
-        summonerLevel: 250,
-        leagues: [],
-        recentMatches: [botMatch],
-        overallStats: BASE_OVERALL_STATS,
-        championStats: BASE_CHAMP_STATS,
-      },
+      'TestADC',
+      'NA1',
       [botMatch],
-      BASE_OVERALL_STATS,
-      BASE_CHAMP_STATS,
+      'p1',
       null,
+      BASE_CHAMP_STATS,
+      BASE_OVERALL_STATS,
       timelineAnalysis
     );
 
-    const recentGames = ctx.recentGames as Array<{
-      items?: string[];
-      opponent?: { items?: string[] };
-      itemSpikes?: Array<{ item: string; minute: number }>;
-    }>;
-    expect(recentGames[0].items).toContain("Berserker's Greaves (7th Slot)");
-    expect(recentGames[0].opponent?.items?.some(i => i.includes('Slot') || i.includes('RoleQuest'))).toBe(false);
-    expect(recentGames[0].itemSpikes?.map(s => s.item)).toContain('Gunmetal Greaves');
+    expect(ctx.recentMatches[0].items).toContain("Berserker's Greaves (7th Slot)");
+    expect(
+      ctx.recentMatches[0].opponent?.items.some(i => i.includes('Slot') || i.includes('RoleQuest'))
+    ).toBe(false);
+    expect(ctx.recentMatches[0].itemSpikes?.map(s => s.item)).toContain('Gunmetal Greaves');
   });
 });
