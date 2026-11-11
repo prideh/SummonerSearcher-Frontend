@@ -93,6 +93,7 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
   const messages =
     messagesState.ownerKey === playerOwnerKey ? messagesState.items : EMPTY_MESSAGES;
 
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<Message[]>([]);
   const playerOwnerKeyRef = useRef<string>(playerOwnerKey);
@@ -311,8 +312,20 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
   };
 
   useEffect(() => {
+    if (!isOpen) return;
+    const isGreetingOnlyState =
+      !loading &&
+      messages.length <= 1 &&
+      !messages.some((m) => m.role === 'user') &&
+      !isSubstantiveHistory(messages);
+    if (isGreetingOnlyState) {
+      if (chatScrollRef.current) {
+        chatScrollRef.current.scrollTop = 0;
+      }
+      return;
+    }
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [isOpen, messages, loading]);
 
   if (!isOpen) return null;
 
@@ -550,6 +563,7 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
 
         {/* Chat Area (independently scrollable with guaranteed minimum height) */}
         <div
+          ref={chatScrollRef}
           data-testid="ai-coach-chat-scroll"
           className="flex-1 min-h-[5.5rem] overflow-y-auto overscroll-contain p-3 sm:p-5 space-y-3 sm:space-y-6 bg-transparent"
         >
