@@ -8,6 +8,7 @@ import type {
 import {
   isPlayerTimelineEvent,
   type BuildOrderDto,
+  type CoachTimelineCoverageContext,
   type MatchEventTimelineDto,
   type MatchPowerSpikeDto,
   type SkillOrderDto,
@@ -920,6 +921,8 @@ function formatRankLabel(
   return `${rankInfo.tier} ${rankInfo.rank || ''}`.trim() + ` (${lp} LP)`;
 }
 
+export type CoachTimelineStatus = 'ANALYZED' | 'PARTIAL' | 'BLOCKED' | 'NOT_ANALYZED';
+
 /**
  * Builds comprehensive, token-bounded AI context from matches, Data Dragon maps, and optional TimelineAnalysisDto / ImprovementStatsDto.
  */
@@ -932,7 +935,8 @@ export function buildAiContext(
   championStats: ChampionStats[],
   overallStats: OverallStats | null,
   timelineAnalysis?: TimelineAnalysisDto | null,
-  improvementStats?: ImprovementStatsDto | null
+  improvementStats?: ImprovementStatsDto | null,
+  timelineCoverage?: CoachTimelineCoverageContext | null
 ): {
   summonerName: string;
   rank: string;
@@ -941,7 +945,8 @@ export function buildAiContext(
   recentMatchSample: CoachRecentMatchSample;
   primaryRole: string;
   totalGamesAnalyzed: number;
-  timelineStatus: 'ANALYZED' | 'NOT_ANALYZED';
+  timelineStatus: CoachTimelineStatus;
+  timelineCoverage?: CoachTimelineCoverageContext;
   visionDataPrecision: string;
   avgLaneCsAt10: AverageLaneCsAt10Summary | null;
   missingLaneCsAt10Matches: number;
@@ -978,7 +983,72 @@ export function buildAiContext(
   const itemMap = ddState?.itemMap ?? null;
   const runeMap = ddState?.runeMap ?? null;
   const summonerSpellMap = ddState?.summonerSpellMap ?? null;
-  const timelineStatus: 'ANALYZED' | 'NOT_ANALYZED' = timelineAnalysis ? 'ANALYZED' : 'NOT_ANALYZED';
+
+  let effectiveTimelineAnalysis: TimelineAnalysisDto | null = timelineAnalysis ?? null;
+  let timelineStatus: CoachTimelineStatus = effectiveTimelineAnalysis ? 'ANALYZED' : 'NOT_ANALYZED';
+  let normalizedTimelineCoverage: CoachTimelineCoverageContext | undefined;
+  if (timelineCoverage) {
+    const rawCovered =
+      typeof timelineCoverage.covered === 'number' && Number.isFinite(timelineCoverage.covered)
+        ? Math.max(0, Math.round(timelineCoverage.covered))
+        : 0;
+    const rawRequested =
+      typeof timelineCoverage.requested === 'number' && Number.isFinite(timelineCoverage.requested)
+        ? Math.max(0, Math.round(timelineCoverage.requested))
+        : 0;
+    const stopReason =
+      typeof timelineCoverage.stopReason === 'string' && timelineCoverage.stopReason.trim().length > 0
+        ? timelineCoverage.stopReason.trim()
+        : undefined;
+    const aggGames = effectiveTimelineAnalysis?.aggregateSummary?.gamesAnalyzed;
+    const hasConsistentAnalysis =
+      effectiveTimelineAnalysis !== null &&
+      rawCovered > 0 &&
+      rawCovered <= rawRequested &&
+      typeof aggGames === 'number' &&
+      Number.isInteger(aggGames) &&
+      aggGames === rawCovered;
+
+    if (!hasConsistentAnalysis || timelineCoverage.status === 'BLOCKED') {
+      effectiveTimelineAnalysis = null;
+      timelineStatus = 'BLOCKED';
+      normalizedTimelineCoverage = {
+        status: 'BLOCKED',
+        covered: 0,
+        requested: Math.max(rawRequested, allMatches.slice(0, MAX_RECENT_MATCHES).length),
+        ...(stopReason ? { stopReason } : {}),
+      };
+    } else if (timelineCoverage.status === 'COMPLETE' && rawCovered === rawRequested) {
+      timelineStatus = 'ANALYZED';
+      normalizedTimelineCoverage = {
+        status: 'COMPLETE',
+        covered: rawCovered,
+        requested: rawRequested,
+        ...(stopReason ? { stopReason } : {}),
+      };
+    } else if (
+      (timelineCoverage.status === 'PARTIAL' || timelineCoverage.status === 'COMPLETE') &&
+      rawCovered < rawRequested
+    ) {
+      timelineStatus = 'PARTIAL';
+      normalizedTimelineCoverage = {
+        status: 'PARTIAL',
+        covered: rawCovered,
+        requested: rawRequested,
+        ...(stopReason ? { stopReason } : {}),
+      };
+    } else {
+      effectiveTimelineAnalysis = null;
+      timelineStatus = 'BLOCKED';
+      normalizedTimelineCoverage = {
+        status: 'BLOCKED',
+        covered: 0,
+        requested: rawRequested,
+        ...(stopReason ? { stopReason } : { stopReason: 'INCONSISTENT_COVERAGE' }),
+      };
+    }
+  }
+
   const rankedRecord = buildRankedRecordSample(rankInfo);
   const savedHistory = buildSavedHistorySample(overallStats);
   const rankLabel = formatRankLabel(rankInfo);
@@ -989,17 +1059,17 @@ export function buildAiContext(
   const skillByMatchId = new Map<string, SkillOrderDto>();
   const eventsByMatchId = new Map<string, MatchEventTimelineDto>();
 
-  if (timelineAnalysis) {
-    timelineAnalysis.powerSpikeTimelines?.forEach(dto => {
+  if (effectiveTimelineAnalysis) {
+    effectiveTimelineAnalysis.powerSpikeTimelines?.forEach(dto => {
       if (dto.matchId) spikeByMatchId.set(dto.matchId, dto);
     });
-    timelineAnalysis.buildOrders?.forEach(dto => {
+    effectiveTimelineAnalysis.buildOrders?.forEach(dto => {
       if (dto.matchId) buildByMatchId.set(dto.matchId, dto);
     });
-    timelineAnalysis.skillOrders?.forEach(dto => {
+    effectiveTimelineAnalysis.skillOrders?.forEach(dto => {
       if (dto.matchId) skillByMatchId.set(dto.matchId, dto);
     });
-    timelineAnalysis.eventTimelines?.forEach(dto => {
+    effectiveTimelineAnalysis.eventTimelines?.forEach(dto => {
       if (dto.matchId) eventsByMatchId.set(dto.matchId, dto);
     });
   }
@@ -1171,7 +1241,7 @@ export function buildAiContext(
     let itemSpikes: ItemSpikeEntry[] | undefined;
     let skillMaxOrder: string | undefined;
 
-    if (timelineAnalysis) {
+    if (effectiveTimelineAnalysis) {
       const spikeDto = matchId ? spikeByMatchId.get(matchId) : undefined;
       const buildDto = matchId ? buildByMatchId.get(matchId) : undefined;
       const skillDto = matchId ? skillByMatchId.get(matchId) : undefined;
@@ -1254,7 +1324,7 @@ export function buildAiContext(
 
   const resolvedImprovement = resolveImprovementStats(
     improvementStats,
-    timelineAnalysis,
+    effectiveTimelineAnalysis,
     cappedMatches,
     puuid
   );
@@ -1266,7 +1336,7 @@ export function buildAiContext(
 
   // Build enriched timelineInsights summary (without any raw [x, y] coordinate arrays)
   let timelineInsights: EnrichedTimelineInsights | undefined;
-  if (timelineAnalysis?.aggregateSummary) {
+  if (effectiveTimelineAnalysis?.aggregateSummary) {
     let totalDeathsCount = 0;
     let totalDeathsBefore10 = 0;
     let totalKnownAssistedDeaths = 0;
@@ -1278,7 +1348,7 @@ export function buildAiContext(
     let wardEventsCount = 0;
     const wardBuckets = { pre10: 0, min10To20: 0, post20: 0 };
 
-    for (const evTimeline of timelineAnalysis.eventTimelines || []) {
+    for (const evTimeline of effectiveTimelineAnalysis.eventTimelines || []) {
       const ctx = extractMatchDeathContext(evTimeline);
       if (ctx) {
         totalDeathsCount += ctx.totalDeaths;
@@ -1310,7 +1380,7 @@ export function buildAiContext(
     const wardsByTimeBucket = wardEventsCount > 0 ? wardBuckets : null;
 
     timelineInsights = {
-      ...timelineAnalysis.aggregateSummary,
+      ...effectiveTimelineAnalysis.aggregateSummary,
       deathsBefore10: totalDeathsBefore10,
       assistedDeaths,
       unassistedDeaths,
@@ -1342,6 +1412,7 @@ export function buildAiContext(
     primaryRole,
     totalGamesAnalyzed: allMatches.length || resolvedImprovement.stats.totalGamesConsidered,
     timelineStatus,
+    ...(normalizedTimelineCoverage ? { timelineCoverage: normalizedTimelineCoverage } : {}),
     visionDataPrecision: VISION_DATA_PRECISION_NOTE,
     avgLaneCsAt10,
     missingLaneCsAt10Matches,
@@ -1548,3 +1619,54 @@ export const parseAiResponseWithSuggestions = (
   return { cleanResponse, suggestions: parsedSuggestions };
 };
 
+export const buildCoachGreetingMessage = (
+  context: {
+    totalGamesAnalyzed?: number | unknown;
+    timelineStatus?: string | unknown;
+    timelineCoverage?: CoachTimelineCoverageContext | unknown;
+    improvementStats?: { hasTimelineAnalysis?: boolean } | unknown;
+  },
+  loadingTimeline = false
+): string => {
+  const matchCount =
+    typeof context.totalGamesAnalyzed === 'number' && Number.isFinite(context.totalGamesAnalyzed)
+      ? Math.max(0, Math.trunc(context.totalGamesAnalyzed))
+      : 0;
+
+  if (matchCount <= 0) {
+    return "Hi! I'm your AI Coach. No recent matches are loaded yet for this summoner. Play or sync matches first, or ask a general League question below!";
+  }
+
+  if (loadingTimeline) {
+    return `Hi! I'm your AI Coach. Match summaries from ${matchCount} recent games are loaded, and I'm preparing 10m/20m timeline checkpoints in the background. Ask a question anytime!`;
+  }
+
+  const status = typeof context.timelineStatus === 'string' ? context.timelineStatus : '';
+  const coverage = context.timelineCoverage as CoachTimelineCoverageContext | undefined;
+  const impCtx = context.improvementStats as { hasTimelineAnalysis?: boolean } | undefined;
+
+  if (status === 'PARTIAL') {
+    const covered =
+      typeof coverage?.covered === 'number' && Number.isFinite(coverage.covered)
+        ? coverage.covered
+        : null;
+    const requested =
+      typeof coverage?.requested === 'number' && Number.isFinite(coverage.requested)
+        ? coverage.requested
+        : null;
+    if (covered !== null && requested !== null && requested > 0) {
+      return `Hi! I'm your AI Coach. Match summaries from ${matchCount} recent games are loaded, with 10m/20m timeline checkpoints ready for ${covered} of ${requested} games. Ask a question below to generate coaching feedback!`;
+    }
+    return `Hi! I'm your AI Coach. Match summaries from ${matchCount} recent games are loaded, with partial 10m/20m timeline checkpoints ready. Ask a question below to generate coaching feedback!`;
+  }
+
+  if (status === 'BLOCKED') {
+    return `Hi! I'm your AI Coach. Match summaries from ${matchCount} recent games are loaded (minute-by-minute timeline checkpoints are temporarily unavailable, so coaching will use match summary stats). Ask a question below to generate coaching feedback!`;
+  }
+
+  if (status === 'ANALYZED' || Boolean(impCtx?.hasTimelineAnalysis)) {
+    return `Hi! I'm your AI Coach. Match summaries and 10m/20m timeline checkpoints from ${matchCount} recent games are ready. Ask a question below to generate coaching feedback!`;
+  }
+
+  return `Hi! I'm your AI Coach. Match summaries from ${matchCount} recent games are loaded (deep timeline analysis not run yet). Ask a question below to generate coaching feedback!`;
+};

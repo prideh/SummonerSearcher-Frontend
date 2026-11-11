@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 import type { SummonerData } from '../types/summoner';
@@ -7,24 +7,103 @@ import RankedInfo from './RankedInfo';
 import { useTimeAgo } from '../hooks/useTimeAgo';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import { useAuthStore, isSameStarredProfile } from '../store/authStore';
-import AiAnalysisModal from './AiAnalysisModal';
+import AiAnalysisModal, { type AiContextData } from './AiAnalysisModal';
 import { chatWithAi } from '../api/ai';
 import { getLiveGame } from '../api/riot';
 import LiveGameDisplay, { type CurrentGameInfo } from './LiveGameDisplay';
 import {
   buildAiContext,
+  buildCoachGreetingMessage,
   generatePersonalizedSuggestions,
   parseAiResponseWithSuggestions,
 } from '../utils/aiContextBuilder';
-import { analyzeTimelines } from '../api/timeline';
+import { analyzeTimelines, prepareCoachTimelines } from '../api/timeline';
 import TimelineAnalysisModal from './TimelineAnalysisModal';
-import type { TimelineAnalysisDto } from '../types/timeline';
+import {
+  normalizeCoachTimelinePreparationResultDto,
+  type CoachTimelineCoverageContext,
+  type TimelineAnalysisDto,
+} from '../types/timeline';
 import { resolveImprovementStats } from '../utils/improvementStatsHelper';
 import { getCorrectChampionName } from '../utils/championNameHelper';
 
 const SUMMARY_PROMPT =
   'Give me a concise 2-3 sentence executive summary of my recent performance, key strength, and #1 focus area.';
 const CHAT_EXPIRATION_TIME = 30 * 60 * 1000;
+const MAX_COACH_PREP_MATCH_IDS = 20;
+export const BACKEND_DEFAULT_COACH_PREP_DEADLINE_MS = 12_000;
+export const DEFAULT_COACH_PREP_TRANSPORT_GRACE_MS = 3_000;
+export const DEFAULT_COACH_PREP_AWAIT_TIMEOUT_MS =
+  BACKEND_DEFAULT_COACH_PREP_DEADLINE_MS + DEFAULT_COACH_PREP_TRANSPORT_GRACE_MS;
+const SYNTHETIC_FIXTURE_PUUID = 'fixture-puuid-coach-evidence';
+
+type CoachPrepLifecycleStatus =
+  | 'IDLE'
+  | 'PREPARING'
+  | 'COMPLETE'
+  | 'PARTIAL'
+  | 'BLOCKED'
+  | 'TIMEOUT'
+  | 'ERROR';
+
+interface ScopedTimelineState {
+  playerKey: string;
+  profileStamp: string;
+  status: CoachPrepLifecycleStatus;
+  analysis: TimelineAnalysisDto | null;
+  coverage: CoachTimelineCoverageContext | null;
+}
+
+interface InFlightCoachPrep {
+  requestId: number;
+  playerKey: string;
+  profileStamp: string;
+  controller: AbortController;
+  promise: Promise<ScopedTimelineState | null>;
+}
+
+const isAbortLikeError = (err: unknown, signal: AbortSignal): boolean => {
+  if (signal.aborted) return true;
+  if (!err || typeof err !== 'object') return false;
+  const candidate = err as { name?: unknown; code?: unknown };
+  return (
+    candidate.name === 'AbortError' ||
+    candidate.name === 'CanceledError' ||
+    candidate.code === 'ERR_CANCELED'
+  );
+};
+
+const isTimeoutLikeError = (err: unknown): boolean => {
+  if (!err || typeof err !== 'object') return false;
+  const candidate = err as { code?: unknown; message?: unknown };
+  if (candidate.code === 'ECONNABORTED' || candidate.code === 'ETIMEDOUT') {
+    return true;
+  }
+  return typeof candidate.message === 'string' && /timeout|timed out/i.test(candidate.message);
+};
+
+const collectCandidateMatchIds = (
+  visibleMatches: MatchDto[],
+  summonerData: SummonerData
+): string[] => {
+  const seen = new Set<string>();
+  const pushId = (raw: string | undefined | null) => {
+    if (typeof raw !== 'string') return;
+    const trimmed = raw.trim();
+    if (!trimmed || seen.has(trimmed) || seen.size >= MAX_COACH_PREP_MATCH_IDS) return;
+    seen.add(trimmed);
+  };
+
+  for (const m of visibleMatches || []) {
+    pushId(m?.metadata?.matchId);
+  }
+  if (seen.size === 0) {
+    for (const m of summonerData.recentMatches || []) {
+      pushId(m?.metadata?.matchId);
+    }
+  }
+  return Array.from(seen);
+};
 
 const buildFallbackAiSummary = (summoner: SummonerData, sigChamp: string | null): string => {
   const rank = summoner.soloQueueRank
@@ -73,6 +152,8 @@ interface SummonerInfoProps {
   isStarred?: boolean;
   /** Optional callback when toggling the star state. */
   onToggleStar?: () => void;
+  /** Optional finite wait ceiling (ms) for in-flight timeline preparation before sending the first coach prompt. */
+  coachPrepAwaitTimeoutMs?: number;
 }
 
 /**
@@ -80,7 +161,19 @@ interface SummonerInfoProps {
  * It includes their profile icon, Riot ID, level, and a "Refresh" button.
  * It also contains the `RankedInfo` component to show ranked statistics.
  */
-const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh, loading, refreshing, visibleMatches, onPlayerClick, onViewProfile, showFullProfile, isStarred: isStarredProp, onToggleStar }) => {
+const SummonerInfo: React.FC<SummonerInfoProps> = ({
+  summonerData,
+  handleRefresh,
+  loading,
+  refreshing,
+  visibleMatches,
+  onPlayerClick,
+  onViewProfile,
+  showFullProfile,
+  isStarred: isStarredProp,
+  onToggleStar,
+  coachPrepAwaitTimeoutMs = DEFAULT_COACH_PREP_AWAIT_TIMEOUT_MS,
+}) => {
   const [timeAgo, ref] = useTimeAgo(new Date(summonerData.lastUpdated).getTime());
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
   const starredProfile = useAuthStore(state => state?.starredProfile ?? null);
@@ -116,11 +209,146 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
   const [showLiveGame, setShowLiveGame] = useState(false);
   const [liveGameError, setLiveGameError] = useState<string | null>(null);
 
-  // Timeline analysis state — must be declared before buildAiContext so it can be merged in
-  const [timelineAnalysis, setTimelineAnalysis] = useState<TimelineAnalysisDto | null>(null);
-  const [loadingTimeline, setLoadingTimeline] = useState(false);
+  const normalizedRegion = (summonerData.region || '').trim().toLowerCase();
+  const trimmedPuuid = (summonerData.puuid || '').trim();
+  const playerKey = `${normalizedRegion}:${trimmedPuuid}`;
+  const candidateMatchIds = useMemo(
+    () => collectCandidateMatchIds(visibleMatches, summonerData),
+    [visibleMatches, summonerData]
+  );
+  const hasAnyCandidateGames =
+    candidateMatchIds.length > 0 ||
+    (summonerData.totalMatches ?? 0) > 0 ||
+    (summonerData.improvementStats?.totalGamesConsidered ?? 0) > 0;
+  const profileStamp = `${playerKey}|${summonerData.lastUpdated || ''}|${candidateMatchIds.join(',')}|${summonerData.totalMatches ?? 0}|${summonerData.improvementStats?.totalGamesConsidered ?? 0}`;
+
+  // Scoped timeline state — synchronously invalidated if playerKey or profileStamp changes
+  const [scopedTimeline, setScopedTimeline] = useState<ScopedTimelineState>({
+    playerKey,
+    profileStamp,
+    status: 'IDLE',
+    analysis: null,
+    coverage: null,
+  });
+  const [loadingManualTimeline, setLoadingManualTimeline] = useState(false);
   const [showTimelineModal, setShowTimelineModal] = useState(false);
   const [aiInitialMessage, setAiInitialMessage] = useState<string | undefined>(undefined);
+
+  const scopedTimelineRef = useRef<ScopedTimelineState>(scopedTimeline);
+  const inFlightPrepRef = useRef<InFlightCoachPrep | null>(null);
+  const attemptedPrepStampRef = useRef<string | null>(null);
+  const nextPrepRequestIdRef = useRef(0);
+  const latestInputsRef = useRef({
+    summonerData,
+    visibleMatches,
+    normalizedRegion,
+    trimmedPuuid,
+    playerKey,
+    profileStamp,
+    candidateMatchIds,
+    hasAnyCandidateGames,
+    showAiModal,
+    refreshing,
+  });
+
+  latestInputsRef.current = {
+    summonerData,
+    visibleMatches,
+    normalizedRegion,
+    trimmedPuuid,
+    playerKey,
+    profileStamp,
+    candidateMatchIds,
+    hasAnyCandidateGames,
+    showAiModal,
+    refreshing,
+  };
+
+  const commitScopedTimeline = useCallback((next: ScopedTimelineState) => {
+    scopedTimelineRef.current = next;
+    setScopedTimeline(next);
+  }, []);
+
+  const abortInFlightCoachPrep = useCallback(
+    (resetStatusToIdle: boolean) => {
+      const active = inFlightPrepRef.current;
+      if (active) {
+        if (attemptedPrepStampRef.current === active.profileStamp) {
+          attemptedPrepStampRef.current = null;
+        }
+        inFlightPrepRef.current = null;
+        nextPrepRequestIdRef.current += 1;
+        active.controller.abort();
+      }
+      if (
+        resetStatusToIdle &&
+        scopedTimelineRef.current.profileStamp === latestInputsRef.current.profileStamp &&
+        scopedTimelineRef.current.status === 'PREPARING'
+      ) {
+        commitScopedTimeline({
+          playerKey: latestInputsRef.current.playerKey,
+          profileStamp: latestInputsRef.current.profileStamp,
+          status: 'IDLE',
+          analysis: null,
+          coverage: null,
+        });
+      }
+    },
+    [commitScopedTimeline]
+  );
+
+  // Abort stale in-flight coach preparation when switching summoners, refreshing profile, or unmounting
+  const prevPlayerKeyRef = useRef(playerKey);
+  useEffect(() => {
+    if (prevPlayerKeyRef.current !== playerKey) {
+      prevPlayerKeyRef.current = playerKey;
+      attemptedPrepStampRef.current = null;
+      setShowAiModal(false);
+      setShowTimelineModal(false);
+      setAiInitialMessage(undefined);
+    }
+  }, [playerKey]);
+
+  useEffect(() => {
+    const active = inFlightPrepRef.current;
+    if (refreshing) {
+      attemptedPrepStampRef.current = null;
+      if (active) {
+        abortInFlightCoachPrep(true);
+      }
+      if (scopedTimelineRef.current.status !== 'IDLE') {
+        commitScopedTimeline({
+          playerKey,
+          profileStamp,
+          status: 'IDLE',
+          analysis: null,
+          coverage: null,
+        });
+      }
+      return;
+    }
+    if (active && active.profileStamp !== profileStamp) {
+      abortInFlightCoachPrep(true);
+    }
+  }, [playerKey, profileStamp, refreshing, abortInFlightCoachPrep, commitScopedTimeline]);
+
+  useEffect(() => {
+    return () => {
+      const active = inFlightPrepRef.current;
+      if (active) {
+        inFlightPrepRef.current = null;
+        nextPrepRequestIdRef.current += 1;
+        active.controller.abort();
+      }
+    };
+  }, []);
+
+  const activeScoped =
+    !refreshing && scopedTimeline.profileStamp === profileStamp ? scopedTimeline : null;
+  const timelineAnalysis = activeScoped?.analysis ?? null;
+  const timelineCoverage = activeScoped?.coverage ?? null;
+  const loadingCoachTimeline =
+    activeScoped?.status === 'PREPARING' || loadingManualTimeline;
 
   // AI Summary state for starred profile
   const [aiSummaryText, setAiSummaryText] = useState<string | null>(null);
@@ -155,7 +383,7 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
   );
 
   // Build comprehensive AI context from all loaded matches.
-  // If timeline has been analyzed by the user, buildAiContext merges its aggregate summary
+  // If timeline has been prepared on coach open (or analyzed manually), buildAiContext merges its aggregate summary
   // and per-match timeline diffs, death context, item spikes, skill max order, and 5-stat improvement evidence.
   const aiContext = buildAiContext(
     summonerData.gameName,
@@ -166,7 +394,8 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
     summonerData.championStats,
     summonerData.overallStats,
     timelineAnalysis,
-    resolvedImprovement.stats
+    resolvedImprovement.stats,
+    timelineCoverage
   );
 
   const summonerFullName = `${summonerData.gameName}#${summonerData.tagLine}`;
@@ -211,14 +440,9 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
     }
 
     let cancelled = false;
-    const matchCount = aiContext.totalGamesAnalyzed || 0;
-    const impCtx = aiContext.improvementStats as { hasTimelineAnalysis?: boolean } | undefined;
-    const timelineReady = aiContext.timelineStatus === 'ANALYZED' || Boolean(impCtx?.hasTimelineAnalysis);
     const greetingMsg = {
       role: 'model' as const,
-      content: timelineReady
-        ? `Hi! I'm your AI Coach. Match summaries and 10m/20m timeline checkpoints from ${matchCount} recent games are ready. Ask a question below to generate coaching feedback!`
-        : `Hi! I'm your AI Coach. Match summaries from ${matchCount} recent games are loaded (deep timeline analysis not run yet). Ask a question below to generate coaching feedback!`,
+      content: buildCoachGreetingMessage(aiContext, false),
     };
     const defaultSuggestions = generatePersonalizedSuggestions(aiContext);
 
@@ -299,32 +523,430 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isStarred, chatStorageKey, showAiModal]);
 
+  const prepareTimelineForCoach = useCallback(
+    (options?: { force?: boolean }): Promise<ScopedTimelineState | null> => {
+      const {
+        normalizedRegion: reqRegion,
+        trimmedPuuid: reqPuuid,
+        playerKey: reqPlayerKey,
+        profileStamp: reqStamp,
+        candidateMatchIds: reqMatchIds,
+        hasAnyCandidateGames: reqHasGames,
+        refreshing: reqRefreshing,
+      } = latestInputsRef.current;
+
+      // Defer automatic preparation while a profile refresh is actively in flight so we prepare once fresh data lands
+      if (reqRefreshing && !options?.force) {
+        return Promise.resolve(null);
+      }
+
+      // Skip network preparation for synthetic review fixture, missing identity, or 0-match profiles
+      if (
+        !reqRegion ||
+        !reqPuuid ||
+        reqPuuid === SYNTHETIC_FIXTURE_PUUID ||
+        !reqHasGames
+      ) {
+        attemptedPrepStampRef.current = reqStamp;
+        return Promise.resolve(null);
+      }
+
+      const existingInFlight = inFlightPrepRef.current;
+      if (
+        !options?.force &&
+        existingInFlight &&
+        existingInFlight.profileStamp === reqStamp &&
+        !existingInFlight.controller.signal.aborted
+      ) {
+        attemptedPrepStampRef.current = reqStamp;
+        return existingInFlight.promise;
+      }
+
+      const currentScoped =
+        scopedTimelineRef.current.profileStamp === reqStamp
+          ? scopedTimelineRef.current
+          : null;
+      if (
+        !options?.force &&
+        currentScoped &&
+        (currentScoped.status === 'COMPLETE' || currentScoped.status === 'PARTIAL') &&
+        currentScoped.analysis !== null
+      ) {
+        attemptedPrepStampRef.current = reqStamp;
+        return Promise.resolve(currentScoped);
+      }
+
+      if (existingInFlight) {
+        existingInFlight.controller.abort();
+        inFlightPrepRef.current = null;
+      }
+
+      attemptedPrepStampRef.current = reqStamp;
+      const requestId = ++nextPrepRequestIdRef.current;
+      const controller = new AbortController();
+
+      commitScopedTimeline({
+        playerKey: reqPlayerKey,
+        profileStamp: reqStamp,
+        status: 'PREPARING',
+        analysis: currentScoped?.analysis ?? null,
+        coverage: currentScoped?.coverage ?? null,
+      });
+
+      const promise = (async (): Promise<ScopedTimelineState | null> => {
+        try {
+          const rawResult = await prepareCoachTimelines(reqRegion, reqPuuid, {
+            matchIds: reqMatchIds.length > 0 ? reqMatchIds : undefined,
+            signal: controller.signal,
+          });
+
+          const isStillCurrent =
+            requestId === nextPrepRequestIdRef.current &&
+            latestInputsRef.current.profileStamp === reqStamp &&
+            !controller.signal.aborted;
+          if (!isStillCurrent) {
+            return null;
+          }
+
+          // Defensive fallback when a unit test leaves prepareCoachTimelines as an unconfigured mock
+          if (!rawResult || typeof rawResult !== 'object') {
+            const idleState: ScopedTimelineState = {
+              playerKey: reqPlayerKey,
+              profileStamp: reqStamp,
+              status: 'IDLE',
+              analysis: null,
+              coverage: null,
+            };
+            commitScopedTimeline(idleState);
+            return idleState;
+          }
+
+          const result = normalizeCoachTimelinePreparationResultDto(
+            rawResult,
+            reqRegion,
+            reqPuuid,
+            reqMatchIds
+          );
+          const requestedCount =
+            result.requestedMatchIds.length > 0
+              ? result.requestedMatchIds.length
+              : reqMatchIds.length;
+          const coveredCount = result.coveredMatchIds.length;
+
+          const resolvedAnalysis = result.analysis ?? null;
+          let nextState: ScopedTimelineState;
+          if (result.status === 'COMPLETE' && resolvedAnalysis !== null) {
+            nextState = {
+              playerKey: reqPlayerKey,
+              profileStamp: reqStamp,
+              status: 'COMPLETE',
+              analysis: resolvedAnalysis,
+              coverage: {
+                status: 'COMPLETE',
+                covered: coveredCount,
+                requested: requestedCount,
+                stopReason: null,
+              },
+            };
+          } else if (result.status === 'PARTIAL' && resolvedAnalysis !== null) {
+            nextState = {
+              playerKey: reqPlayerKey,
+              profileStamp: reqStamp,
+              status: 'PARTIAL',
+              analysis: resolvedAnalysis,
+              coverage: {
+                status: 'PARTIAL',
+                covered: coveredCount,
+                requested: requestedCount,
+                stopReason: result.stopReason ?? null,
+              },
+            };
+          } else {
+            nextState = {
+              playerKey: reqPlayerKey,
+              profileStamp: reqStamp,
+              status: 'BLOCKED',
+              analysis: null,
+              coverage: {
+                status: 'BLOCKED',
+                covered: 0,
+                requested: requestedCount,
+                stopReason: result.stopReason ?? 'TIMELINE_UNAVAILABLE',
+              },
+            };
+          }
+
+          commitScopedTimeline(nextState);
+          return nextState;
+        } catch (err) {
+          if (isAbortLikeError(err, controller.signal)) {
+            if (
+              requestId === nextPrepRequestIdRef.current &&
+              latestInputsRef.current.profileStamp === reqStamp
+            ) {
+              commitScopedTimeline({
+                playerKey: reqPlayerKey,
+                profileStamp: reqStamp,
+                status: 'IDLE',
+                analysis: null,
+                coverage: null,
+              });
+            }
+            return null;
+          }
+
+          const isStillCurrent =
+            requestId === nextPrepRequestIdRef.current &&
+            latestInputsRef.current.profileStamp === reqStamp;
+          if (!isStillCurrent) {
+            return null;
+          }
+
+          const failureStatus: CoachPrepLifecycleStatus = isTimeoutLikeError(err)
+            ? 'TIMEOUT'
+            : 'ERROR';
+          const failedState: ScopedTimelineState = {
+            playerKey: reqPlayerKey,
+            profileStamp: reqStamp,
+            status: failureStatus,
+            analysis: null,
+            coverage: {
+              status: 'BLOCKED',
+              covered: 0,
+              requested: reqMatchIds.length,
+              stopReason: failureStatus === 'TIMEOUT' ? 'CLIENT_TIMEOUT' : 'REQUEST_FAILED',
+            },
+          };
+          commitScopedTimeline(failedState);
+          return failedState;
+        } finally {
+          if (inFlightPrepRef.current?.requestId === requestId) {
+            inFlightPrepRef.current = null;
+          }
+        }
+      })();
+
+      inFlightPrepRef.current = {
+        requestId,
+        playerKey: reqPlayerKey,
+        profileStamp: reqStamp,
+        controller,
+        promise,
+      };
+      return promise;
+    },
+    [commitScopedTimeline]
+  );
+
+  // If AI Coach stays open across a profile refresh / profileStamp change, prepare bounded once for the new stamp
+  useEffect(() => {
+    if (showAiModal && !refreshing && attemptedPrepStampRef.current !== profileStamp) {
+      void prepareTimelineForCoach();
+    }
+  }, [showAiModal, profileStamp, refreshing, prepareTimelineForCoach]);
+
+  const buildFreshChatContextFromState = useCallback(
+    (state: ScopedTimelineState | null): AiContextData => {
+      const latest = latestInputsRef.current;
+      const effectiveState =
+        !latest.refreshing && state && state.profileStamp === latest.profileStamp
+          ? state
+          : null;
+      const freshResolved = resolveImprovementStats(
+        latest.summonerData.improvementStats,
+        effectiveState?.analysis ?? null,
+        latest.visibleMatches,
+        latest.summonerData.puuid
+      );
+      return buildAiContext(
+        latest.summonerData.gameName,
+        latest.summonerData.tagLine,
+        latest.visibleMatches,
+        latest.summonerData.puuid,
+        latest.summonerData.soloQueueRank,
+        latest.summonerData.championStats,
+        latest.summonerData.overallStats,
+        effectiveState?.analysis ?? null,
+        freshResolved.stats,
+        effectiveState?.coverage ?? null
+      ) as AiContextData;
+    },
+    []
+  );
+
+  const resolveCoachChatContext = useCallback(async (): Promise<AiContextData | null> => {
+    const initialPlayerKey = latestInputsRef.current.playerKey;
+    const deadlineAt = Date.now() + Math.max(1, coachPrepAwaitTimeoutMs);
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const current = latestInputsRef.current;
+      if (!current.showAiModal || current.playerKey !== initialPlayerKey) {
+        return null;
+      }
+
+      const stampForTurn = current.profileStamp;
+      let activeInFlight = inFlightPrepRef.current;
+
+      // Guarantee first prompt after a profileStamp change cannot silently skip preparation
+      if (
+        !current.refreshing &&
+        attemptedPrepStampRef.current !== stampForTurn &&
+        (!activeInFlight ||
+          activeInFlight.profileStamp !== stampForTurn ||
+          activeInFlight.controller.signal.aborted)
+      ) {
+        void prepareTimelineForCoach();
+        activeInFlight = inFlightPrepRef.current;
+      }
+
+      if (
+        activeInFlight &&
+        activeInFlight.profileStamp === stampForTurn &&
+        !activeInFlight.controller.signal.aborted
+      ) {
+        const remainingMs = Math.max(1, deadlineAt - Date.now());
+        let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+        const outcome = await Promise.race([
+          activeInFlight.promise,
+          new Promise<'AWAIT_TIMEOUT'>((resolve) => {
+            timeoutHandle = setTimeout(() => resolve('AWAIT_TIMEOUT'), remainingMs);
+          }),
+        ]);
+        if (timeoutHandle !== undefined) {
+          clearTimeout(timeoutHandle);
+        }
+
+        const afterAwait = latestInputsRef.current;
+        if (!afterAwait.showAiModal || afterAwait.playerKey !== initialPlayerKey) {
+          return null;
+        }
+        if (afterAwait.profileStamp !== stampForTurn) {
+          // Profile refreshed while awaiting — loop once to prepare/await the refreshed stamp
+          continue;
+        }
+
+        if (outcome === 'AWAIT_TIMEOUT') {
+          // Do NOT abort ongoing valid preparation solely for chat impatience:
+          // let in-flight prep settle within the finite HTTP client timeout so late PARTIAL/COMPLETE
+          // results remain available, while sending truthful fallback context for this prompt.
+          const impatientFallbackState: ScopedTimelineState = {
+            playerKey: afterAwait.playerKey,
+            profileStamp: stampForTurn,
+            status: 'TIMEOUT',
+            analysis: null,
+            coverage: {
+              status: 'BLOCKED',
+              covered: 0,
+              requested: afterAwait.candidateMatchIds.length,
+              stopReason: 'AWAIT_TIMEOUT',
+            },
+          };
+          return buildFreshChatContextFromState(impatientFallbackState);
+        }
+
+        return buildFreshChatContextFromState(outcome);
+      }
+
+      const latest = latestInputsRef.current;
+      if (!latest.showAiModal || latest.playerKey !== initialPlayerKey) {
+        return null;
+      }
+      const currentScoped =
+        scopedTimelineRef.current.profileStamp === latest.profileStamp
+          ? scopedTimelineRef.current
+          : null;
+      return buildFreshChatContextFromState(currentScoped);
+    }
+
+    const finalLatest = latestInputsRef.current;
+    if (!finalLatest.showAiModal || finalLatest.playerKey !== initialPlayerKey) {
+      return null;
+    }
+    const finalScoped =
+      scopedTimelineRef.current.profileStamp === finalLatest.profileStamp
+        ? scopedTimelineRef.current
+        : null;
+    return buildFreshChatContextFromState(finalScoped);
+  }, [coachPrepAwaitTimeoutMs, prepareTimelineForCoach, buildFreshChatContextFromState]);
+
+  const openAiCoach = useCallback(
+    (initialMsg?: string) => {
+      setAiInitialMessage(initialMsg);
+      latestInputsRef.current.showAiModal = true;
+      setShowAiModal(true);
+      void prepareTimelineForCoach();
+    },
+    [prepareTimelineForCoach]
+  );
+
+  const handleCloseAiCoach = useCallback(() => {
+    latestInputsRef.current.showAiModal = false;
+    setShowAiModal(false);
+    setAiInitialMessage(undefined);
+    abortInFlightCoachPrep(true);
+  }, [abortInFlightCoachPrep]);
+
+  const handleRetryCoachTimeline = useCallback(() => {
+    void prepareTimelineForCoach({ force: true });
+  }, [prepareTimelineForCoach]);
+
   const handleAnalyzeTimeline = async () => {
-    if (timelineAnalysis) {
+    if (timelineAnalysis && activeScoped?.status === 'COMPLETE') {
       setShowTimelineModal(true);
       return;
     }
-    setLoadingTimeline(true);
+    const stampAtStart = profileStamp;
+    const playerKeyAtStart = playerKey;
+    setLoadingManualTimeline(true);
     try {
       const data = await analyzeTimelines(summonerData.region, summonerData.puuid);
-      setTimelineAnalysis(data);
+      if (latestInputsRef.current.profileStamp !== stampAtStart) {
+        return;
+      }
+      attemptedPrepStampRef.current = stampAtStart;
+      const rawGames = data.aggregateSummary?.gamesAnalyzed;
+      const gamesAnalyzed =
+        typeof rawGames === 'number' && Number.isFinite(rawGames)
+          ? Math.max(0, Math.round(rawGames))
+          : 0;
+      const requestedTotal = Math.max(gamesAnalyzed, candidateMatchIds.length);
+      const manualStatus =
+        gamesAnalyzed === 0
+          ? 'BLOCKED'
+          : gamesAnalyzed < requestedTotal
+          ? 'PARTIAL'
+          : 'COMPLETE';
+      commitScopedTimeline({
+        playerKey: playerKeyAtStart,
+        profileStamp: stampAtStart,
+        status: manualStatus,
+        analysis: gamesAnalyzed > 0 ? data : null,
+        coverage: {
+          status: manualStatus,
+          covered: gamesAnalyzed,
+          requested: requestedTotal,
+          stopReason: manualStatus === 'COMPLETE' ? null : 'PARTIAL_TIMELINE_COVERAGE',
+        },
+      });
       setShowTimelineModal(true);
       toast.success('Timeline telemetry frames analyzed');
     } catch {
-      toast.error('Could not load timeline analysis right now');
+      if (latestInputsRef.current.profileStamp === stampAtStart) {
+        toast.error('Could not load timeline analysis right now');
+      }
     } finally {
-      setLoadingTimeline(false);
+      if (latestInputsRef.current.profileStamp === stampAtStart) {
+        setLoadingManualTimeline(false);
+      }
     }
   };
 
   const handleAiCoachFromTimeline = (suggestion?: string) => {
-    setAiInitialMessage(suggestion);
-    setShowAiModal(true);
+    openAiCoach(suggestion);
   };
 
   const handleContinueSummaryInCoach = () => {
-    setAiInitialMessage(undefined);
-    setShowAiModal(true);
+    openAiCoach(undefined);
   };
 
   const handleLiveGameClick = async () => {
@@ -526,10 +1148,10 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
               </button>
               <button
                 onClick={handleAnalyzeTimeline}
-                disabled={loadingTimeline}
+                disabled={loadingManualTimeline}
                 className="flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-700 dark:border-cyan-500/30 text-white dark:text-cyan-300 font-bold py-2 px-3.5 text-xs rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {loadingTimeline ? (
+                {loadingManualTimeline ? (
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -539,10 +1161,10 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
                   </svg>
                 )}
-                <span>{loadingTimeline ? 'Analyzing...' : 'Analyze Timeline'}</span>
+                <span>{loadingManualTimeline ? 'Analyzing...' : 'Analyze Timeline'}</span>
               </button>
               <button
-                onClick={() => setShowAiModal(true)}
+                onClick={() => openAiCoach()}
                 className="flex items-center space-x-1.5 bg-sky-700 hover:bg-sky-600 dark:bg-cyan-950/80 dark:hover:bg-cyan-900/80 border border-sky-600 dark:border-cyan-500/40 text-white dark:text-cyan-300 font-bold py-2 px-3.5 text-xs rounded-lg transition-colors"
               >
                 <svg 
@@ -601,16 +1223,17 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({ summonerData, handleRefresh
 
       <AiAnalysisModal 
         isOpen={showAiModal}
-        onClose={() => { setShowAiModal(false); setAiInitialMessage(undefined); }}
+        onClose={handleCloseAiCoach}
         summonerName={`${summonerData.gameName}#${summonerData.tagLine}`}
         context={aiContext}
         initialMessage={aiInitialMessage}
         improvementStats={resolvedImprovement.stats}
         hasTimelineAnalysis={resolvedImprovement.hasTimelineAnalysis}
-        onAnalyzeTimeline={handleAnalyzeTimeline}
-        loadingTimeline={loadingTimeline}
+        onAnalyzeTimeline={handleRetryCoachTimeline}
+        loadingTimeline={loadingCoachTimeline}
         matches={visibleMatches}
         puuid={summonerData.puuid}
+        onResolveChatContext={resolveCoachChatContext}
       />
       {timelineAnalysis && (
         <TimelineAnalysisModal
