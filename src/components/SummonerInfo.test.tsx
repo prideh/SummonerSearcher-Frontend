@@ -1,6 +1,9 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import SummonerInfo from './SummonerInfo';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import SummonerInfo, {
+  BACKEND_DEFAULT_COACH_PREP_DEADLINE_MS,
+  DEFAULT_COACH_PREP_AWAIT_TIMEOUT_MS,
+} from './SummonerInfo';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import { useAuthStore } from '../store/authStore';
 import { analyzeTimelines, prepareCoachTimelines } from '../api/timeline';
@@ -178,6 +181,10 @@ describe('SummonerInfo', () => {
       response: 'Strong mid-game objective control on Ahri, focus on 10m lane CS consistency.\n---SUGGESTIONS---\n["How do I fix my 10m CS?", "When should I roam?"]',
       interactionId: 'summary-interaction-1',
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('renders summoner details correctly', () => {
@@ -401,7 +408,7 @@ describe('SummonerInfo', () => {
         coveredMatchIds: ['EUW1_1', 'EUW1_2', 'EUW1_3', 'EUW1_4'],
         missingMatches: [],
         stopReason: null,
-        analysis: makeAnalyzedTimelineDto(analyzedStats, 3),
+        analysis: makeAnalyzedTimelineDto(analyzedStats, 4),
       });
 
     render(
@@ -583,14 +590,31 @@ describe('SummonerInfo', () => {
     );
   });
 
-  it('bounds first-prompt wait by coachPrepAwaitTimeoutMs, aborts hung prep, and falls back truthfully to BLOCKED match-summary context without retry loops', async () => {
+  it('aligns default first-prompt wait (15s = 12s backend deadline + 3s grace) so valid 9-12s backend PARTIAL results are awaited and not discarded', async () => {
+    expect(BACKEND_DEFAULT_COACH_PREP_DEADLINE_MS).toBe(12_000);
+    expect(DEFAULT_COACH_PREP_AWAIT_TIMEOUT_MS).toBe(15_000);
+
+    vi.useFakeTimers();
     Element.prototype.scrollIntoView = vi.fn();
+
     let capturedSignal: AbortSignal | undefined;
     (prepareCoachTimelines as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(
       (_region: string, _puuid: string, opts?: { signal?: AbortSignal }) => {
         capturedSignal = opts?.signal;
-        return new Promise(() => {
-          // Intentionally never settles to verify finite await bound
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            resolve({
+              status: 'PARTIAL',
+              region: 'euw1',
+              puuid: '123',
+              analyzerVersion: 'v2',
+              requestedMatchIds: ['EUW1_501', 'EUW1_502'],
+              coveredMatchIds: ['EUW1_501'],
+              missingMatches: [{ matchId: 'EUW1_502', reason: 'DEADLINE_EXCEEDED' }],
+              stopReason: 'DEADLINE_EXCEEDED',
+              analysis: makeAnalyzedTimelineDto(BACKEND_18_CONTRACT, 1, 290),
+            });
+          }, 10_500); // 10.5s: inside backend's 9-12s partial deadline window
         });
       }
     );
@@ -598,19 +622,84 @@ describe('SummonerInfo', () => {
     render(
       <SummonerInfo
         {...defaultProps}
+        summonerData={{
+          ...mockSummonerData,
+          totalMatches: 2,
+          improvementStats: makePreTimelineFromSerializedContract(),
+        }}
+        visibleMatches={[makeMatch('EUW1_501'), makeMatch('EUW1_502')]}
+      />
+    );
+
+    fireEvent.click(screen.getByText('AI Coach'));
+    fireEvent.change(screen.getByTestId('ai-coach-input'), {
+      target: { value: 'Check my 10m lane state' },
+    });
+    fireEvent.click(screen.getByTestId('ai-coach-send-button'));
+
+    // At 9.0s (past old 8s limit), prep must still be active and uncancelled
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(9_000);
+    });
+    expect(capturedSignal?.aborted).toBe(false);
+    expect(chatWithAi).not.toHaveBeenCalled();
+
+    // At 10.5s, backend returns valid PARTIAL coverage -> Prompt #1 receives PARTIAL context!
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+
+    expect(capturedSignal?.aborted).toBe(false);
+    expect(prepareCoachTimelines).toHaveBeenCalledTimes(1);
+    expect(chatWithAi).toHaveBeenCalledTimes(1);
+    const [sentContext] = (chatWithAi as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(sentContext.timelineStatus).toBe('PARTIAL');
+    expect(sentContext.timelineCoverage).toEqual({
+      status: 'PARTIAL',
+      covered: 1,
+      requested: 2,
+      stopReason: 'DEADLINE_EXCEEDED',
+    });
+  });
+
+  it('does not cancel ongoing valid prep on chat AWAIT_TIMEOUT (preserving late PARTIAL arrival), while settling finitely on client ECONNABORTED timeout with no retry loops', async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    let capturedSignal1: AbortSignal | undefined;
+    let resolveLatePartial!: (val: unknown) => void;
+    let rejectClientTimeout!: (err: unknown) => void;
+
+    (prepareCoachTimelines as unknown as ReturnType<typeof vi.fn>)
+      .mockImplementationOnce((_region: string, _puuid: string, opts?: { signal?: AbortSignal }) => {
+        capturedSignal1 = opts?.signal;
+        return new Promise((resolve) => {
+          resolveLatePartial = resolve;
+        });
+      })
+      .mockImplementationOnce(() => {
+        return new Promise((_, reject) => {
+          rejectClientTimeout = reject;
+        });
+      });
+
+    const { rerender } = render(
+      <SummonerInfo
+        {...defaultProps}
         coachPrepAwaitTimeoutMs={35}
         summonerData={{
           ...mockSummonerData,
-          totalMatches: 1,
+          lastUpdated: '2026-04-01T00:00:00.000Z',
+          totalMatches: 2,
+          improvementStats: makePreTimelineFromSerializedContract(),
         }}
-        visibleMatches={[makeMatch('EUW1_501')]}
+        visibleMatches={[makeMatch('EUW1_501'), makeMatch('EUW1_502')]}
       />
     );
 
     fireEvent.click(screen.getByText('AI Coach'));
     expect(prepareCoachTimelines).toHaveBeenCalledTimes(1);
-    expect(capturedSignal?.aborted).toBe(false);
+    expect(capturedSignal1?.aborted).toBe(false);
 
+    // 1. Impatient Prompt #1 hits AWAIT_TIMEOUT -> sends truthful BLOCKED fallback WITHOUT aborting ongoing valid prep
     fireEvent.change(screen.getByTestId('ai-coach-input'), {
       target: { value: 'Give me macro advice' },
     });
@@ -620,16 +709,85 @@ describe('SummonerInfo', () => {
       expect(chatWithAi).toHaveBeenCalledTimes(1);
     });
 
-    expect(capturedSignal?.aborted).toBe(true);
-    expect(prepareCoachTimelines).toHaveBeenCalledTimes(1); // No retry loop!
-    const [sentContext] = (chatWithAi as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(sentContext.timelineStatus).toBe('BLOCKED');
-    expect(sentContext.timelineCoverage).toEqual({
+    expect(capturedSignal1?.aborted).toBe(false);
+    expect(prepareCoachTimelines).toHaveBeenCalledTimes(1);
+    const [impatientContext] = (chatWithAi as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(impatientContext.timelineStatus).toBe('BLOCKED');
+    expect(impatientContext.timelineCoverage).toEqual({
       status: 'BLOCKED',
       covered: 0,
-      requested: 1,
+      requested: 2,
       stopReason: 'AWAIT_TIMEOUT',
     });
+
+    // 2. Late valid PARTIAL response arrives before client HTTP timeout -> populates drawer and Prompt #2 with 0 extra prep calls
+    await act(async () => {
+      resolveLatePartial({
+        status: 'PARTIAL',
+        region: 'euw1',
+        puuid: '123',
+        analyzerVersion: 'v2',
+        requestedMatchIds: ['EUW1_501', 'EUW1_502'],
+        coveredMatchIds: ['EUW1_501'],
+        missingMatches: [{ matchId: 'EUW1_502', reason: 'DEADLINE_EXCEEDED' }],
+        stopReason: 'DEADLINE_EXCEEDED',
+        analysis: makeAnalyzedTimelineDto(BACKEND_18_CONTRACT, 1, 275),
+      });
+    });
+
+    fireEvent.click(screen.getByTestId('ai-coach-evidence-toggle'));
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-coach-evidence-drawer')).toHaveTextContent(
+        '10m/20m timelines loaded (1/2G partial)'
+      );
+    });
+    expect(prepareCoachTimelines).toHaveBeenCalledTimes(1);
+
+    fireEvent.change(screen.getByTestId('ai-coach-input'), {
+      target: { value: 'Now check my partial timeline' },
+    });
+    fireEvent.click(screen.getByTestId('ai-coach-send-button'));
+    await waitFor(() => {
+      expect(chatWithAi).toHaveBeenCalledTimes(2);
+    });
+    const [followUpContext] = (chatWithAi as unknown as ReturnType<typeof vi.fn>).mock.calls[1];
+    expect(followUpContext.timelineStatus).toBe('PARTIAL');
+    expect(followUpContext.timelineCoverage).toEqual({
+      status: 'PARTIAL',
+      covered: 1,
+      requested: 2,
+      stopReason: 'DEADLINE_EXCEEDED',
+    });
+    expect(prepareCoachTimelines).toHaveBeenCalledTimes(1);
+
+    // 3. Finite client timeout (ECONNABORTED) on a refreshed stamp settles finitely to unavailable with zero retry loops
+    rerender(
+      <SummonerInfo
+        {...defaultProps}
+        coachPrepAwaitTimeoutMs={35}
+        summonerData={{
+          ...mockSummonerData,
+          lastUpdated: '2026-04-01T01:00:00.000Z',
+          totalMatches: 2,
+          improvementStats: makePreTimelineFromSerializedContract(),
+        }}
+        visibleMatches={[makeMatch('EUW1_501'), makeMatch('EUW1_502')]}
+      />
+    );
+    expect(prepareCoachTimelines).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      rejectClientTimeout(
+        Object.assign(new Error('timeout of 20000ms exceeded'), { code: 'ECONNABORTED' })
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-coach-evidence-drawer')).toHaveTextContent(
+        'Match summaries only (timeline unavailable)'
+      );
+    });
+    expect(prepareCoachTimelines).toHaveBeenCalledTimes(2); // Zero retry loops
   });
 
   it('handles HTTP error and ECONNABORTED timeout states truthfully with zero retry loops', async () => {
@@ -979,6 +1137,302 @@ describe('SummonerInfo', () => {
       />
     );
     expect(capturedSignal?.aborted).toBe(true);
+  });
+
+  it('fails closed in SummonerInfo when prepareCoachTimelines returns unknown status, wrong identity, or mismatched gamesAnalyzed instead of claiming all analyzed', async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+
+    (prepareCoachTimelines as unknown as ReturnType<typeof vi.fn>)
+      // 1. Unknown status with non-null analysis object -> must NOT guess COMPLETE
+      .mockResolvedValueOnce({
+        status: 'READY_OK',
+        region: 'euw1',
+        puuid: '123',
+        analyzerVersion: 'v2',
+        requestedMatchIds: ['EUW1_1', 'EUW1_2'],
+        coveredMatchIds: ['EUW1_1', 'EUW1_2'],
+        missingMatches: [],
+        stopReason: null,
+        analysis: makeAnalyzedTimelineDto(BACKEND_18_CONTRACT, 2, 300),
+      })
+      // 2. Wrong PUUID -> fail closed IDENTITY_MISMATCH
+      .mockResolvedValueOnce({
+        status: 'COMPLETE',
+        region: 'euw1',
+        puuid: 'other-puuid-999',
+        analyzerVersion: 'v2',
+        requestedMatchIds: ['EUW1_1', 'EUW1_2'],
+        coveredMatchIds: ['EUW1_1', 'EUW1_2'],
+        missingMatches: [],
+        stopReason: null,
+        analysis: makeAnalyzedTimelineDto(BACKEND_18_CONTRACT, 2, 300),
+      })
+      // 3. gamesAnalyzed (1) !== coveredMatchIds.length (2) -> fail closed INCONSISTENT_COVERAGE
+      .mockResolvedValueOnce({
+        status: 'COMPLETE',
+        region: 'euw1',
+        puuid: '123',
+        analyzerVersion: 'v2',
+        requestedMatchIds: ['EUW1_1', 'EUW1_2'],
+        coveredMatchIds: ['EUW1_1', 'EUW1_2'],
+        missingMatches: [],
+        stopReason: null,
+        analysis: makeAnalyzedTimelineDto(BACKEND_18_CONTRACT, 1, 300),
+      });
+
+    render(
+      <SummonerInfo
+        {...defaultProps}
+        summonerData={{
+          ...mockSummonerData,
+          totalMatches: 2,
+          improvementStats: makePreTimelineFromSerializedContract(),
+        }}
+        visibleMatches={[makeMatch('EUW1_1'), makeMatch('EUW1_2')]}
+      />
+    );
+
+    // Attempt 1: unknown status
+    fireEvent.click(screen.getByText('AI Coach'));
+    await waitFor(() => {
+      expect(
+        screen.getByText(/minute-by-minute timeline checkpoints are temporarily unavailable/i)
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('ai-coach-evidence-toggle'));
+    expect(screen.getByTestId('ai-coach-evidence-drawer')).toHaveTextContent(
+      'Match summaries only (timeline unavailable)'
+    );
+    expect(prepareCoachTimelines).toHaveBeenCalledTimes(1);
+
+    // Attempt 2 (retry CTA): mismatched PUUID
+    fireEvent.click(screen.getByTestId('improvement-stats-analyze-cta'));
+    await waitFor(() => {
+      expect(prepareCoachTimelines).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.getByTestId('ai-coach-evidence-drawer')).toHaveTextContent(
+      'Match summaries only (timeline unavailable)'
+    );
+
+    // Attempt 3 (retry CTA): inconsistent gamesAnalyzed
+    fireEvent.click(screen.getByTestId('improvement-stats-analyze-cta'));
+    await waitFor(() => {
+      expect(prepareCoachTimelines).toHaveBeenCalledTimes(3);
+    });
+    expect(screen.getByTestId('ai-coach-evidence-drawer')).toHaveTextContent(
+      'Match summaries only (timeline unavailable)'
+    );
+
+    // Sending a prompt after fail-closed normalization sends truthful BLOCKED (covered: 0) with 0 extra retries
+    fireEvent.change(screen.getByTestId('ai-coach-input'), {
+      target: { value: 'Summarize my recent games' },
+    });
+    fireEvent.click(screen.getByTestId('ai-coach-send-button'));
+    await waitFor(() => {
+      expect(chatWithAi).toHaveBeenCalledTimes(1);
+    });
+    expect(prepareCoachTimelines).toHaveBeenCalledTimes(3);
+    const [sentCtx] = (chatWithAi as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(sentCtx.timelineStatus).toBe('BLOCKED');
+    expect(sentCtx.timelineCoverage).toEqual({
+      status: 'BLOCKED',
+      covered: 0,
+      requested: 2,
+      stopReason: 'INCONSISTENT_COVERAGE',
+    });
+  });
+
+  it('resets stale state during an actual refresh while AI Coach is open and ensures first prompt after profileStamp change awaits bounded re-preparation without skipping', async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+
+    let resolveRefreshStamp2!: (val: unknown) => void;
+    let resolveRefreshStamp3!: (val: unknown) => void;
+
+    (prepareCoachTimelines as unknown as ReturnType<typeof vi.fn>)
+      // 1. Initial coach open on stamp1 -> COMPLETE (1/1)
+      .mockResolvedValueOnce({
+        status: 'COMPLETE',
+        region: 'euw1',
+        puuid: '123',
+        analyzerVersion: 'v2',
+        requestedMatchIds: ['EUW1_1'],
+        coveredMatchIds: ['EUW1_1'],
+        missingMatches: [],
+        stopReason: null,
+        analysis: makeAnalyzedTimelineDto(BACKEND_18_CONTRACT, 1, 210),
+      })
+      // 2. Re-preparation after actual refresh (refreshing true -> false, stamp2) -> pending until resolved
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRefreshStamp2 = resolve;
+          })
+      )
+      // 3. Re-preparation after direct profileStamp update while open (stamp3) -> pending until resolved
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRefreshStamp3 = resolve;
+          })
+      );
+
+    const { rerender } = render(
+      <SummonerInfo
+        {...defaultProps}
+        refreshing={false}
+        summonerData={{
+          ...mockSummonerData,
+          lastUpdated: '2026-04-01T00:00:00.000Z',
+          totalMatches: 1,
+          improvementStats: makePreTimelineFromSerializedContract(),
+        }}
+        visibleMatches={[makeMatch('EUW1_1')]}
+      />
+    );
+
+    // 1. Open AI Coach on stamp1 -> prepares bounded once and shows COMPLETE
+    fireEvent.click(screen.getByText('AI Coach'));
+    expect(prepareCoachTimelines).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(
+        screen.getByText(/10m\/20m timeline checkpoints from 1 recent games? are ready/i)
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('ai-coach-evidence-toggle'));
+    expect(screen.getByTestId('ai-coach-evidence-drawer')).toHaveTextContent(
+      'Observed: 1 matches · 10m/20m timelines loaded'
+    );
+
+    // 2. Actual profile refresh begins while AI Coach stays open -> stale COMPLETE state resets immediately, 0 calls while refreshing=true
+    rerender(
+      <SummonerInfo
+        {...defaultProps}
+        refreshing={true}
+        summonerData={{
+          ...mockSummonerData,
+          lastUpdated: '2026-04-01T00:00:00.000Z',
+          totalMatches: 1,
+          improvementStats: makePreTimelineFromSerializedContract(),
+        }}
+        visibleMatches={[makeMatch('EUW1_1')]}
+      />
+    );
+    expect(prepareCoachTimelines).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('ai-coach-evidence-drawer')).toHaveTextContent(
+      'Match summaries only (timeline not run)'
+    );
+
+    // 3. Refresh finishes with fresh profileStamp (stamp2: new match EUW1_2) while AI Coach is still open
+    rerender(
+      <SummonerInfo
+        {...defaultProps}
+        refreshing={false}
+        summonerData={{
+          ...mockSummonerData,
+          lastUpdated: '2026-04-01T01:00:00.000Z',
+          totalMatches: 2,
+          improvementStats: makePreTimelineFromSerializedContract(),
+        }}
+        visibleMatches={[makeMatch('EUW1_1'), makeMatch('EUW1_2')]}
+      />
+    );
+
+    // Must re-prepare bounded ONCE for stamp2
+    expect(prepareCoachTimelines).toHaveBeenCalledTimes(2);
+    expect(prepareCoachTimelines).toHaveBeenNthCalledWith(
+      2,
+      'euw1',
+      '123',
+      expect.objectContaining({ matchIds: ['EUW1_1', 'EUW1_2'] })
+    );
+
+    // Immediately send first prompt after refresh -> MUST NOT silently skip re-preparation!
+    fireEvent.change(screen.getByTestId('ai-coach-input'), {
+      target: { value: 'How did my refreshed match go?' },
+    });
+    fireEvent.click(screen.getByTestId('ai-coach-send-button'));
+    expect(chatWithAi).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveRefreshStamp2({
+        status: 'PARTIAL',
+        region: 'euw1',
+        puuid: '123',
+        analyzerVersion: 'v2',
+        requestedMatchIds: ['EUW1_1', 'EUW1_2'],
+        coveredMatchIds: ['EUW1_1'],
+        missingMatches: [{ matchId: 'EUW1_2', reason: 'RIOT_BUDGET_EXHAUSTED' }],
+        stopReason: 'RIOT_BUDGET_EXHAUSTED',
+        analysis: makeAnalyzedTimelineDto(BACKEND_18_CONTRACT, 1, 315),
+      });
+    });
+
+    await waitFor(() => {
+      expect(chatWithAi).toHaveBeenCalledTimes(1);
+    });
+    expect(prepareCoachTimelines).toHaveBeenCalledTimes(2);
+    const [stamp2Ctx] = (chatWithAi as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(stamp2Ctx.timelineStatus).toBe('PARTIAL');
+    expect(stamp2Ctx.timelineCoverage).toEqual({
+      status: 'PARTIAL',
+      covered: 1,
+      requested: 2,
+      stopReason: 'RIOT_BUDGET_EXHAUSTED',
+    });
+
+    // 4. Direct profileStamp change while open (stamp3: 3 matches, refreshing stays false) + immediate prompt -> prepares bounded once and awaits stamp3
+    rerender(
+      <SummonerInfo
+        {...defaultProps}
+        refreshing={false}
+        summonerData={{
+          ...mockSummonerData,
+          lastUpdated: '2026-04-01T02:00:00.000Z',
+          totalMatches: 3,
+          improvementStats: makePreTimelineFromSerializedContract(),
+        }}
+        visibleMatches={[makeMatch('EUW1_1'), makeMatch('EUW1_2'), makeMatch('EUW1_3')]}
+      />
+    );
+    expect(prepareCoachTimelines).toHaveBeenCalledTimes(3);
+    expect(prepareCoachTimelines).toHaveBeenNthCalledWith(
+      3,
+      'euw1',
+      '123',
+      expect.objectContaining({ matchIds: ['EUW1_1', 'EUW1_2', 'EUW1_3'] })
+    );
+
+    fireEvent.change(screen.getByTestId('ai-coach-input'), {
+      target: { value: 'Check all 3 games now' },
+    });
+    fireEvent.click(screen.getByTestId('ai-coach-send-button'));
+    expect(chatWithAi).toHaveBeenCalledTimes(1); // Still waiting for stamp3 prep
+
+    await act(async () => {
+      resolveRefreshStamp3({
+        status: 'COMPLETE',
+        region: 'euw1',
+        puuid: '123',
+        analyzerVersion: 'v2',
+        requestedMatchIds: ['EUW1_1', 'EUW1_2', 'EUW1_3'],
+        coveredMatchIds: ['EUW1_1', 'EUW1_2', 'EUW1_3'],
+        missingMatches: [],
+        stopReason: null,
+        analysis: makeAnalyzedTimelineDto(BACKEND_18_CONTRACT, 3, 420),
+      });
+    });
+
+    await waitFor(() => {
+      expect(chatWithAi).toHaveBeenCalledTimes(2);
+    });
+    expect(prepareCoachTimelines).toHaveBeenCalledTimes(3); // Bounded once per profileStamp!
+    const [stamp3Ctx] = (chatWithAi as unknown as ReturnType<typeof vi.fn>).mock.calls[1];
+    expect(stamp3Ctx.timelineStatus).toBe('ANALYZED');
+    expect(stamp3Ctx.timelineCoverage).toEqual({
+      status: 'COMPLETE',
+      covered: 3,
+      requested: 3,
+    });
   });
 });
 

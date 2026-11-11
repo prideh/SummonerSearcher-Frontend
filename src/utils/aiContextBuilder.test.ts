@@ -1539,6 +1539,14 @@ describe('aiContextBuilder (#14)', () => {
       },
     };
 
+    const completeTimeline: TimelineAnalysisDto = {
+      ...partialTimeline,
+      aggregateSummary: {
+        ...partialTimeline.aggregateSummary,
+        gamesAnalyzed: 2,
+      },
+    };
+
     const completeCtx = buildAiContext(
       'TestMid',
       'EUW',
@@ -1547,7 +1555,7 @@ describe('aiContextBuilder (#14)', () => {
       null,
       BASE_CHAMPION_STATS,
       BASE_OVERALL_STATS,
-      partialTimeline,
+      completeTimeline,
       null,
       { status: 'COMPLETE', covered: 2, requested: 2, stopReason: null }
     );
@@ -1557,6 +1565,48 @@ describe('aiContextBuilder (#14)', () => {
       covered: 2,
       requested: 2,
     });
+
+    // Claiming COMPLETE when covered < requested downgrades honestly to PARTIAL
+    const downgradedPartialCtx = buildAiContext(
+      'TestMid',
+      'EUW',
+      [m1, m2],
+      'player-puuid',
+      null,
+      BASE_CHAMPION_STATS,
+      BASE_OVERALL_STATS,
+      partialTimeline,
+      null,
+      { status: 'COMPLETE', covered: 1, requested: 2, stopReason: 'PARTIAL_PROFILE_MATCH_COVERAGE' }
+    );
+    expect(downgradedPartialCtx.timelineStatus).toBe('PARTIAL');
+    expect(downgradedPartialCtx.timelineCoverage).toEqual({
+      status: 'PARTIAL',
+      covered: 1,
+      requested: 2,
+      stopReason: 'PARTIAL_PROFILE_MATCH_COVERAGE',
+    });
+
+    // Inconsistent gamesAnalyzed !== covered fails closed to BLOCKED and strips timelineInsights
+    const inconsistentCtx = buildAiContext(
+      'TestMid',
+      'EUW',
+      [m1, m2],
+      'player-puuid',
+      null,
+      BASE_CHAMPION_STATS,
+      BASE_OVERALL_STATS,
+      partialTimeline, // gamesAnalyzed === 1 while coverage claims covered === 2
+      null,
+      { status: 'COMPLETE', covered: 2, requested: 2, stopReason: null }
+    );
+    expect(inconsistentCtx.timelineStatus).toBe('BLOCKED');
+    expect(inconsistentCtx.timelineCoverage).toEqual({
+      status: 'BLOCKED',
+      covered: 0,
+      requested: 2,
+    });
+    expect(inconsistentCtx.timelineInsights).toBeUndefined();
 
     const partialCtx = buildAiContext(
       'TestMid',

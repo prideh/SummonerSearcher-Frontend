@@ -984,39 +984,67 @@ export function buildAiContext(
   const runeMap = ddState?.runeMap ?? null;
   const summonerSpellMap = ddState?.summonerSpellMap ?? null;
 
-  let timelineStatus: CoachTimelineStatus = timelineAnalysis ? 'ANALYZED' : 'NOT_ANALYZED';
+  let effectiveTimelineAnalysis: TimelineAnalysisDto | null = timelineAnalysis ?? null;
+  let timelineStatus: CoachTimelineStatus = effectiveTimelineAnalysis ? 'ANALYZED' : 'NOT_ANALYZED';
   let normalizedTimelineCoverage: CoachTimelineCoverageContext | undefined;
   if (timelineCoverage) {
-    const covered = Math.max(0, Math.round(timelineCoverage.covered || 0));
-    const requested = Math.max(covered, Math.round(timelineCoverage.requested || 0));
+    const rawCovered =
+      typeof timelineCoverage.covered === 'number' && Number.isFinite(timelineCoverage.covered)
+        ? Math.max(0, Math.round(timelineCoverage.covered))
+        : 0;
+    const rawRequested =
+      typeof timelineCoverage.requested === 'number' && Number.isFinite(timelineCoverage.requested)
+        ? Math.max(0, Math.round(timelineCoverage.requested))
+        : 0;
     const stopReason =
       typeof timelineCoverage.stopReason === 'string' && timelineCoverage.stopReason.trim().length > 0
         ? timelineCoverage.stopReason.trim()
         : undefined;
+    const aggGames = effectiveTimelineAnalysis?.aggregateSummary?.gamesAnalyzed;
+    const hasConsistentAnalysis =
+      effectiveTimelineAnalysis !== null &&
+      rawCovered > 0 &&
+      rawCovered <= rawRequested &&
+      typeof aggGames === 'number' &&
+      Number.isInteger(aggGames) &&
+      aggGames === rawCovered;
 
-    if (timelineCoverage.status === 'COMPLETE' && timelineAnalysis) {
-      timelineStatus = 'ANALYZED';
-      normalizedTimelineCoverage = {
-        status: 'COMPLETE',
-        covered,
-        requested,
-        ...(stopReason ? { stopReason } : {}),
-      };
-    } else if (timelineCoverage.status === 'PARTIAL' && timelineAnalysis && covered > 0) {
-      timelineStatus = 'PARTIAL';
-      normalizedTimelineCoverage = {
-        status: 'PARTIAL',
-        covered,
-        requested,
-        ...(stopReason ? { stopReason } : {}),
-      };
-    } else {
+    if (!hasConsistentAnalysis || timelineCoverage.status === 'BLOCKED') {
+      effectiveTimelineAnalysis = null;
       timelineStatus = 'BLOCKED';
       normalizedTimelineCoverage = {
         status: 'BLOCKED',
         covered: 0,
-        requested,
+        requested: Math.max(rawRequested, allMatches.slice(0, MAX_RECENT_MATCHES).length),
         ...(stopReason ? { stopReason } : {}),
+      };
+    } else if (timelineCoverage.status === 'COMPLETE' && rawCovered === rawRequested) {
+      timelineStatus = 'ANALYZED';
+      normalizedTimelineCoverage = {
+        status: 'COMPLETE',
+        covered: rawCovered,
+        requested: rawRequested,
+        ...(stopReason ? { stopReason } : {}),
+      };
+    } else if (
+      (timelineCoverage.status === 'PARTIAL' || timelineCoverage.status === 'COMPLETE') &&
+      rawCovered < rawRequested
+    ) {
+      timelineStatus = 'PARTIAL';
+      normalizedTimelineCoverage = {
+        status: 'PARTIAL',
+        covered: rawCovered,
+        requested: rawRequested,
+        ...(stopReason ? { stopReason } : {}),
+      };
+    } else {
+      effectiveTimelineAnalysis = null;
+      timelineStatus = 'BLOCKED';
+      normalizedTimelineCoverage = {
+        status: 'BLOCKED',
+        covered: 0,
+        requested: rawRequested,
+        ...(stopReason ? { stopReason } : { stopReason: 'INCONSISTENT_COVERAGE' }),
       };
     }
   }
@@ -1031,17 +1059,17 @@ export function buildAiContext(
   const skillByMatchId = new Map<string, SkillOrderDto>();
   const eventsByMatchId = new Map<string, MatchEventTimelineDto>();
 
-  if (timelineAnalysis) {
-    timelineAnalysis.powerSpikeTimelines?.forEach(dto => {
+  if (effectiveTimelineAnalysis) {
+    effectiveTimelineAnalysis.powerSpikeTimelines?.forEach(dto => {
       if (dto.matchId) spikeByMatchId.set(dto.matchId, dto);
     });
-    timelineAnalysis.buildOrders?.forEach(dto => {
+    effectiveTimelineAnalysis.buildOrders?.forEach(dto => {
       if (dto.matchId) buildByMatchId.set(dto.matchId, dto);
     });
-    timelineAnalysis.skillOrders?.forEach(dto => {
+    effectiveTimelineAnalysis.skillOrders?.forEach(dto => {
       if (dto.matchId) skillByMatchId.set(dto.matchId, dto);
     });
-    timelineAnalysis.eventTimelines?.forEach(dto => {
+    effectiveTimelineAnalysis.eventTimelines?.forEach(dto => {
       if (dto.matchId) eventsByMatchId.set(dto.matchId, dto);
     });
   }
@@ -1213,7 +1241,7 @@ export function buildAiContext(
     let itemSpikes: ItemSpikeEntry[] | undefined;
     let skillMaxOrder: string | undefined;
 
-    if (timelineAnalysis) {
+    if (effectiveTimelineAnalysis) {
       const spikeDto = matchId ? spikeByMatchId.get(matchId) : undefined;
       const buildDto = matchId ? buildByMatchId.get(matchId) : undefined;
       const skillDto = matchId ? skillByMatchId.get(matchId) : undefined;
@@ -1296,7 +1324,7 @@ export function buildAiContext(
 
   const resolvedImprovement = resolveImprovementStats(
     improvementStats,
-    timelineAnalysis,
+    effectiveTimelineAnalysis,
     cappedMatches,
     puuid
   );
@@ -1308,7 +1336,7 @@ export function buildAiContext(
 
   // Build enriched timelineInsights summary (without any raw [x, y] coordinate arrays)
   let timelineInsights: EnrichedTimelineInsights | undefined;
-  if (timelineAnalysis?.aggregateSummary) {
+  if (effectiveTimelineAnalysis?.aggregateSummary) {
     let totalDeathsCount = 0;
     let totalDeathsBefore10 = 0;
     let totalKnownAssistedDeaths = 0;
@@ -1320,7 +1348,7 @@ export function buildAiContext(
     let wardEventsCount = 0;
     const wardBuckets = { pre10: 0, min10To20: 0, post20: 0 };
 
-    for (const evTimeline of timelineAnalysis.eventTimelines || []) {
+    for (const evTimeline of effectiveTimelineAnalysis.eventTimelines || []) {
       const ctx = extractMatchDeathContext(evTimeline);
       if (ctx) {
         totalDeathsCount += ctx.totalDeaths;
@@ -1352,7 +1380,7 @@ export function buildAiContext(
     const wardsByTimeBucket = wardEventsCount > 0 ? wardBuckets : null;
 
     timelineInsights = {
-      ...timelineAnalysis.aggregateSummary,
+      ...effectiveTimelineAnalysis.aggregateSummary,
       deathsBefore10: totalDeathsBefore10,
       assistedDeaths,
       unassistedDeaths,
