@@ -31,9 +31,9 @@ const ItemIcon: React.FC<ItemIconProps> = ({
 
   const item = itemMap?.[itemId];
   const questMeta = VERIFIED_ROLE_QUEST_METADATA[itemId];
-  const resolvedName = item?.name || questMeta?.name || `Item #${itemId}`;
+  const resolvedName = item?.name || questMeta?.name || 'Unrecognized Item';
   const slotPrefix = isRoleBoundSlot
-    ? '<div class="text-[11px] font-semibold uppercase tracking-wider text-amber-400 mb-0.5">Role Quest / 7th Slot</div>'
+    ? '<div class="text-[11px] font-semibold uppercase tracking-wider text-amber-400 mb-0.5">Role Quest Slot</div>'
     : '';
 
   const tooltipContent = item
@@ -42,7 +42,7 @@ const ItemIcon: React.FC<ItemIconProps> = ({
       ${slotPrefix}
       <div class="font-bold text-cyan-500 dark:text-cyan-400">${item.name}</div>
       <div class="text-sm text-gray-200 dark:text-gray-300 my-2">${item.description}</div>
-      <div class="text-sm text-yellow-400">Cost: ${item.gold.total}</div>
+      <div class="text-sm text-yellow-400">Cost: ${item.gold.total} gold</div>
     </div>
   `
     : questMeta
@@ -56,8 +56,8 @@ const ItemIcon: React.FC<ItemIconProps> = ({
     : `
     <div class="text-left max-w-xs">
       ${slotPrefix}
-      <div class="font-bold text-cyan-400">Item #${itemId}</div>
-      <div class="text-xs text-gray-300 mt-1">Icon or metadata unavailable in current Data Dragon snapshot.</div>
+      <div class="font-bold text-cyan-400">Unrecognized Item</div>
+      <div class="text-xs text-gray-300 mt-1">Item details and icon are not yet available for this patch.</div>
     </div>
   `;
 
@@ -68,11 +68,11 @@ const ItemIcon: React.FC<ItemIconProps> = ({
   if (!CDN_URL || imgFailed) {
     const badgeLabel = questMeta
       ? questMeta.kind === 'quest_starter'
-        ? 'Q'
+        ? 'Quest'
         : questMeta.kind === 'quest_reward'
-        ? 'QR'
-        : 'T3'
-      : String(itemId).slice(-4);
+        ? 'Reward'
+        : 'Boots'
+      : 'Item';
     return (
       <div
         role="img"
@@ -80,7 +80,7 @@ const ItemIcon: React.FC<ItemIconProps> = ({
         data-testid={`item-fallback-${itemId}`}
         data-tooltip-id="item-tooltip"
         data-tooltip-content={tooltipContent}
-        className={`${className} rounded border ${borderClasses} bg-slate-800/90 text-amber-300 flex items-center justify-center text-[9px] font-extrabold leading-none select-none shrink-0`}
+        className={`${className} rounded border ${borderClasses} bg-slate-800/90 text-amber-300 flex items-center justify-center text-[8px] font-extrabold leading-none select-none shrink-0 px-0.5 text-center`}
       >
         {badgeLabel}
       </div>

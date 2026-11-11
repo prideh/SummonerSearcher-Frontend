@@ -39,7 +39,7 @@ export const MAX_ITEM_SPIKES_PER_GAME = 3;
 export const MAX_COACH_HIGH_BALANCE_SAMPLES = 3;
 
 export const VISION_DATA_PRECISION_NOTE =
-  'Ward counts, types, and time-buckets only — Riot WARD_PLACED events carry no coordinates; never present ward locations.';
+  'Ward counts, types, and time-buckets only — Riot ward-placed events carry no coordinates; never present ward locations.';
 
 /** Known starter, consumable, boot-tier-1, and trinket item IDs to exclude from completed item spikes when DDragon gold metadata is unavailable. */
 const COMPONENT_OR_CONSUMABLE_ITEM_IDS = new Set<number>([
@@ -387,10 +387,16 @@ export function classifyRiftApproxZone(
 
   if (laneType && laneType.trim()) {
     const normalized = laneType.trim().toUpperCase();
-    if (normalized === 'MID_LANE' || normalized === 'MIDDLE') return 'Mid Lane';
-    if (normalized === 'TOP_LANE' || normalized === 'TOP') return 'Top Lane';
-    if (normalized === 'BOT_LANE' || normalized === 'BOTTOM') return 'Bot Lane';
-    return laneType.trim();
+    if (normalized === 'MID_LANE' || normalized === 'MIDDLE' || normalized === 'MID' || normalized === 'MID LANE') {
+      return 'Mid Lane';
+    }
+    if (normalized === 'TOP_LANE' || normalized === 'TOP' || normalized === 'TOP LANE') {
+      return 'Top Lane';
+    }
+    if (normalized === 'BOT_LANE' || normalized === 'BOTTOM' || normalized === 'BOT' || normalized === 'BOT LANE') {
+      return 'Bot Lane';
+    }
+    return null;
   }
 
   return null;
@@ -412,7 +418,7 @@ export function formatPatchMajorMinor(gameVersion?: string): string | undefined 
 function resolveItemName(itemId: number | undefined, itemMap: ItemMap | null): string | null {
   if (!itemId || itemId <= 0) return null;
   const entry = itemMap?.[String(itemId)];
-  return entry?.name || VERIFIED_ROLE_QUEST_METADATA[itemId]?.name || `Item #${itemId}`;
+  return entry?.name || VERIFIED_ROLE_QUEST_METADATA[itemId]?.name || 'Unrecognized Item';
 }
 
 function resolveParticipantItems(p: ParticipantDto, itemMap: ItemMap | null): string[] {
@@ -424,22 +430,22 @@ function resolveParticipantItems(p: ParticipantDto, itemMap: ItemMap | null): st
   }
   const roleBound = classifyRoleBoundItem(p.roleBoundItem);
   if (roleBound.kind === 'quest_starter') {
-    resolved.push(`RoleQuest: ${roleBound.meta.shortLabel}`);
+    resolved.push(`${roleBound.meta.name} (in progress)`);
   } else if (roleBound.kind === 'quest_reward') {
-    resolved.push(`RoleQuest: ${roleBound.meta.name}`);
+    resolved.push(`${roleBound.meta.name} (completed)`);
   } else if (roleBound.kind === 'boots') {
-    const bootName = resolveItemName(roleBound.itemId, itemMap) || `Item #${roleBound.itemId}`;
-    resolved.push(`${bootName} (7th Slot)`);
+    const bootName = resolveItemName(roleBound.itemId, itemMap) || 'Unrecognized Boots';
+    resolved.push(`${bootName} (Role Quest Boot Slot)`);
   } else if (roleBound.kind === 'unknown_item') {
-    const fallbackName = resolveItemName(roleBound.itemId, itemMap) || `Item #${roleBound.itemId}`;
-    resolved.push(`RoleSlot: ${fallbackName}`);
+    const fallbackName = resolveItemName(roleBound.itemId, itemMap) || 'Unrecognized Item';
+    resolved.push(`${fallbackName} (Role Quest Slot)`);
   }
   return resolved;
 }
 
 function resolveRuneName(runeId: number | undefined, runeMap: RuneMap | null): string | undefined {
   if (!runeId || runeId <= 0) return undefined;
-  return runeMap?.[String(runeId)]?.name || `Rune #${runeId}`;
+  return runeMap?.[String(runeId)]?.name || 'Unrecognized Rune';
 }
 
 function resolveSummonerSpells(p: ParticipantDto, spellMap: SummonerSpellMap | null): string[] {
@@ -448,7 +454,7 @@ function resolveSummonerSpells(p: ParticipantDto, spellMap: SummonerSpellMap | n
   for (const id of ids) {
     if (!id || id <= 0) continue;
     const spell = spellMap?.[String(id)];
-    names.push(spell?.name || `Spell #${id}`);
+    names.push(spell?.name || 'Unrecognized Summoner Spell');
   }
   return names;
 }

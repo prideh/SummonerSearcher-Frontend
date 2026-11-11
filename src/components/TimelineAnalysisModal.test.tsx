@@ -107,7 +107,7 @@ describe('PowerSpikeTooltip and EventDot (#4)', () => {
     expect(screen.getByText("Zhonya's Hourglass")).toBeInTheDocument();
     expect(screen.getByText('Opp Bought')).toBeInTheDocument();
     expect(screen.getByText('Hexdrinker')).toBeInTheDocument();
-    expect(screen.getByText('Item 9999')).toBeInTheDocument();
+    expect(screen.getByText('Unrecognized Item')).toBeInTheDocument();
   });
 
   it('renders ASSIST and OBJECTIVE events in PowerSpikeTooltip and EventDot', () => {
@@ -155,7 +155,7 @@ describe('PowerSpikeTooltip and EventDot (#4)', () => {
     expect(screen.getByText('Ahri')).toBeInTheDocument();
     expect(screen.getByText(/assisted on/)).toBeInTheDocument();
     expect(screen.getByText('Zed')).toBeInTheDocument();
-    expect(screen.getByText('DRAGON')).toBeInTheDocument();
+    expect(screen.getByText('Dragon')).toBeInTheDocument();
     expect(screen.getByText(/secured/)).toBeInTheDocument();
 
     const { container } = render(
