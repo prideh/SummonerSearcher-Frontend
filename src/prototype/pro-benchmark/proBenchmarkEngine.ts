@@ -863,11 +863,11 @@ export function computeProComparisonSlice(
 
   if (!isSupportedSelection) {
     if (normalizedProPlayerQuery !== "ALL" && !resolvedProPlayer) {
-      unsupportedReason = `Pro player "${normalizedProPlayerQuery}" is not present in this 8-game (80-observation, 25-player) Worlds 2026 sample dataset.`;
+      unsupportedReason = `Pro player "${normalizedProPlayerQuery}" is not in this 8-game (80 player-game, 25-player) Worlds 2026 pro sample.`;
     } else if (normalizedProPlayerQuery !== "ALL" && resolvedProPlayer) {
       const playedSummary =
         resolvedProPlayer.championsPlayed
-          .map((c) => `${c.championId} (${c.games})`)
+          .map((c) => `${c.championId} (${c.games}G)`)
           .join(", ") || "none";
       const targetDesc =
         normalizedChamp === "ALL"
@@ -881,17 +881,17 @@ export function computeProComparisonSlice(
       alternateRolesForChampion.length > 0
     ) {
       const rolesList = alternateRolesForChampion
-        .map((opt) => `${formatRoleDisplay(opt.role)} (n=${opt.sampleCount})`)
+        .map((opt) => `${formatRoleDisplay(opt.role)} (${opt.sampleCount}G)`)
         .join(", ");
       unsupportedReason = `${canonicalChampName} has 0 games in ${formatRoleDisplay(
         normalizedRole,
-      )} in this 8-game Worlds 2026 sample, but is present in: ${rolesList}.`;
+      )} in this 8-game Worlds 2026 sample, but appears in: ${rolesList}.`;
     } else if (normalizedChamp !== "ALL") {
-      unsupportedReason = `"${normalizedChamp}" is not among the ${allOptions.length} champion-role pairs in this 8-game (80 player-game) Worlds 2026 sample dataset.`;
+      unsupportedReason = `"${normalizedChamp}" is not among the ${allOptions.length} champion-role matchups in this 8-game (80 player-game) Worlds 2026 pro sample.`;
     } else {
-      unsupportedReason = `No player-game observations match ${formatRoleDisplay(
+      unsupportedReason = `No pro games match ${formatRoleDisplay(
         normalizedRole,
-      )} in this sample dataset.`;
+      )} in this 8-game Worlds 2026 sample.`;
     }
   }
 
@@ -1543,7 +1543,7 @@ export function computeProComparisonSlice(
       totalPauseSeconds: obs.game.total_pause_s,
       pauseHeuristicNote:
         obs.game.total_pause_s > 0
-          ? `${obs.game.total_pause_s.toFixed(2)}s pause subtracted (zero-gold freeze heuristic)`
+          ? `${obs.game.total_pause_s.toFixed(2)}s pause subtracted (passive-gold freeze check)`
           : null,
       checkpoints: rowCheckpoints,
       csAt14m,
@@ -1579,9 +1579,9 @@ export function computeProComparisonSlice(
         : {
             isCs10HudVerified: false,
             correctedHud10mUrl: null,
-            verificationBadgeText: "Not HUD Verified (Feed-Derived Only)",
+            verificationBadgeText: "Not HUD-Checked",
             vodOffsetCaveatText:
-              "Independent broadcast HUD check covered only IG vs TES G1+G2 CS@10; raw dataset VOD locator is uncalibrated (~73–74s early in G1+G2).",
+              "Independent broadcast HUD check covered only IG vs TES Game 1 and Game 2 CS@10 (earlier broadcast timestamps were ~73–74s early).",
           },
     };
   });
@@ -1614,7 +1614,7 @@ export function computeProComparisonSlice(
       } Worlds 2026 match${uniqueGameIds.size === 1 ? "" : "es"} (${playersInSlice.join(
         ", ",
       )})`
-    : (unsupportedReason ?? "No matching sample observations.");
+    : (unsupportedReason ?? "No matching games in pro sample.");
 
   const patchVersion = dataset.patchVersion ?? "16.20.826.3891";
   const patchShort = patchVersion.split(".").slice(0, 2).join(".");
@@ -1791,11 +1791,11 @@ export function evaluateDemoCsComparisons(
         parsedDemoCs: null,
         canCompare: false,
         deltaCs: null,
-        formattedDelta: "No demo value entered",
+        formattedDelta: "No CS value entered",
         statusMessage:
           checkpoint.status === "AVAILABLE"
-            ? "Enter a manual demo CS value to see raw arithmetic difference vs sample mean."
-            : "Pro sample snapshot unavailable at this minute mark.",
+            ? "Enter a CS value to see the difference vs the pro sample average."
+            : "Pro sample stats are not available at this minute.",
         isDemoOnly: true,
       };
       continue;
@@ -1809,8 +1809,8 @@ export function evaluateDemoCsComparisons(
         parsedDemoCs: null,
         canCompare: false,
         deltaCs: null,
-        formattedDelta: "Invalid demo input",
-        statusMessage: "Enter a non-negative CS number (Demo Only).",
+        formattedDelta: "Invalid CS value",
+        statusMessage: "Enter a non-negative CS number.",
         isDemoOnly: true,
       };
       continue;
@@ -1823,10 +1823,10 @@ export function evaluateDemoCsComparisons(
         parsedDemoCs: parsed,
         canCompare: false,
         deltaCs: null,
-        formattedDelta: "Comparison Unavailable",
+        formattedDelta: "Not available",
         statusMessage:
           checkpoint.unavailableReason === "SNAPSHOT_NOT_EXPORTED_AT_MARK"
-            ? `Cannot compare at ${minuteMark}m: pro sample dataset does not include a ${minuteMark}m snapshot.`
+            ? `Cannot compare at ${minuteMark}m: pro sample does not include ${minuteMark}m stats.`
             : `Cannot compare at ${minuteMark}m: 0 pro sample games reached ${minuteMark}:00.`,
         isDemoOnly: true,
       };
@@ -1841,10 +1841,10 @@ export function evaluateDemoCsComparisons(
       parsedDemoCs: parsed,
       canCompare: true,
       deltaCs: delta,
-      formattedDelta: `${sign}${delta.toFixed(1)} CS vs pro sample mean`,
-      statusMessage: `Demo CS (${parsed}) minus ${checkpoint.availableSnapshotCount}-game pro sample mean (${checkpoint.meanTotalCs.toFixed(
+      formattedDelta: `${sign}${delta.toFixed(1)} CS vs pro average`,
+      statusMessage: `Custom CS (${parsed}) minus ${checkpoint.availableSnapshotCount}-game pro average (${checkpoint.meanTotalCs.toFixed(
         1,
-      )}) — Demo Only, not live player data.`,
+      )}) — not live account stats.`,
       isDemoOnly: true,
     };
   }

@@ -309,9 +309,9 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                 htmlFor={`demo-cs-input-${minuteMark}m`}
                 className="text-[10px] font-bold uppercase text-amber-300"
               >
-                Demo @{minuteMark}m
+                Your CS @{minuteMark}m
               </label>
-              <span className="text-[10px] text-amber-200/90">Demo</span>
+              <span className="text-[10px] text-amber-200/90">Custom</span>
             </div>
             <input
               id={`demo-cs-input-${minuteMark}m`}
@@ -338,11 +338,11 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                   }`}
                 >
                   {demoComp.deltaCs > 0 ? '+' : ''}
-                  {demoComp.deltaCs.toFixed(1)} CS (Demo)
+                  {demoComp.deltaCs.toFixed(1)} CS vs pro
                 </span>
               ) : (
                 <span className="text-slate-500">
-                  {isAvailable ? 'Enter demo CS' : 'Not available'}
+                  {isAvailable ? 'Enter a CS value' : 'Not available'}
                 </span>
               )}
             </div>
@@ -370,7 +370,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
       };
       if (!parsed.puuid || !Array.isArray(parsed.visibleMatches)) {
         setCustomJsonError(
-          'JSON must include "puuid" (string) and "visibleMatches" (MatchDto[]), plus optional "timelinesByMatchId".'
+          'Sample match data must include a player ID and recent matches.'
         );
         return;
       }
@@ -378,8 +378,8 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
         key: 'custom_local_json',
         puuid: parsed.puuid,
         region: parsed.region || 'EUW1',
-        gameName: parsed.gameName || 'LocalPlayer',
-        tagLine: parsed.tagLine || 'JSON',
+        gameName: parsed.gameName || 'SamplePlayer',
+        tagLine: parsed.tagLine || 'SAMPLE',
         summonerLevel: 300,
         profileIconId: 29,
         tier: 'DIAMOND',
@@ -391,9 +391,9 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
         timelinesByMatchId: parsed.timelinesByMatchId ?? {},
       });
       setShowJsonInspector(false);
-    } catch (err) {
+    } catch {
       setCustomJsonError(
-        err instanceof Error ? `Invalid JSON: ${err.message}` : 'Invalid JSON payload.'
+        'Could not read sample match data. Check the format and try again.'
       );
     }
   };
@@ -403,7 +403,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
       data-testid="pro-comparison-preview-root"
       className="min-h-screen bg-[#090d16] text-slate-100 antialiased selection:bg-sky-500/20 selection:text-sky-300"
     >
-      {/* Standalone Header (only shown when in standalone Reference / Demo surface) */}
+      {/* Standalone Header (only shown when in standalone Pro Reference / Try a CS value view) */}
       {activeSurface === 'standalone' && (
         <header className="border-b border-slate-800 bg-slate-950">
           <div className="max-w-6xl mx-auto px-3 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2">
@@ -420,7 +420,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
               >
                 Worlds 2026 Sample · {slice.totalGamesInDataset} Games (
                 {slice.totalObservationsInDataset} Player-Games ·{' '}
-                {slice.totalRoleChampionPairsInDataset} Pairs · Patch {slice.patchShort})
+                {slice.totalRoleChampionPairsInDataset} Matchups · Patch {slice.patchShort})
               </span>
             </div>
 
@@ -437,8 +437,8 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                 }`}
               >
                 {comparisonMode === 'REFERENCE_ONLY'
-                  ? 'Reference Only (No User Data)'
-                  : 'Demo Input Mode (Not Live User Stats)'}
+                  ? 'Reference Only (No Account Data)'
+                  : 'Custom CS Check (Not Account Stats)'}
               </span>
               <button
                 type="button"
@@ -447,7 +447,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                 onClick={() => setActiveSurface('profile')}
                 className="px-2 py-1 rounded text-xs font-bold border bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
               >
-                Profile Tab
+                Player Comparison
               </button>
               <button
                 type="button"
@@ -463,7 +463,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                     : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
                 }`}
               >
-                Reference
+                Pro Reference
               </button>
               <button
                 type="button"
@@ -479,7 +479,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                     : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
                 }`}
               >
-                Demo CS Input
+                Try a CS value
               </button>
               {comparisonMode === 'DEMO_INPUT' && (
                 <>
@@ -489,7 +489,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                     onClick={handleFillSyntheticDemo}
                     className="px-2 py-1 rounded text-xs font-semibold bg-slate-800 text-amber-200 border border-amber-700/60 hover:bg-slate-700"
                   >
-                    Fill Demo
+                    Fill example CS
                   </button>
                   <button
                     type="button"
@@ -509,7 +509,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
       <main className="max-w-6xl mx-auto px-3 sm:px-5 py-2.5 space-y-2.5">
         {activeSurface === 'profile' ? (
           <div data-testid="profile-tab-review-surface" className="space-y-2">
-            {/* Simulated SummonerInfo Profile Card with [ Profile Overview | Pro CS Comparison ] Tabs */}
+            {/* Simulated Summoner Profile Card with [ Overview | Pro Comparison ] Tabs */}
             <div
               data-testid="mock-summoner-profile-card"
               className="dark bg-[#111827] border border-slate-800 p-2.5 sm:p-3.5 rounded-lg shadow-xs"
@@ -538,10 +538,10 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                   </span>
                 </div>
 
-                {/* Profile-Level Tabs + Review Controls Toggle */}
+                {/* Profile-Level Tabs + Sample Options Toggle */}
                 <div
                   role="tablist"
-                  aria-label="Searched Player Profile Sections"
+                  aria-label="Player profile sections"
                   data-testid="review-summoner-profile-tabs"
                   className="flex flex-wrap items-center gap-1"
                 >
@@ -580,21 +580,21 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                     onClick={() => setShowReviewControls((prev) => !prev)}
                     className="px-2 py-1 rounded text-[11px] font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700"
                   >
-                    {showReviewControls ? 'Hide Review Controls' : 'Review Controls'}
+                    {showReviewControls ? 'Hide sample options' : 'Sample options'}
                   </button>
                 </div>
               </div>
 
-              {/* Collapsible Review Controls (Sample Player Picker + Optional Developer JSON Loader + Standalone Switcher) */}
+              {/* Collapsible Sample Options (Sample Player Picker + Import Sample Data + Pro Reference Switcher) */}
               {showReviewControls && (
                 <section
-                  aria-label="Review Controls"
+                  aria-label="Sample options"
                   data-testid="profile-review-sandbox-bar"
                   className="mt-2 rounded border border-slate-800 bg-slate-950/90 p-2.5 space-y-2 text-xs"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="font-bold text-slate-300">Sample Player:</span>
+                      <span className="font-bold text-slate-300">Sample player:</span>
                       <button
                         type="button"
                         data-testid="switch-review-player-full"
@@ -608,7 +608,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                             : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
                         }`}
                       >
-                        Sample Player: Ironclad#EUW (22G · Recent 20 Default)
+                        Ironclad#EUW (22G · Last 20 games)
                       </button>
                       <button
                         type="button"
@@ -623,7 +623,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                             : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
                         }`}
                       >
-                        Sample Player: BladeRunner#EUW (3G · Unknown Team Stats)
+                        BladeRunner#EUW (3G · Unknown team stats)
                       </button>
                       <button
                         type="button"
@@ -638,7 +638,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                             : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
                         }`}
                       >
-                        Sample Player: ArcaneWave#KR1 (1G · Mid Sample)
+                        ArcaneWave#KR1 (1G · Mid sample)
                       </button>
                       <button
                         type="button"
@@ -646,12 +646,12 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                         onClick={() => setShowJsonInspector((prev) => !prev)}
                         className="px-2 py-0.5 rounded text-xs font-bold bg-slate-900 text-amber-300 border border-amber-700/60 hover:bg-slate-800"
                       >
-                        {showJsonInspector ? 'Hide Developer Loader' : 'Developer JSON Loader'}
+                        {showJsonInspector ? 'Hide sample import' : 'Import sample data'}
                       </button>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="font-bold text-slate-400">Standalone:</span>
+                      <span className="font-bold text-slate-400">Pro reference:</span>
                       <button
                         type="button"
                         data-testid="mode-btn-reference-only"
@@ -661,7 +661,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                         }}
                         className="px-2 py-0.5 rounded text-xs font-bold bg-slate-900 text-slate-300 border border-slate-700 hover:bg-slate-800"
                       >
-                        Reference (53 Matchups)
+                        Browse pro stats (53 matchups)
                       </button>
                       <button
                         type="button"
@@ -672,7 +672,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                         }}
                         className="px-2 py-0.5 rounded text-xs font-bold bg-slate-900 text-amber-300 border border-amber-700/60 hover:bg-slate-800"
                       >
-                        Demo CS Input
+                        Try a CS value
                       </button>
                     </div>
                   </div>
@@ -683,16 +683,15 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                       className="rounded border border-slate-800 bg-slate-900/90 p-2 space-y-1.5"
                     >
                       <div className="text-[11px] font-bold text-slate-200">
-                        Optional Developer JSON Loader (Paste local match &amp; timeline JSON — 100%
-                        in-browser, offline)
+                        Import sample match data (Offline only — stays in your browser)
                       </div>
                       <textarea
-                        aria-label="Paste local MatchDto and MatchTimelineDto JSON"
+                        aria-label="Paste sample match data"
                         data-testid="local-json-textarea"
                         rows={3}
                         value={customJsonInput}
                         onChange={(e) => setCustomJsonInput(e.target.value)}
-                        placeholder='{"puuid":"...","region":"EUW1","gameName":"Player","tagLine":"EUW","visibleMatches":[...],"timelinesByMatchId":{...}}'
+                        placeholder="Paste exported sample match data here..."
                         className="w-full rounded bg-slate-950 border border-slate-700 p-1.5 text-xs font-mono text-slate-200"
                       />
                       {customJsonError && (
@@ -707,7 +706,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                           onClick={handleLoadCustomJson}
                           className="px-2.5 py-1 rounded text-xs font-bold bg-sky-500 text-slate-950"
                         >
-                          Apply Local JSON
+                          Load sample data
                         </button>
                         <button
                           type="button"
@@ -992,8 +991,8 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
             <p className="leading-snug">
               <strong className="text-amber-300">Note:</strong> Small pro reference (8 Worlds 2026
               games / 80 player-games, patch 16.20)—not a solo-queue target or percentile. No live
-              user stats connected. Ended games excluded (never 0 CS); 30m pro stats not available.
-              CS@10 HUD-checked in 2/8 games.
+              account stats connected. Ended games excluded (never 0 CS); 30m pro stats not
+              available. CS@10 HUD-checked in 2/8 games.
             </p>
 
             <div className="flex flex-wrap items-center gap-1.5 shrink-0">
@@ -1032,7 +1031,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
           >
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
               <span className="font-bold text-white">
-                Per-Game Evidence ({slice.evidenceRows.length}G) · Corrected 10:00 HUD VODs:
+                Per-Game Evidence ({slice.evidenceRows.length}G) · Verified 10:00 Broadcast VODs:
               </span>
               <div className="flex flex-wrap items-center gap-3">
                 <a
@@ -1042,7 +1041,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                   data-testid="vod-link-ig-tes-g1"
                   className="font-bold text-sky-300 underline hover:text-sky-200"
                 >
-                  IG vs TES G1 @10:00 (t=3695s)
+                  IG vs TES Game 1 @ 10:00
                 </a>
                 <a
                   href={VERIFIED_HUD_10M_VOD_BY_GAME_ID['115660540726095111'].correctedHud10mUrl}
@@ -1051,7 +1050,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                   data-testid="vod-link-ig-tes-g2"
                   className="font-bold text-sky-300 underline hover:text-sky-200"
                 >
-                  IG vs TES G2 @10:00 (t=6759s)
+                  IG vs TES Game 2 @ 10:00
                 </a>
               </div>
             </div>
@@ -1097,7 +1096,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                         rel="noreferrer"
                         className="text-sky-300 underline font-semibold"
                       >
-                        HUD 10:00 VOD
+                        10:00 Broadcast VOD
                       </a>
                     ) : (
                       <span>Not HUD-Checked</span>
@@ -1162,7 +1161,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                             rel="noreferrer"
                             className="text-[11px] font-bold text-emerald-300 underline"
                           >
-                            HUD Verified VOD
+                            10:00 Broadcast VOD
                           </a>
                         ) : (
                           <span className="text-[11px] text-slate-400">Not HUD-Checked</span>
@@ -1193,15 +1192,14 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
               </li>
               <li>
                 <strong>Partial HUD Verification &amp; Pause Adjustment:</strong> Independent
-                broadcast HUD verification covered only CS@10 for 20 players in IG vs TES Game 1 +
-                Game 2 (corrected 10:00 VOD timestamps:{' '}
+                broadcast HUD verification covered only CS@10 for 20 players in{' '}
                 <a
                   href={VERIFIED_HUD_10M_VOD_BY_GAME_ID['115660540726095110'].correctedHud10mUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="text-sky-300 underline"
                 >
-                  t=3695s
+                  IG vs TES Game 1 @ 10:00
                 </a>{' '}
                 and{' '}
                 <a
@@ -1210,10 +1208,11 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                   rel="noreferrer"
                   className="text-sky-300 underline"
                 >
-                  t=6759s
-                </a>
-                ; earlier VOD timestamp was ~73–74s early). Pause subtraction (105.02s in Game 1)
-                uses a passive-gold freeze check rather than an official tournament pause clock.
+                  IG vs TES Game 2 @ 10:00
+                </a>{' '}
+                (earlier broadcast timestamps were ~73–74s early). Pause subtraction (105.02s in
+                Game 1) uses a passive-gold freeze check rather than an official tournament pause
+                clock.
               </li>
               <li>
                 <strong>Why Item Build Timings Are Excluded:</strong> Sample item data used Patch
@@ -1228,7 +1227,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                 className="pt-2 border-t border-slate-800 space-y-1.5"
               >
                 <div className="font-semibold text-slate-200">
-                  IG vs TES G1 (105.02s Pause) — Naive 8:10 vs HUD-Verified 10:00 CS (t=3695s)
+                  IG vs TES Game 1 (105.02s Pause) — Unadjusted 8:10 vs Verified 10:00 In-Game CS
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
                   {Object.keys(igTesG1.participants)
@@ -1236,7 +1235,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                     .sort((a, b) => a - b)
                     .map((pid) => {
                       const p = igTesG1.participants[String(pid)];
-                      const naiveCs =
+                      const unadjustedCs =
                         igTesG1.aligned_checkpoints['10m']?.naive_first_frame.pCs[pid - 1] ?? 0;
                       const trueCs =
                         igTesG1.aligned_checkpoints['10m']?.true_in_game_clock.pCs[pid - 1] ?? 0;
@@ -1249,8 +1248,9 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                             {p.summonerName} ({p.championId})
                           </div>
                           <div className="text-slate-400">
-                            {naiveCs} → <strong className="text-emerald-300">{trueCs} CS</strong> (+
-                            {trueCs - naiveCs})
+                            {unadjustedCs} →{' '}
+                            <strong className="text-emerald-300">{trueCs} CS</strong> (+
+                            {trueCs - unadjustedCs})
                           </div>
                         </div>
                       );

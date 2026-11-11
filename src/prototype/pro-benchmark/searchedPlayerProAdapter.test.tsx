@@ -629,10 +629,11 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     fireEvent.click(screen.getByTestId('load-pair-timelines-btn'));
     await waitFor(() => {
       expect(screen.getByTestId('timeline-fetch-error')).toHaveTextContent(
-        'Could not load 1 of 1 match timeline(s) from the timeline endpoint.'
+        'Could not load 1 of 1 match timeline(s). Please try again.'
       );
     });
     expect(screen.getByTestId('timeline-fetch-error').textContent).not.toContain('memory guard');
+    expect(screen.getByTestId('timeline-fetch-error').textContent).not.toContain('endpoint');
   });
 
   it('computes Pro checkpoint Gold, Level, Champion-Role GD/CSD, Whole-Game KP/DMG%/Ward Rates, and excludes paused games from Early Total Deaths', () => {
@@ -2062,12 +2063,21 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     }
   });
 
-  it('never prints variable names, DTO/schema/contract/enum names, null, or fixture jargon in player UI, evidence, methodology, or preview banners across default and missing states', () => {
+  it('uses plain League labels (Sample options, Import sample data, Try a CS value, Compare by role) and never leaks developer/JSON/DTO/schema/contract/enum/fixture/payload/demo/role-first/null jargon across controls, missing states, errors, catalog, and help', async () => {
     const FORBIDDEN_UI_TOKENS = [
+      'Developer',
+      'JSON',
+      'Demo',
+      'Role-First',
+      'ROLE-FIRST',
+      'Review Controls',
       'MatchDto',
       'MatchTimelineDto',
       'ChallengesDto',
       'challenges.',
+      'puuid',
+      'visibleMatches',
+      'timelinesByMatchId',
       'finalDeaths',
       'finalGold',
       'goldEarned',
@@ -2096,22 +2106,51 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
       'KR_810',
     ];
 
+    const FORBIDDEN_WORD_REGEXES = [
+      /\bnull\b/i,
+      /\bfixture\b/i,
+      /\bcontract\b/i,
+      /\bschema\b/i,
+      /\benum\b/i,
+      /\bpayload\b/i,
+      /\bdeveloper\b/i,
+      /\bjson\b/i,
+      /\bdemo\b/i,
+      /\bendpoint\b/i,
+      /\bdataset\b/i,
+      /\bobservation(s)?\b/i,
+      /\bheuristic\b/i,
+      /\bnaive\b/i,
+    ];
+
     const assertZeroTechnicalTokensInDom = (root: HTMLElement, stateLabel: string) => {
       const visibleText = root.textContent ?? '';
-      const ariaAndTitleText = Array.from(root.querySelectorAll('[aria-label], [title]'))
-        .map((el) => `${el.getAttribute('aria-label') ?? ''} ${el.getAttribute('title') ?? ''}`)
+      const attrText = Array.from(
+        root.querySelectorAll('[aria-label], [title], [placeholder]')
+      )
+        .map(
+          (el) =>
+            `${el.getAttribute('aria-label') ?? ''} ${el.getAttribute('title') ?? ''} ${
+              el.getAttribute('placeholder') ?? ''
+            }`
+        )
         .join(' ');
-      const combined = `${visibleText}\n${ariaAndTitleText}`;
+      const combined = `${visibleText}\n${attrText}`;
 
       for (const token of FORBIDDEN_UI_TOKENS) {
         expect(combined, `Forbidden token "${token}" leaked in ${stateLabel}`).not.toContain(token);
       }
-      expect(combined, `Word "null" leaked in ${stateLabel}`).not.toMatch(/\bnull\b/i);
-      expect(combined, `Word "fixture" leaked in ${stateLabel}`).not.toMatch(/\bfixture\b/i);
+      for (const pattern of FORBIDDEN_WORD_REGEXES) {
+        expect(combined, `Forbidden pattern ${pattern} leaked in ${stateLabel}`).not.toMatch(
+          pattern
+        );
+      }
     };
 
-    // 1. Default Profile surface (Ironclad#EUW) + Match Breakdown + Methodology + Review Controls (with Developer JSON Loader closed) + Overview tab
+    // 1. Default Profile surface (Ironclad#EUW): verify Compare by role + Sample options + Import sample data + Try a CS value
     const profileRender = render(<ProComparisonPreview initialSurface="profile" />);
+    expect(screen.getByTestId('recent20-window-strip')).toHaveTextContent('Compare by role');
+    expect(screen.getByTestId('toggle-review-controls')).toHaveTextContent('Sample options');
     expect(screen.getByTestId('pro-comparison-datasource-badge')).toHaveTextContent(
       'Sample player · Not real account data (Offline)'
     );
@@ -2124,21 +2163,75 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
 
     fireEvent.click(screen.getByTestId('toggle-profile-match-breakdown'));
     fireEvent.click(screen.getByTestId('toggle-profile-methodology'));
+    expect(screen.getByTestId('surface-mode-catalog-btn')).toHaveTextContent(
+      'Browse pro stats (53)'
+    );
+    expect(screen.getByTestId('surface-mode-demo-btn')).toHaveTextContent('Try a CS value');
+
     fireEvent.click(screen.getByTestId('toggle-review-controls'));
+    expect(screen.getByTestId('toggle-review-controls')).toHaveTextContent('Hide sample options');
+    expect(screen.getByTestId('toggle-local-json-inspector')).toHaveTextContent(
+      'Import sample data'
+    );
+    expect(screen.getByTestId('mode-btn-demo-input')).toHaveTextContent('Try a CS value');
+
     assertZeroTechnicalTokensInDom(
       profileRender.container,
-      'default Ironclad#EUW + breakdown + methodology + review controls'
+      'default Ironclad#EUW + breakdown + methodology + sample options'
     );
 
-    // Check Overview tab placeholder copy as well
+    // 2. Open "Import sample data" panel AND trigger both parse-error and missing-fields alerts
+    fireEvent.click(screen.getByTestId('toggle-local-json-inspector'));
+    expect(screen.getByTestId('toggle-local-json-inspector')).toHaveTextContent(
+      'Hide sample import'
+    );
+    expect(screen.getByTestId('apply-local-json-btn')).toHaveTextContent('Load sample data');
+    assertZeroTechnicalTokensInDom(profileRender.container, 'opened Import sample data panel');
+
+    fireEvent.change(screen.getByTestId('local-json-textarea'), {
+      target: { value: '{broken' },
+    });
+    fireEvent.click(screen.getByTestId('apply-local-json-btn'));
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Could not read sample match data. Check the format and try again.'
+    );
+    assertZeroTechnicalTokensInDom(profileRender.container, 'Import sample data parse error alert');
+
+    fireEvent.change(screen.getByTestId('local-json-textarea'), {
+      target: { value: '{}' },
+    });
+    fireEvent.click(screen.getByTestId('apply-local-json-btn'));
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Sample match data must include a player ID and recent matches.'
+    );
+    assertZeroTechnicalTokensInDom(
+      profileRender.container,
+      'Import sample data missing fields alert'
+    );
+    fireEvent.click(screen.getByTestId('toggle-local-json-inspector'));
+
+    // 3. Check Overview tab placeholder copy
     fireEvent.click(screen.getByTestId('review-profile-tab-overview'));
     assertZeroTechnicalTokensInDom(profileRender.container, 'overview tab placeholder');
     fireEvent.click(screen.getByTestId('review-profile-tab-pro-comparison'));
 
-    // 2. Missing timeline + unsupported pro matchup state (Top · Garen -> Game 2 unloaded)
+    // 4. Switch to "Browse pro stats" (pro_catalog) and "Try a CS value" (manual_demo) inside ProfileProComparisonTab
+    fireEvent.click(screen.getByTestId('toggle-profile-methodology'));
+    fireEvent.click(screen.getByTestId('surface-mode-catalog-btn'));
+    assertZeroTechnicalTokensInDom(profileRender.container, 'Browse pro stats catalog mode');
+
+    fireEvent.click(screen.getByTestId('surface-mode-demo-btn'));
+    expect(screen.getByTestId('manual-demo-fallback-banner')).toHaveTextContent('Try a CS value');
+    assertZeroTechnicalTokensInDom(profileRender.container, 'Try a CS value mode in profile tab');
+    fireEvent.click(screen.getByTestId('surface-mode-player-btn'));
+
+    // 5. Missing timeline + unsupported pro matchup state (Top · Garen -> Game 2 unloaded)
     fireEvent.change(screen.getByTestId('player-pair-select'), {
       target: { value: 'top::Garen' },
     });
+    expect(screen.getByTestId('recent20-window-strip')).toHaveTextContent(
+      'Compare by champion & role'
+    );
     fireEvent.change(screen.getByTestId('player-match-scope-select'), {
       target: { value: 'EUW1_FULL_016' },
     });
@@ -2151,7 +2244,7 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
       'missing match timeline + unsupported matchup'
     );
 
-    // 3. Paused pro game excluded state (Mid · Syndra · IG Rookie)
+    // 6. Paused pro game excluded state (Mid · Syndra · IG Rookie)
     fireEvent.change(screen.getByTestId('player-role-select'), {
       target: { value: 'mid' },
     });
@@ -2166,7 +2259,7 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     );
     assertZeroTechnicalTokensInDom(profileRender.container, 'paused pro game excluded');
 
-    // 4. Legacy partial sample player (BladeRunner#EUW) -> Unknown preserved (never hidden or 0)
+    // 7. Legacy partial sample player (BladeRunner#EUW) -> Unknown preserved (never hidden or 0)
     fireEvent.click(screen.getByTestId('switch-review-player-euw'));
     expect(screen.getByTestId('whole-game-player-killParticipation')).toHaveTextContent('Unknown');
     expect(screen.getByTestId('whole-game-player-championDamageShare')).toHaveTextContent(
@@ -2177,16 +2270,60 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
 
     profileRender.unmount();
 
-    // 5. Standalone Reference surface + Per-Game Evidence + Methodology & Limits
+    // 8. Standalone Reference + Try a CS value + Per-Game Evidence + Methodology & Limits + Unsupported search
     const standaloneRender = render(<ProComparisonPreview initialSurface="standalone" />);
+    expect(screen.getByTestId('mode-btn-demo-input')).toHaveTextContent('Try a CS value');
     expect(screen.getByTestId('checkpoint-unavailable-30m')).toHaveTextContent('Not available');
     fireEvent.click(screen.getByTestId('btn-toggle-evidence'));
     fireEvent.click(screen.getByTestId('btn-toggle-methodology'));
+    fireEvent.click(screen.getByTestId('mode-btn-demo-input'));
+    fireEvent.click(screen.getByTestId('btn-fill-synthetic-demo'));
     assertZeroTechnicalTokensInDom(
       standaloneRender.container,
-      'standalone reference + evidence + methodology'
+      'standalone reference + Try a CS value + evidence + methodology'
+    );
+
+    fireEvent.change(screen.getByTestId('pro-champion-search'), { target: { value: 'Ahri' } });
+    assertZeroTechnicalTokensInDom(
+      standaloneRender.container,
+      'standalone unsupported champion search'
     );
     standaloneRender.unmount();
+
+    // 9. Empty matches state + live_profile timeline load error alert
+    const krSample = RECORDED_REVIEW_PROFILES.kr_mid_specialist;
+    const emptyRender = render(
+      <ProfileProComparisonTab
+        puuid={krSample.puuid}
+        region={krSample.region}
+        gameName="ArenaOnly"
+        tagLine="KR1"
+        visibleMatches={[]}
+        initialTimelinesByMatchId={{}}
+        dataSourceMode="synthetic_test_profile"
+      />
+    );
+    assertZeroTechnicalTokensInDom(emptyRender.container, 'empty role matches state');
+    emptyRender.unmount();
+
+    const failingLiveRender = render(
+      <ProfileProComparisonTab
+        puuid={krSample.puuid}
+        region={krSample.region}
+        gameName={krSample.gameName}
+        tagLine={krSample.tagLine}
+        visibleMatches={krSample.visibleMatches}
+        initialTimelinesByMatchId={{}}
+        dataSourceMode="live_profile"
+        fetchTimeline={async () => null}
+      />
+    );
+    fireEvent.click(screen.getByTestId('load-pair-timelines-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('timeline-fetch-error')).toBeInTheDocument();
+    });
+    assertZeroTechnicalTokensInDom(failingLiveRender.container, 'live timeline fetch error alert');
+    failingLiveRender.unmount();
   });
 });
 

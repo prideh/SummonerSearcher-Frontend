@@ -2268,10 +2268,10 @@ export function buildSearchedPlayerProComparison(params: {
       proReferenceAvailableAfterFilters: false,
       unavailableReason:
         parsedMatches.length === 0
-          ? "Searched player has 0 positional matches in the 20 most recent matches."
-          : `Searched player has 0 matches in ${formatRoleDisplay(
+          ? "No Summoner's Rift role matches found in the last 20 games."
+          : `0 ${formatRoleDisplay(
               effectiveRoleForSelection,
-            )} within the 20 most recent matches.`,
+            )} matches in the last 20 games.`,
       selectableProPlayersForPair: [],
       selectableProPlayersForRole: roleProSlice.selectableProPlayersForRole,
       allSelectableProPlayersInDataset,

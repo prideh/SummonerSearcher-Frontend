@@ -105,13 +105,13 @@ describe('ProComparisonPreview & proBenchmarkEngine behavioral suite', () => {
 
     expect(screen.getByTestId('unsupported-selection-state')).toBeInTheDocument();
     expect(screen.getByTestId('unsupported-selection-state')).toHaveTextContent(
-      '"Ahri" is not among the 53 champion-role pairs in this 8-game (80 player-game) Worlds 2026 sample dataset.'
+      '"Ahri" is not among the 53 champion-role matchups in this 8-game (80 player-game) Worlds 2026 pro sample.'
     );
     expect(screen.queryByTestId('checkpoint-cards-grid')).not.toBeInTheDocument();
 
     fireEvent.change(searchInput, { target: { value: 'Syndra' } });
     expect(screen.getByTestId('unsupported-selection-state')).toHaveTextContent(
-      'Syndra has 0 games in Top in this 8-game Worlds 2026 sample, but is present in: Mid (n=3).'
+      'Syndra has 0 games in Top in this 8-game Worlds 2026 sample, but appears in: Mid (3G).'
     );
 
     fireEvent.click(screen.getByTestId('switch-supported-mid-Syndra'));
@@ -153,23 +153,24 @@ describe('ProComparisonPreview & proBenchmarkEngine behavioral suite', () => {
     );
   });
 
-  it('defaults to Reference-Only mode and clearly labels optional Demo CS input without fake percentiles or rank claims', () => {
+  it('defaults to Reference-Only mode and clearly labels optional Try a CS value mode without fake percentiles or rank claims', () => {
     render(<ProComparisonPreview />);
 
     expect(screen.getByTestId('mode-status-badge')).toHaveTextContent(
-      'Reference Only (No User Data)'
+      'Reference Only (No Account Data)'
     );
+    expect(screen.getByTestId('mode-btn-demo-input')).toHaveTextContent('Try a CS value');
     expect(screen.queryByTestId('demo-cs-input-10m')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('mode-btn-demo-input'));
     expect(screen.getByTestId('mode-status-badge')).toHaveTextContent(
-      'Demo Input Mode (Not Live User Stats)'
+      'Custom CS Check (Not Account Stats)'
     );
 
     const input10m = screen.getByTestId('demo-cs-input-10m');
     fireEvent.change(input10m, { target: { value: '82' } });
 
-    expect(screen.getByTestId('demo-delta-10m')).toHaveTextContent('-11.0 CS (Demo)');
+    expect(screen.getByTestId('demo-delta-10m')).toHaveTextContent('-11.0 CS vs pro');
 
     const input30m = screen.getByTestId('demo-cs-input-30m') as HTMLInputElement;
     expect(input30m.disabled).toBe(true);
@@ -180,21 +181,21 @@ describe('ProComparisonPreview & proBenchmarkEngine behavioral suite', () => {
     });
     const evalResult = evaluateDemoCsComparisons(slice, { 30: '250' });
     expect(evalResult[30].canCompare).toBe(false);
-    expect(evalResult[30].formattedDelta).toBe('Comparison Unavailable');
+    expect(evalResult[30].formattedDelta).toBe('Not available');
   });
 
   it('keeps main view focused on essentials and expands per-game evidence and methodology on demand with zero network calls', () => {
     render(<ProComparisonPreview />);
 
     expect(screen.getByTestId('dataset-scope-strip')).toHaveTextContent(
-      '8 Games (80 Player-Games · 53 Pairs · Patch 16.20)'
+      '8 Games (80 Player-Games · 53 Matchups · Patch 16.20)'
     );
     expect(screen.queryByTestId('per-game-evidence-section')).not.toBeInTheDocument();
     expect(screen.queryByTestId('methodology-disclosure-panel')).not.toBeInTheDocument();
 
     const caveats = screen.getByTestId('inline-comparison-caveats');
     expect(caveats).toHaveTextContent('8 Worlds 2026 games / 80 player-games, patch 16.20');
-    expect(caveats).toHaveTextContent('No live user stats connected');
+    expect(caveats).toHaveTextContent('No live account stats connected');
     expect(caveats).toHaveTextContent('30m pro stats not available');
     expect(caveats).toHaveTextContent('CS@10 HUD-checked in 2/8 games');
 

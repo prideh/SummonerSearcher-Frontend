@@ -406,7 +406,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
               : prev.loadedTimelines,
           timelineFetchError:
             failedCount > 0
-              ? `Could not load ${failedCount} of ${matchIdsToFetch.length} match timeline(s) from the timeline endpoint.`
+              ? `Could not load ${failedCount} of ${matchIdsToFetch.length} match timeline(s). Please try again.`
               : null,
         };
       });
@@ -499,7 +499,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
 
   return (
     <section
-      aria-label="Pro Benchmark Comparison"
+      aria-label="Pro Comparison"
       data-testid="profile-pro-comparison-tab"
       data-bound-puuid={puuid}
       data-bound-region={region}
@@ -515,17 +515,17 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
               data-testid="no-positional-matches-state"
               className="rounded-lg border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-3 text-xs text-slate-600 dark:text-slate-300"
             >
-              No positional Summoner&apos;s Rift matches found in the recent 20 match window for{' '}
+              No Summoner&apos;s Rift role matches found in the last 20 games for{' '}
               <span className="font-bold">
                 {gameName}#{tagLine}
               </span>
-              . Browse the{' '}
+              .{' '}
               <button
                 type="button"
                 onClick={() => setSurfaceMode('pro_catalog')}
                 className="underline font-bold text-sky-600 dark:text-cyan-400"
               >
-                Pro Catalog ({allSupportedProPairs.length} matchups)
+                Browse pro stats ({allSupportedProPairs.length} matchups)
               </button>{' '}
               or load more matches.
             </div>
@@ -537,10 +537,10 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                 className="flex flex-wrap items-center justify-between gap-1.5 rounded border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/80 px-2.5 py-1.5 text-[11px]"
               >
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="px-1.5 py-0.5 rounded bg-cyan-500/15 text-sky-800 dark:text-cyan-300 border border-cyan-500/30 font-extrabold text-[10px] uppercase tracking-wide">
+                  <span className="px-1.5 py-0.5 rounded bg-cyan-500/15 text-sky-800 dark:text-cyan-300 border border-cyan-500/30 font-extrabold text-[11px]">
                     {comparison.comparisonScope === 'role_first'
-                      ? 'Role-First Default'
-                      : 'Champion · Role Matchup'}
+                      ? 'Compare by role'
+                      : 'Compare by champion & role'}
                   </span>
                   <span className="font-semibold text-slate-700 dark:text-slate-200">
                     Recent {comparison.recentMatchWindow.analyzedRecentMatchCount}/
@@ -565,18 +565,18 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                     ? 'Sample player · Not real account data (Offline)'
                     : dataSourceMode === 'local_json'
                       ? 'Sample player · Loaded match data (Offline)'
-                      : 'Searched Player Match History & Timelines'}
+                      : 'Player Match History & Timelines'}
                 </span>
               </div>
 
-              {/* 4-Control Filter Row: Role + Scope/Champion + Optional Named Pro + Match Window */}
+              {/* 4-Control Filter Row: Role + Role/Champion + Optional Pro Player + Games Included */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1.5 items-end">
                 <div className="min-w-0">
                   <label
                     htmlFor="player-role-select"
                     className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5 leading-snug"
                   >
-                    1. Primary Role (Recent 20)
+                    1. Role (Last 20 games)
                   </label>
                   <select
                     id="player-role-select"
@@ -599,7 +599,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                     htmlFor="player-pair-select"
                     className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5 leading-snug"
                   >
-                    2. Role Baseline / Optional Champion
+                    2. Compare by role or champion
                   </label>
                   <select
                     id="player-pair-select"
@@ -610,7 +610,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                   >
                     {activeRoleSummary && activeRoleSummary.playerRecent20Games > 0 && (
                       <option value="ROLE_ALL">
-                        All {activeRoleSummary.roleDisplay} Champions · Role-First (
+                        All {activeRoleSummary.roleDisplay} Champions · Compare by role (
                         {activeRoleSummary.playerRecent20Games}G Player ·{' '}
                         {activeRoleSummary.proDatasetGames}G Pro)
                       </option>
@@ -619,7 +619,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                       <option key={opt.pairKey} value={opt.pairKey}>
                         {opt.championId} · {opt.roleDisplay} ({opt.playerGameCount}G Player ·{' '}
                         {opt.proReferenceAvailable
-                          ? `${opt.proSampleGameCount}G Pro Ref`
+                          ? `${opt.proSampleGameCount}G Pro`
                           : 'No Pro Sample'}
                         )
                       </option>
@@ -632,7 +632,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                     htmlFor="player-pro-select"
                     className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5 leading-snug"
                   >
-                    3. Optional Named Pro
+                    3. Pro player (optional)
                   </label>
                   <select
                     id="player-pro-select"
@@ -642,8 +642,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                     className="w-full min-w-0 truncate rounded bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                   >
                     <option value="ALL">
-                      All {formatRoleDisplay(comparison.roleSelection.selectedRole)} Pros (Role
-                      Baseline)
+                      All {formatRoleDisplay(comparison.roleSelection.selectedRole)} Pros
                     </option>
                     {selectablePros.map((pro) => (
                       <option key={pro.esportsPlayerId} value={pro.esportsPlayerId}>
@@ -659,7 +658,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                     htmlFor="player-match-scope-select"
                     className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5 leading-snug"
                   >
-                    4. Match Window
+                    4. Games included
                   </label>
                   <select
                     id="player-match-scope-select"
@@ -696,7 +695,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                   data-testid="empty-role-matches-banner"
                   className="rounded border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-xs text-amber-800 dark:text-amber-200"
                 >
-                  0 matches in the recent 20 window for{' '}
+                  0 games in the last 20 matches for{' '}
                   <strong>{formatRoleDisplay(comparison.roleSelection.selectedRole)}</strong>.
                   Select another role above.
                 </div>
@@ -1212,14 +1211,14 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
         </div>
       )}
 
-      {/* MODE 2 & 3: PRO CATALOG OR MANUAL DEMO FALLBACK */}
+      {/* MODE 2 & 3: PRO STATS BROWSER OR TRY A CS VALUE */}
       {(surfaceMode === 'pro_catalog' || surfaceMode === 'manual_demo') && (
         <div className="space-y-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-slate-200 dark:border-slate-800">
             <span className="text-xs font-extrabold text-slate-900 dark:text-white">
               {surfaceMode === 'pro_catalog'
-                ? `Worlds 2026 Pro Catalog (${allSupportedProPairs.length} Matchups)`
-                : 'Manual Demo Scratchpad (Not Searched Player Stats)'}
+                ? `Worlds 2026 Pro Stats (${allSupportedProPairs.length} Matchups)`
+                : 'Try a CS value (Not Account Stats)'}
             </span>
             <button
               type="button"
@@ -1227,7 +1226,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
               onClick={() => setSurfaceMode('player_vs_pro')}
               className="px-2 py-0.5 rounded text-xs font-bold bg-sky-600 text-white dark:bg-cyan-500 dark:text-slate-950"
             >
-              &larr; Back to Player vs Pro ({comparison.pairOptions.length})
+              &larr; Back to Player Comparison ({comparison.pairOptions.length})
             </button>
           </div>
 
@@ -1237,8 +1236,8 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
               className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200 flex flex-wrap items-center justify-between gap-2"
             >
               <span>
-                <strong className="font-bold">Manual Demo Input (Not Searched Player Stats):</strong>{' '}
-                Optional manual scratchpad against the 8-game Worlds 2026 sample.
+                <strong className="font-bold">Try a CS value (Not Account Stats):</strong> Enter any
+                CS number to compare against the 8-game Worlds 2026 pro sample.
               </span>
               <div className="flex items-center gap-1.5">
                 <button
@@ -1246,7 +1245,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                   onClick={() => setDemoInputs(DEFAULT_DEMO_INPUTS)}
                   className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 font-bold text-[11px]"
                 >
-                  Fill Demo
+                  Fill example CS
                 </button>
                 <button
                   type="button"
@@ -1282,7 +1281,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
             ))}
 
             <select
-              aria-label="Catalog Champion"
+              aria-label="Pro Champion"
               data-testid="catalog-champion-select"
               value={catalogChampion}
               onChange={(e) => setCatalogChampion(e.target.value)}
@@ -1335,7 +1334,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                         type="number"
                         min={0}
                         max={600}
-                        aria-label={`Manual Demo CS at ${minute}m`}
+                        aria-label={`Custom CS at ${minute}m`}
                         value={demoInputs[minute] ?? ''}
                         onChange={(e) =>
                           setDemoInputs((prev) => ({
@@ -1343,7 +1342,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                             [minute as ProCheckpointMinute]: e.target.value,
                           }))
                         }
-                        placeholder="Demo CS"
+                        placeholder="Your CS"
                         className="w-full rounded bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs"
                       />
                       {demoEval.canCompare && demoEval.deltaCs !== null && (
@@ -1508,7 +1507,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                         rel="noopener noreferrer"
                         className="text-sky-600 dark:text-cyan-400 underline font-semibold"
                       >
-                        {vod.gameLabel} @10:00 (t={vod.correctedHud10mSeconds}s)
+                        {vod.gameLabel} @ 10:00 VOD
                       </a>
                     ))}
                   </div>
@@ -1608,14 +1607,14 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
             uses only the static offline sample.
           </p>
           <div className="pt-1.5 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] font-bold text-slate-500">Alternate Views:</span>
+            <span className="text-[11px] font-bold text-slate-500">More options:</span>
             <button
               type="button"
               data-testid="surface-mode-catalog-btn"
               onClick={() => setSurfaceMode('pro_catalog')}
               className="px-2 py-0.5 rounded text-[11px] font-bold border bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700"
             >
-              Pro Catalog ({allSupportedProPairs.length})
+              Browse pro stats ({allSupportedProPairs.length})
             </button>
             <button
               type="button"
@@ -1628,7 +1627,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
               }}
               className="px-2 py-0.5 rounded text-[11px] font-bold border bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700"
             >
-              Demo Fallback
+              Try a CS value
             </button>
           </div>
         </div>
