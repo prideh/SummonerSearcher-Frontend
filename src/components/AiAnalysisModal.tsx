@@ -5,12 +5,14 @@ import { chatWithAi, submitFeedback } from '../api/ai';
 import ImprovementStatsSection from './ImprovementStatsSection';
 import type { ImprovementStatsDto } from '../types/improvementStats';
 import type { MatchDto } from '../types/match';
+import type { CoachTimelineCoverageContext } from '../types/timeline';
 import {
+  buildCoachGreetingMessage,
   generatePersonalizedSuggestions,
   parseAiResponseWithSuggestions,
 } from '../utils/aiContextBuilder';
 
-interface AiContextData {
+export interface AiContextData {
   summonerName: string;
   primaryRole: string;
   totalGamesAnalyzed: number;
@@ -30,6 +32,11 @@ interface AiAnalysisModalProps {
   loadingTimeline?: boolean;
   matches?: MatchDto[];
   puuid?: string;
+  /**
+   * Optional async resolver invoked right before sending a chat prompt so in-flight
+   * timeline preparation can finish finitely and supply fresh context (or null if cancelled).
+   */
+  onResolveChatContext?: () => Promise<AiContextData | null>;
 }
 
 interface Message {
@@ -39,6 +46,21 @@ interface Message {
   feedback?: 'positive' | 'negative'; // User's feedback
   timestamp?: number; // When message was shown
 }
+
+const isSubstantiveHistory = (msgs: unknown): msgs is Message[] =>
+  Array.isArray(msgs) &&
+  msgs.some((m) => {
+    if (!m || typeof m !== 'object') return false;
+    const candidate = m as { role?: unknown; content?: unknown; interactionId?: unknown };
+    if (candidate.role !== 'model') return false;
+    if (candidate.interactionId) return true;
+    return (
+      typeof candidate.content === 'string' &&
+      !candidate.content.startsWith("Hi! I'm your AI Coach.")
+    );
+  });
+
+const EMPTY_MESSAGES: Message[] = [];
 
 const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
   isOpen,
@@ -52,8 +74,12 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
   loadingTimeline = false,
   matches,
   puuid,
+  onResolveChatContext,
 }) => {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messagesState, setMessagesState] = useState<{
+    ownerKey: string | null;
+    items: Message[];
+  }>({ ownerKey: null, items: EMPTY_MESSAGES });
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [showEvidenceDrawer, setShowEvidenceDrawer] = useState(false);
@@ -62,57 +88,108 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
   
   const STORAGE_KEY = `chat_history_${summonerName}`;
   const EXPIRATION_TIME = 30 * 60 * 1000; // 30 minutes
+  const playerOwnerKey = `${puuid ?? ''}::${summonerName}`;
+  const activeModalKey = isOpen ? playerOwnerKey : null;
+  const messages =
+    messagesState.ownerKey === playerOwnerKey ? messagesState.items : EMPTY_MESSAGES;
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<Message[]>([]);
-  const hasInitialized = useRef(false);
+  const playerOwnerKeyRef = useRef<string>(playerOwnerKey);
+  const contextRef = useRef<AiContextData>(context);
+  const suggestionsRef = useRef<string[]>(suggestions);
+  const onResolveChatContextRef = useRef<(() => Promise<AiContextData | null>) | undefined>(onResolveChatContext);
+  const openSessionTokenRef = useRef(0);
+  const initializedModalKeyRef = useRef<string | null>(null);
+  const hasSentInitial = useRef(false);
 
-  // Keep ref in sync with state
-  useEffect(() => {
-    messagesRef.current = messages;
-  }, [messages]);
+  playerOwnerKeyRef.current = playerOwnerKey;
+  contextRef.current = context;
+  suggestionsRef.current = suggestions;
+  onResolveChatContextRef.current = onResolveChatContext;
+
+  // Keep ref in sync with active player's messages
+  messagesRef.current = messages;
+
+  const updateOwnerMessages = useCallback(
+    (ownerKey: string, updater: Message[] | ((prev: Message[]) => Message[])) => {
+      setMessagesState((prev) => {
+        const base = prev.ownerKey === ownerKey ? prev.items : [];
+        const nextItems = typeof updater === 'function' ? updater(base) : updater;
+        if (prev.ownerKey === ownerKey && prev.items === nextItems) {
+          return prev;
+        }
+        return { ownerKey, items: nextItems };
+      });
+    },
+    []
+  );
 
   const handleSendMessage = useCallback(async (text: string) => {
     if (!text.trim()) return;
 
+    const sessionTokenAtStart = openSessionTokenRef.current;
+    const ownerAtStart = playerOwnerKeyRef.current;
     const currentMessages = messagesRef.current;
-    setMessages(prev => [...prev, { role: 'user' as const, content: text }]);
+    updateOwnerMessages(ownerAtStart, prev => [...prev, { role: 'user' as const, content: text }]);
     setInput('');
     setLoading(true);
 
     try {
-      const apiResponse = await chatWithAi(context, currentMessages, text, sessionId);
+      const resolvedContext = onResolveChatContextRef.current
+        ? await onResolveChatContextRef.current()
+        : contextRef.current;
+
+      if (resolvedContext === null || openSessionTokenRef.current !== sessionTokenAtStart) {
+        if (openSessionTokenRef.current === sessionTokenAtStart) {
+          setLoading(false);
+        }
+        return;
+      }
+
+      const apiResponse = await chatWithAi(resolvedContext, currentMessages, text, sessionId);
+      if (openSessionTokenRef.current !== sessionTokenAtStart) {
+        return;
+      }
+
       const { cleanResponse, suggestions: nextSuggestions } = parseAiResponseWithSuggestions(
         apiResponse.response,
-        suggestions
+        suggestionsRef.current
       );
       if (nextSuggestions.length > 0) {
         setSuggestions(nextSuggestions);
       }
 
-      setMessages(prev => [...prev, { 
+      updateOwnerMessages(ownerAtStart, prev => [...prev, { 
         role: 'model', 
         content: cleanResponse,
         interactionId: apiResponse.interactionId,
         timestamp: Date.now()
       }]);
     } catch (error) {
+      if (openSessionTokenRef.current !== sessionTokenAtStart) {
+        return;
+      }
       console.error('Failed to get AI response:', error);
-      setMessages(prev => [...prev, { role: 'model', content: 'Sorry, I encountered an error while analyzing the data.' }]);
+      updateOwnerMessages(ownerAtStart, prev => [...prev, { role: 'model', content: 'Sorry, I encountered an error while analyzing the data.' }]);
     } finally {
-      setLoading(false);
+      if (openSessionTokenRef.current === sessionTokenAtStart) {
+        setLoading(false);
+      }
     }
-  }, [context, sessionId, suggestions]);
+  }, [sessionId, updateOwnerMessages]);
 
   const handleFeedback = async (interactionId: string | undefined, feedbackType: 'positive' | 'negative', messageTimestamp: number | undefined) => {
     if (!interactionId || !messageTimestamp) return;
     
     const engagementTime = Date.now() - messageTimestamp;
+    const ownerAtClick = playerOwnerKeyRef.current;
     
     try {
       await submitFeedback(interactionId, feedbackType, engagementTime, sessionId);
       
       // Update UI to show feedback was recorded
-      setMessages(prev => prev.map(m => 
+      updateOwnerMessages(ownerAtClick, prev => prev.map(m => 
         m.interactionId === interactionId 
           ? { ...m, feedback: feedbackType } 
           : m
@@ -122,26 +199,39 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
     }
   };
 
-  // Load history on open
+  // Load history on open (and reset cleanly on close or player switch)
   useEffect(() => {
-    if (!isOpen) {
-      hasInitialized.current = false;
+    if (!activeModalKey) {
+      if (initializedModalKeyRef.current !== null) {
+        openSessionTokenRef.current += 1;
+        initializedModalKeyRef.current = null;
+        hasSentInitial.current = false;
+        setLoading(false);
+      }
       return;
     }
-    if (isOpen && !hasInitialized.current) {
-      hasInitialized.current = true;
-      
+
+    if (initializedModalKeyRef.current !== activeModalKey) {
+      openSessionTokenRef.current += 1;
+      initializedModalKeyRef.current = activeModalKey;
+      hasSentInitial.current = false;
+      setLoading(false);
+
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
           const parsed = JSON.parse(saved);
           const age = Date.now() - parsed.timestamp;
-          
-          if (age < EXPIRATION_TIME) {
-            setMessages(parsed.messages);
-            setSuggestions(parsed.suggestions);
+
+          if (age < EXPIRATION_TIME && isSubstantiveHistory(parsed.messages)) {
+            updateOwnerMessages(activeModalKey, parsed.messages);
+            setSuggestions(
+              Array.isArray(parsed.suggestions)
+                ? parsed.suggestions
+                : generatePersonalizedSuggestions(context)
+            );
             return;
-          } else {
+          } else if (age >= EXPIRATION_TIME) {
             localStorage.removeItem(STORAGE_KEY);
           }
         }
@@ -149,57 +239,73 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
         console.error('Failed to load chat history:', e);
       }
 
-      // Default initialization if no valid history
+      // Default initialization if no substantive conversation history exists
       const personalizedSuggestions = generatePersonalizedSuggestions(context);
-      const matchCount = context.totalGamesAnalyzed || 0;
-      const impCtx = context.improvementStats as { hasTimelineAnalysis?: boolean } | undefined;
-      const timelineReady = context.timelineStatus === 'ANALYZED' || Boolean(impCtx?.hasTimelineAnalysis);
-      setMessages([{ 
-        role: 'model', 
-        content: timelineReady
-          ? `Hi! I'm your AI Coach. Match summaries and 10m/20m timeline checkpoints from ${matchCount} recent games are ready. Ask a question below to generate coaching feedback!`
-          : `Hi! I'm your AI Coach. Match summaries from ${matchCount} recent games are loaded (deep timeline analysis not run yet). Ask a question below to generate coaching feedback!`
-      }]);
+      updateOwnerMessages(activeModalKey, [
+        {
+          role: 'model',
+          content: buildCoachGreetingMessage(context, loadingTimeline),
+        },
+      ]);
       setSuggestions(personalizedSuggestions);
     }
-  }, [isOpen, context, summonerName, STORAGE_KEY, EXPIRATION_TIME]);
+  }, [activeModalKey, context, loadingTimeline, STORAGE_KEY, EXPIRATION_TIME, updateOwnerMessages]);
 
-  // Auto-send initialMessage if provided (e.g., from TimelineAnalysisModal)
-  const hasSentInitial = useRef(false);
+  // Keep the initial greeting truthful as background timeline preparation transitions states
   useEffect(() => {
-    if (isOpen && initialMessage && !hasSentInitial.current && !loading) {
-      hasSentInitial.current = true;
-      // Small delay to ensure the modal is fully rendered
-      const t = setTimeout(() => handleSendMessage(initialMessage), 300);
-      return () => clearTimeout(t);
-    }
+    if (!activeModalKey) return;
+    const nextGreeting = buildCoachGreetingMessage(context, loadingTimeline);
+    updateOwnerMessages(activeModalKey, (prev) => {
+      if (
+        prev.length === 1 &&
+        prev[0].role === 'model' &&
+        !prev[0].interactionId &&
+        prev[0].content !== nextGreeting
+      ) {
+        return [{ ...prev[0], content: nextGreeting }];
+      }
+      return prev;
+    });
+  }, [activeModalKey, context, loadingTimeline, updateOwnerMessages]);
+
+  // Auto-send initialMessage if provided (e.g., from TimelineAnalysisModal or starred summary pill)
+  useEffect(() => {
     if (!isOpen) {
       hasSentInitial.current = false;
+      return;
+    }
+    if (initialMessage && !hasSentInitial.current && !loading) {
+      // Small delay to ensure the modal is fully rendered
+      const t = setTimeout(() => {
+        if (hasSentInitial.current) return;
+        hasSentInitial.current = true;
+        void handleSendMessage(initialMessage);
+      }, 300);
+      return () => clearTimeout(t);
     }
   }, [isOpen, initialMessage, loading, handleSendMessage]);
 
-  // Save history on update
+  // Save substantive history on update ONLY when messages belong to the active summoner
   useEffect(() => {
-    if (messages.length > 0) {
+    if (
+      activeModalKey &&
+      messagesState.ownerKey === activeModalKey &&
+      isSubstantiveHistory(messagesState.items)
+    ) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         timestamp: Date.now(),
-        messages,
+        messages: messagesState.items,
         suggestions
       }));
     }
-  }, [messages, suggestions, summonerName, STORAGE_KEY]);
+  }, [activeModalKey, messagesState, suggestions, STORAGE_KEY]);
 
   const handleClearChat = () => {
     localStorage.removeItem(STORAGE_KEY);
     const personalizedSuggestions = generatePersonalizedSuggestions(context);
-    const matchCount = context.totalGamesAnalyzed || 0;
-    const impCtx = context.improvementStats as { hasTimelineAnalysis?: boolean } | undefined;
-    const timelineReady = context.timelineStatus === 'ANALYZED' || Boolean(impCtx?.hasTimelineAnalysis);
-    setMessages([{ 
+    updateOwnerMessages(playerOwnerKey, [{ 
       role: 'model', 
-      content: timelineReady
-        ? `Hi! I'm your AI Coach. Match summaries and 10m/20m timeline checkpoints from ${matchCount} recent games are ready. Ask a question below to generate coaching feedback!`
-        : `Hi! I'm your AI Coach. Match summaries from ${matchCount} recent games are loaded (deep timeline analysis not run yet). Ask a question below to generate coaching feedback!`
+      content: buildCoachGreetingMessage(context, loadingTimeline)
     }]);
     setSuggestions(personalizedSuggestions);
   };
@@ -259,6 +365,20 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
     | undefined;
   const timelineAnalyzedInContext =
     context.timelineStatus === 'ANALYZED' || Boolean(imp?.hasTimelineAnalysis);
+  const timelineCoverageInContext = context.timelineCoverage as
+    | CoachTimelineCoverageContext
+    | undefined;
+  const timelineBadgeLabel = loadingTimeline
+    ? 'Preparing 10m/20m timelines...'
+    : context.timelineStatus === 'PARTIAL'
+    ? timelineCoverageInContext && timelineCoverageInContext.requested > 0
+      ? `10m/20m timelines loaded (${timelineCoverageInContext.covered}/${timelineCoverageInContext.requested}G partial)`
+      : '10m/20m timelines loaded (partial)'
+    : context.timelineStatus === 'BLOCKED'
+    ? 'Match summaries only (timeline unavailable)'
+    : timelineAnalyzedInContext
+    ? '10m/20m timelines loaded'
+    : 'Match summaries only (timeline not run)';
 
   const modalContent = (
     <div
@@ -332,10 +452,7 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
               </span>
               <div className="flex flex-wrap gap-1">
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
-                  Observed: {context.totalGamesAnalyzed || 0} matches ·{' '}
-                  {timelineAnalyzedInContext
-                    ? '10m/20m timelines loaded'
-                    : 'Match summaries only (timeline not run)'}
+                  Observed: {context.totalGamesAnalyzed || 0} matches · {timelineBadgeLabel}
                 </span>
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
                   Guardrails: Target &ne; missed CS · No guessed wave states

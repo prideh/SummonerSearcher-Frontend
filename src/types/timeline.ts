@@ -191,6 +191,128 @@ export interface TimelineAnalysisDto {
   improvementStats?: ImprovementStatsDto | null;
 }
 
+export type CoachTimelinePreparationStatus = 'COMPLETE' | 'PARTIAL' | 'BLOCKED';
+
+export interface CoachTimelinePreparationRequestDto {
+  matchIds?: string[] | null;
+}
+
+export interface MissingMatchTimelineDto {
+  matchId: string;
+  reason: string;
+}
+
+export interface CoachTimelinePreparationResultDto {
+  status: CoachTimelinePreparationStatus;
+  region: string;
+  puuid: string;
+  analyzerVersion: string;
+  requestedMatchIds: string[];
+  coveredMatchIds: string[];
+  missingMatches: MissingMatchTimelineDto[];
+  stopReason?: string | null;
+  cacheHit?: boolean;
+  peakRetainedRawTimelines?: number;
+  analysis?: TimelineAnalysisDto | null;
+}
+
+export interface CoachTimelineCoverageContext {
+  status: CoachTimelinePreparationStatus;
+  covered: number;
+  requested: number;
+  stopReason?: string | null;
+}
+
+function sanitizeStringArray(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of input) {
+    if (typeof item !== 'string') continue;
+    const trimmed = item.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    out.push(trimmed);
+  }
+  return out;
+}
+
+/**
+ * Normalizes a `CoachTimelinePreparationResultDto` returned by `POST /riot/timeline/prepare-coach/{region}/{puuid}`,
+ * ensuring truthful status (`COMPLETE | PARTIAL | BLOCKED`), clean string arrays, and Jackson boolean normalization
+ * on `analysis` when present.
+ */
+export function normalizeCoachTimelinePreparationResultDto(
+  raw: Partial<CoachTimelinePreparationResultDto> | null | undefined,
+  fallbackRegion = '',
+  fallbackPuuid = '',
+  fallbackRequestedMatchIds: string[] = []
+): CoachTimelinePreparationResultDto {
+  const requestedMatchIds = sanitizeStringArray(raw?.requestedMatchIds);
+  const effectiveRequestedIds =
+    requestedMatchIds.length > 0 ? requestedMatchIds : sanitizeStringArray(fallbackRequestedMatchIds);
+  const coveredMatchIds = sanitizeStringArray(raw?.coveredMatchIds);
+  const missingMatches: MissingMatchTimelineDto[] = Array.isArray(raw?.missingMatches)
+    ? raw.missingMatches
+        .filter(
+          (m): m is MissingMatchTimelineDto =>
+            Boolean(m) && typeof m.matchId === 'string' && m.matchId.trim().length > 0
+        )
+        .map(m => ({
+          matchId: m.matchId.trim(),
+          reason: typeof m.reason === 'string' && m.reason.trim() ? m.reason.trim() : 'TIMELINE_UNAVAILABLE',
+        }))
+    : [];
+
+  const normalizedAnalysis =
+    raw?.analysis && typeof raw.analysis === 'object'
+      ? normalizeTimelineAnalysisDto(raw.analysis)
+      : null;
+
+  const rawStatus = typeof raw?.status === 'string' ? raw.status.trim().toUpperCase() : '';
+  let status: CoachTimelinePreparationStatus;
+  if (!normalizedAnalysis || (coveredMatchIds.length === 0 && normalizedAnalysis.aggregateSummary?.gamesAnalyzed === 0)) {
+    status = 'BLOCKED';
+  } else if (rawStatus === 'COMPLETE' && missingMatches.length === 0 && (effectiveRequestedIds.length === 0 || coveredMatchIds.length >= effectiveRequestedIds.length)) {
+    status = 'COMPLETE';
+  } else if (rawStatus === 'PARTIAL') {
+    status = 'PARTIAL';
+  } else if (rawStatus === 'BLOCKED') {
+    status = 'BLOCKED';
+  } else if (coveredMatchIds.length > 0 && effectiveRequestedIds.length > 0 && coveredMatchIds.length < effectiveRequestedIds.length) {
+    status = 'PARTIAL';
+  } else if (coveredMatchIds.length > 0 || normalizedAnalysis) {
+    status = missingMatches.length > 0 ? 'PARTIAL' : 'COMPLETE';
+  } else {
+    status = 'BLOCKED';
+  }
+
+  const stopReason =
+    typeof raw?.stopReason === 'string' && raw.stopReason.trim().length > 0
+      ? raw.stopReason.trim()
+      : status === 'BLOCKED'
+      ? missingMatches[0]?.reason ?? 'TIMELINE_UNAVAILABLE'
+      : null;
+
+  return {
+    status,
+    region: typeof raw?.region === 'string' && raw.region.trim() ? raw.region.trim().toLowerCase() : fallbackRegion.trim().toLowerCase(),
+    puuid: typeof raw?.puuid === 'string' && raw.puuid.trim() ? raw.puuid.trim() : fallbackPuuid.trim(),
+    analyzerVersion: typeof raw?.analyzerVersion === 'string' ? raw.analyzerVersion : 'v1',
+    requestedMatchIds: effectiveRequestedIds,
+    coveredMatchIds,
+    missingMatches,
+    stopReason,
+    cacheHit: Boolean(raw?.cacheHit),
+    peakRetainedRawTimelines:
+      typeof raw?.peakRetainedRawTimelines === 'number' && Number.isFinite(raw.peakRetainedRawTimelines)
+        ? raw.peakRetainedRawTimelines
+        : 0,
+    analysis: status === 'BLOCKED' ? null : normalizedAnalysis,
+  };
+}
+
+
 // Raw timeline types (for the Details tab single-match view)
 export interface TimelinePositionDto {
   x: number;

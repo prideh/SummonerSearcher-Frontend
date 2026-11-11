@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   buildAiContext,
+  buildCoachGreetingMessage,
   classifyRiftApproxZone,
   formatEventTimestamp,
   formatPatchMajorMinor,
@@ -1511,4 +1512,115 @@ describe('aiContextBuilder (#14)', () => {
     );
     expect(ctxMismatchedTotal.savedHistory).toBeNull();
   });
+
+  it('maps COMPLETE, PARTIAL, and BLOCKED timelineCoverage into truthful timelineStatus and player-safe greetings', () => {
+    const m1 = createMatch({ matchId: 'EUW1_1001' });
+    const m2 = createMatch({ matchId: 'EUW1_1002' });
+    const partialTimeline: TimelineAnalysisDto = {
+      heatmapPositions: [],
+      deathPositions: [],
+      wardPositions: [],
+      killPositions: [],
+      assistPositions: [],
+      powerSpikeTimelines: [],
+      buildOrders: [],
+      skillOrders: [],
+      eventTimelines: [],
+      aggregateSummary: {
+        avgFirstDeathMinute: 0,
+        mostDangerousZone: 'None',
+        avgGoldLeadAt10: 150,
+        avgGoldLeadAt15: 200,
+        wardsPlacedTotal: 6,
+        deathsTotal: 1,
+        killsTotal: 3,
+        assistsTotal: 4,
+        gamesAnalyzed: 1,
+      },
+    };
+
+    const completeCtx = buildAiContext(
+      'TestMid',
+      'EUW',
+      [m1, m2],
+      'player-puuid',
+      null,
+      BASE_CHAMPION_STATS,
+      BASE_OVERALL_STATS,
+      partialTimeline,
+      null,
+      { status: 'COMPLETE', covered: 2, requested: 2, stopReason: null }
+    );
+    expect(completeCtx.timelineStatus).toBe('ANALYZED');
+    expect(completeCtx.timelineCoverage).toEqual({
+      status: 'COMPLETE',
+      covered: 2,
+      requested: 2,
+    });
+
+    const partialCtx = buildAiContext(
+      'TestMid',
+      'EUW',
+      [m1, m2],
+      'player-puuid',
+      null,
+      BASE_CHAMPION_STATS,
+      BASE_OVERALL_STATS,
+      partialTimeline,
+      null,
+      { status: 'PARTIAL', covered: 1, requested: 2, stopReason: 'RIOT_BUDGET_EXHAUSTED' }
+    );
+    expect(partialCtx.timelineStatus).toBe('PARTIAL');
+    expect(partialCtx.timelineCoverage).toEqual({
+      status: 'PARTIAL',
+      covered: 1,
+      requested: 2,
+      stopReason: 'RIOT_BUDGET_EXHAUSTED',
+    });
+
+    const blockedCtx = buildAiContext(
+      'TestMid',
+      'EUW',
+      [m1, m2],
+      'player-puuid',
+      null,
+      BASE_CHAMPION_STATS,
+      BASE_OVERALL_STATS,
+      null,
+      null,
+      { status: 'BLOCKED', covered: 0, requested: 2, stopReason: 'RIOT_RATE_LIMITED' }
+    );
+    expect(blockedCtx.timelineStatus).toBe('BLOCKED');
+    expect(blockedCtx.timelineCoverage).toEqual({
+      status: 'BLOCKED',
+      covered: 0,
+      requested: 2,
+      stopReason: 'RIOT_RATE_LIMITED',
+    });
+
+    const greetings = {
+      empty: buildCoachGreetingMessage({ totalGamesAnalyzed: 0 }, false),
+      preparing: buildCoachGreetingMessage(blockedCtx, true),
+      analyzed: buildCoachGreetingMessage(completeCtx, false),
+      partial: buildCoachGreetingMessage(partialCtx, false),
+      blocked: buildCoachGreetingMessage(blockedCtx, false),
+      notAnalyzed: buildCoachGreetingMessage(
+        { totalGamesAnalyzed: 2, timelineStatus: 'NOT_ANALYZED' },
+        false
+      ),
+    };
+
+    expect(greetings.empty).toContain('No recent matches are loaded yet');
+    expect(greetings.preparing).toContain('preparing 10m/20m timeline checkpoints');
+    expect(greetings.analyzed).toContain('10m/20m timeline checkpoints from 2 recent games are ready');
+    expect(greetings.partial).toContain('ready for 1 of 2 games');
+    expect(greetings.blocked).toContain('temporarily unavailable');
+    expect(greetings.notAnalyzed).toContain('deep timeline analysis not run yet');
+
+    for (const text of Object.values(greetings)) {
+      expect(text).not.toMatch(/I've analyzed/i);
+      expect(text).not.toMatch(/timelineStatus|timelineCoverage|NOT_ANALYZED|PARTIAL|BLOCKED/);
+    }
+  });
 });
+
