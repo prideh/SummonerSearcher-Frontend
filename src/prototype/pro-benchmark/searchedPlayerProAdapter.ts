@@ -15,8 +15,10 @@ import {
   DEFAULT_PRO_BENCHMARK_DATASET,
   PRO_ROLE_ORDER,
   computeProComparisonSlice,
+  formatChampionDisplayName,
   formatRoleDisplay,
   getUnavailableRequestedMetrics,
+  isSameChampionQuery,
   listSelectableProPlayers,
   resolveSelectableProPlayer,
   roundToDecimals,
@@ -507,8 +509,9 @@ export function normalizeRiotRoleToProRole(
 }
 
 const CHAMPION_ALIAS_MAP: Record<string, string> = {
-  monkeyking: "Wukong",
-  wukong: "Wukong",
+  monkeyking: "MonkeyKing",
+  wukong: "MonkeyKing",
+  fiddlesticks: "Fiddlesticks",
   kaisa: "Kaisa",
   ksante: "KSante",
   jarvaniv: "JarvanIV",
@@ -526,13 +529,17 @@ const CHAMPION_ALIAS_MAP: Record<string, string> = {
   velkoz: "VelKoz",
   belveth: "BelVeth",
   aurelionsol: "AurelionSol",
+  leblanc: "LeBlanc",
   nunu: "Nunu",
+  nunuwillump: "Nunu",
+  nunuandwillump: "Nunu",
   renata: "Renata",
+  renataglasc: "Renata",
 };
 
 /**
  * Normalizes a Riot `championName` to match the canonical `championId` in the pro dataset
- * (case-insensitive match first, alias table second, trimmed original name third).
+ * (case-insensitive / alias match first, canonical Riot ID table second, trimmed display fallback third).
  */
 export function normalizeChampionIdForProDataset(
   rawChampionName: string | null | undefined,
@@ -547,7 +554,7 @@ export function normalizeChampionIdForProDataset(
   for (const game of dataset.games ?? []) {
     for (const pidKey of Object.keys(game.participants ?? {})) {
       const p = game.participants[pidKey];
-      if (p && p.championId.toLowerCase() === compactLower) {
+      if (p && isSameChampionQuery(p.championId, trimmed)) {
         return p.championId;
       }
     }
@@ -557,7 +564,7 @@ export function normalizeChampionIdForProDataset(
     return CHAMPION_ALIAS_MAP[compactLower];
   }
 
-  return trimmed;
+  return formatChampionDisplayName(trimmed);
 }
 
 /**

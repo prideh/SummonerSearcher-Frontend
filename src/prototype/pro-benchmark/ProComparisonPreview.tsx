@@ -6,9 +6,11 @@ import {
   VERIFIED_HUD_10M_VOD_BY_GAME_ID,
   computeProComparisonSlice,
   evaluateDemoCsComparisons,
+  formatChampionDisplayName,
   formatRoleDisplay,
   getAllUniqueChampionsInDataset,
   getSupportedRoleChampionOptions,
+  isSameChampionQuery,
 } from './proBenchmarkEngine';
 import {
   PRO_CHECKPOINT_MINUTES,
@@ -801,19 +803,16 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                 value={
                   selectedChampionId === 'ALL'
                     ? 'ALL'
-                    : roleFilteredOptions.some(
-                        (o) =>
-                          o.championId.toLowerCase() === selectedChampionId.toLowerCase()
+                    : roleFilteredOptions.some((o) =>
+                        isSameChampionQuery(o.championId, selectedChampionId)
                       )
                     ? `${
-                        roleFilteredOptions.find(
-                          (o) =>
-                            o.championId.toLowerCase() === selectedChampionId.toLowerCase()
+                        roleFilteredOptions.find((o) =>
+                          isSameChampionQuery(o.championId, selectedChampionId)
                         )!.role
                       }::${
-                        roleFilteredOptions.find(
-                          (o) =>
-                            o.championId.toLowerCase() === selectedChampionId.toLowerCase()
+                        roleFilteredOptions.find((o) =>
+                          isSameChampionQuery(o.championId, selectedChampionId)
                         )!.championId
                       }`
                     : selectedChampionId
@@ -830,8 +829,8 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                     key={`${opt.role}::${opt.championId}`}
                     value={`${opt.role}::${opt.championId}`}
                   >
-                    {opt.championId} ({formatRoleDisplay(opt.role)} · {opt.sampleCount}G —{' '}
-                    {opt.players.join(', ')})
+                    {formatChampionDisplayName(opt.championId)} ({formatRoleDisplay(opt.role)} ·{' '}
+                    {opt.sampleCount}G — {opt.players.join(', ')})
                   </option>
                 ))}
                 {selectedRole !== 'ALL' && (
@@ -839,13 +838,11 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                     {allUniqueChampions
                       .filter(
                         (c) =>
-                          !roleFilteredOptions.some(
-                            (o) => o.championId.toLowerCase() === c.toLowerCase()
-                          )
+                          !roleFilteredOptions.some((o) => isSameChampionQuery(o.championId, c))
                       )
                       .map((c) => (
                         <option key={`other-${c}`} value={c}>
-                          {c} (0G in {formatRoleDisplay(selectedRole)})
+                          {formatChampionDisplayName(c)} (0G in {formatRoleDisplay(selectedRole)})
                         </option>
                       ))}
                   </optgroup>
@@ -867,7 +864,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                   type="text"
                   value={championSearchText}
                   onChange={(e) => setChampionSearchText(e.target.value)}
-                  placeholder="Filter champion (e.g. Syndra, Qiyana)..."
+                  placeholder="Filter champion (e.g. Syndra, K'Sante, Wukong)..."
                   className="w-full rounded bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-400"
                 />
                 {championSearchText.trim().length > 0 && (
@@ -958,7 +955,8 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                     onClick={() => handleQuickSelectPair(alt.role, alt.championId)}
                     className="px-2.5 py-1 rounded text-xs font-bold bg-sky-500 text-slate-950 hover:bg-sky-400"
                   >
-                    Switch to {formatRoleDisplay(alt.role)} · {alt.championId} ({alt.sampleCount}G)
+                    Switch to {formatRoleDisplay(alt.role)} ·{' '}
+                    {formatChampionDisplayName(alt.championId)} ({alt.sampleCount}G)
                   </button>
                 ))}
                 <button
@@ -1064,7 +1062,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                 >
                   <div className="flex items-center justify-between gap-1">
                     <span className="font-bold text-white">
-                      {row.summonerName} ({row.championId})
+                      {row.summonerName} ({formatChampionDisplayName(row.championId)})
                     </span>
                     <span className="text-[11px] text-slate-400">
                       {row.gameLabel} · {row.trueInGameDurationFormatted}
@@ -1135,7 +1133,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                         </span>
                       </td>
                       <td className="py-1.5 px-2 text-slate-200">
-                        {row.summonerName} · {row.championId}
+                        {row.summonerName} · {formatChampionDisplayName(row.championId)}
                       </td>
                       {PRO_CHECKPOINT_MINUTES.map((m) => {
                         const cell = row.checkpoints[m];
@@ -1245,7 +1243,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                           className="rounded border border-slate-800 bg-slate-900 p-1.5 text-[11px]"
                         >
                           <div className="font-bold text-white truncate">
-                            {p.summonerName} ({p.championId})
+                            {p.summonerName} ({formatChampionDisplayName(p.championId)})
                           </div>
                           <div className="text-slate-400">
                             {unadjustedCs} →{' '}

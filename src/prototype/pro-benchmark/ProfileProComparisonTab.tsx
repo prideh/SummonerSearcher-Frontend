@@ -9,6 +9,7 @@ import {
   VERIFIED_HUD_10M_VOD_BY_GAME_ID,
   computeProComparisonSlice,
   evaluateDemoCsComparisons,
+  formatChampionDisplayName,
   formatRoleDisplay,
   getSupportedRoleChampionOptions,
 } from './proBenchmarkEngine';
@@ -617,7 +618,8 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                     )}
                     {comparison.pairOptions.map((opt) => (
                       <option key={opt.pairKey} value={opt.pairKey}>
-                        {opt.championId} · {opt.roleDisplay} ({opt.playerGameCount}G Player ·{' '}
+                        {formatChampionDisplayName(opt.championId)} · {opt.roleDisplay} (
+                        {opt.playerGameCount}G Player ·{' '}
                         {opt.proReferenceAvailable
                           ? `${opt.proSampleGameCount}G Pro`
                           : 'No Pro Sample'}
@@ -672,8 +674,8 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                     </option>
                     {selectedPair?.matches.map((m, idx) => (
                       <option key={m.matchId} value={m.matchId}>
-                        Game {idx + 1} · {m.championId} ({m.gameDurationFormatted} ·{' '}
-                        {m.win ? 'Win' : 'Loss'})
+                        Game {idx + 1} · {formatChampionDisplayName(m.championId)} (
+                        {m.gameDurationFormatted} · {m.win ? 'Win' : 'Loss'})
                       </option>
                     ))}
                   </select>
@@ -713,7 +715,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                       >
                         {selectedPair.championId === 'ALL'
                           ? `${selectedPair.roleDisplay} · All ${selectedPair.roleDisplay} Champions`
-                          : `${selectedPair.roleDisplay} · ${selectedPair.championId}`}
+                          : `${selectedPair.roleDisplay} · ${formatChampionDisplayName(selectedPair.championId)}`}
                       </span>
                       <span className="px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-700 dark:text-cyan-300 border border-sky-500/30 font-semibold text-[10px]">
                         Player {comparison.activeMatches.length}G (
@@ -738,7 +740,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                           No Pro Reference in 8-Game Sample (0G for{' '}
                           {selectedPair.championId === 'ALL'
                             ? selectedPair.roleDisplay
-                            : `${selectedPair.championId} · ${selectedPair.roleDisplay}`}
+                            : `${formatChampionDisplayName(selectedPair.championId)} · ${selectedPair.roleDisplay}`}
                           )
                         </span>
                       )}
@@ -794,7 +796,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                         No Pro Reference for{' '}
                         {selectedPair.championId === 'ALL'
                           ? selectedPair.roleDisplay
-                          : `${selectedPair.championId} · ${selectedPair.roleDisplay}`}
+                          : `${formatChampionDisplayName(selectedPair.championId)} · ${selectedPair.roleDisplay}`}
                         :
                       </span>{' '}
                       {comparison.proPlayerSelection.unavailableReason ??
@@ -1289,7 +1291,8 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
             >
               {catalogRoleOptions.map((opt) => (
                 <option key={`${opt.role}-${opt.championId}`} value={opt.championId}>
-                  {opt.championId} ({PRO_ROLE_LABELS[opt.role]} · {opt.sampleCount}G)
+                  {formatChampionDisplayName(opt.championId)} ({PRO_ROLE_LABELS[opt.role]} ·{' '}
+                  {opt.sampleCount}G)
                 </option>
               ))}
             </select>
@@ -1412,7 +1415,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
               Player Matches ({gameName}#{tagLine} ·{' '}
               {selectedPair.championId === 'ALL'
                 ? `All ${selectedPair.roleDisplay}`
-                : `${selectedPair.championId} · ${selectedPair.roleDisplay}`}
+                : `${formatChampionDisplayName(selectedPair.championId)} · ${selectedPair.roleDisplay}`}
               )
             </h4>
             <table className="w-full text-left border-collapse text-xs">
@@ -1440,7 +1443,8 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                       </span>
                     </td>
                     <td className="py-1.5 px-2 text-[11px] text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                      {m.championId} · {m.win ? 'Win' : 'Loss'} · Patch {m.patch}
+                      {formatChampionDisplayName(m.championId)} · {m.win ? 'Win' : 'Loss'} · Patch{' '}
+                      {m.patch}
                     </td>
                     {PRO_CHECKPOINT_MINUTES.map((min) => {
                       const cell = m.checkpoints[min];
@@ -1537,7 +1541,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                           </span>
                         </td>
                         <td className="py-1.5 px-2 text-[11px] text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                          {row.summonerName} ({row.championId})
+                          {row.summonerName} ({formatChampionDisplayName(row.championId)})
                         </td>
                         {PRO_CHECKPOINT_MINUTES.map((min) => {
                           const cell = row.checkpoints[min];

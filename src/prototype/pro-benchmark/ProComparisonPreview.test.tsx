@@ -41,10 +41,10 @@ describe('ProComparisonPreview & proBenchmarkEngine behavioral suite', () => {
     expect(slice.ddragonVersionUsedInIngest).toBe('16.22.1');
   });
 
-  it('computes exact mean Total CS (including jungle) at 5/10/15/20/25m and honest Unavailable at 30m for Top · KSante', () => {
+  it("computes exact mean Total CS (including jungle) at 5/10/15/20/25m and honest Unavailable at 30m for Top · K'Sante", () => {
     render(<ProComparisonPreview />);
 
-    expect(screen.getByTestId('active-selection-title')).toHaveTextContent('Top · KSante');
+    expect(screen.getByTestId('active-selection-title')).toHaveTextContent("Top · K'Sante");
     expect(screen.getByTestId('active-selection-sample-badge')).toHaveTextContent(
       '3G Sample (HLE Zeus, IG TheShy)'
     );

@@ -19,6 +19,7 @@ import {
   DEFAULT_PRO_BENCHMARK_DATASET,
   computeExactProTeamKillParticipation,
   computeProComparisonSlice,
+  formatChampionDisplayName,
   listSelectableProPlayers,
   resolveSelectableProPlayer,
 } from './proBenchmarkEngine';
@@ -309,11 +310,11 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     expect(screen.getByTestId('whole-game-player-totalDeaths')).toHaveTextContent('Unknown');
     expect(screen.getByTestId('player-mean-cs-10m')).toHaveTextContent('84.0');
 
-    // Narrow to optional champion Top · KSante
+    // Narrow to optional champion Top · K'Sante (underlying value remains top::KSante)
     fireEvent.change(screen.getByTestId('player-pair-select'), {
       target: { value: 'top::KSante' },
     });
-    expect(screen.getByTestId('paired-selection-title')).toHaveTextContent('Top · KSante');
+    expect(screen.getByTestId('paired-selection-title')).toHaveTextContent("Top · K'Sante");
     expect(screen.getByTestId('player-mean-cs-10m')).toHaveTextContent('87.0');
 
     // Switch to individual match EUW1_7201001
@@ -2104,6 +2105,32 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
       'EUW1_FULL_',
       'EUW1_720',
       'KR_810',
+      // Internal Riot / Data Dragon champion IDs must never appear in visible labels
+      'KSante',
+      'MonkeyKing',
+      'FiddleSticks',
+      'AurelionSol',
+      'JarvanIV',
+      'LeeSin',
+      'XinZhao',
+      'Kaisa',
+      'KaiSa',
+      'DrMundo',
+      'RekSai',
+      'TahmKench',
+      'TwistedFate',
+      'MasterYi',
+      'MissFortune',
+      'KogMaw',
+      'ChoGath',
+      'Chogath',
+      'KhaZix',
+      'Khazix',
+      'VelKoz',
+      'Velkoz',
+      'BelVeth',
+      'Belveth',
+      'Leblanc',
     ];
 
     const FORBIDDEN_WORD_REGEXES = [
@@ -2160,6 +2187,15 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     expect(screen.getByTestId('load-pair-timelines-btn')).toHaveTextContent(
       'Missing match timeline'
     );
+
+    // Verify player-pair-select displays "K'Sante" while keeping underlying value="top::KSante"
+    const pairSelect = screen.getByTestId('player-pair-select') as HTMLSelectElement;
+    const ksanteOption = Array.from(pairSelect.options).find((o) => o.value === 'top::KSante');
+    expect(ksanteOption).toBeDefined();
+    expect(ksanteOption?.textContent).toContain("K'Sante · Top");
+
+    const matchSelect = screen.getByTestId('player-match-scope-select') as HTMLSelectElement;
+    expect(matchSelect.textContent).toContain("Game 1 · K'Sante");
 
     fireEvent.click(screen.getByTestId('toggle-profile-match-breakdown'));
     fireEvent.click(screen.getByTestId('toggle-profile-methodology'));
@@ -2218,7 +2254,17 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     // 4. Switch to "Browse pro stats" (pro_catalog) and "Try a CS value" (manual_demo) inside ProfileProComparisonTab
     fireEvent.click(screen.getByTestId('toggle-profile-methodology'));
     fireEvent.click(screen.getByTestId('surface-mode-catalog-btn'));
-    assertZeroTechnicalTokensInDom(profileRender.container, 'Browse pro stats catalog mode');
+    fireEvent.click(screen.getByRole('button', { name: 'All Roles' }));
+    const catalogSelect = screen.getByTestId('catalog-champion-select') as HTMLSelectElement;
+    const ksanteCatalogOpt = Array.from(catalogSelect.options).find((o) => o.value === 'KSante');
+    expect(ksanteCatalogOpt).toBeDefined();
+    expect(ksanteCatalogOpt?.textContent).toContain("K'Sante (Top");
+    const wukongCatalogOpt = Array.from(catalogSelect.options).find(
+      (o) => o.value === 'MonkeyKing'
+    );
+    expect(wukongCatalogOpt).toBeDefined();
+    expect(wukongCatalogOpt?.textContent).toContain('Wukong (Jungle');
+    assertZeroTechnicalTokensInDom(profileRender.container, 'Browse pro stats catalog mode (all 53)');
 
     fireEvent.click(screen.getByTestId('surface-mode-demo-btn'));
     expect(screen.getByTestId('manual-demo-fallback-banner')).toHaveTextContent('Try a CS value');
@@ -2270,10 +2316,11 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
 
     profileRender.unmount();
 
-    // 8. Standalone Reference + Try a CS value + Per-Game Evidence + Methodology & Limits + Unsupported search
+    // 8. Standalone Reference + Try a CS value + Per-Game Evidence + Methodology & Limits + Display-name search
     const standaloneRender = render(<ProComparisonPreview initialSurface="standalone" />);
     expect(screen.getByTestId('mode-btn-demo-input')).toHaveTextContent('Try a CS value');
     expect(screen.getByTestId('checkpoint-unavailable-30m')).toHaveTextContent('Not available');
+    expect(screen.getByTestId('active-selection-title')).toHaveTextContent("Top · K'Sante");
     fireEvent.click(screen.getByTestId('btn-toggle-evidence'));
     fireEvent.click(screen.getByTestId('btn-toggle-methodology'));
     fireEvent.click(screen.getByTestId('mode-btn-demo-input'));
@@ -2283,10 +2330,28 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
       'standalone reference + Try a CS value + evidence + methodology'
     );
 
-    fireEvent.change(screen.getByTestId('pro-champion-search'), { target: { value: 'Ahri' } });
+    // Searching by player-facing display name "Wukong" resolves to Jungle · Wukong (underlying MonkeyKing)
+    fireEvent.click(screen.getByTestId('role-pill-jungle'));
+    fireEvent.change(screen.getByTestId('pro-champion-search'), { target: { value: 'Wukong' } });
+    expect(screen.getByTestId('active-selection-title')).toHaveTextContent('Jungle · Wukong');
+    assertZeroTechnicalTokensInDom(standaloneRender.container, 'standalone Wukong search');
+
+    fireEvent.change(screen.getByTestId('pro-champion-search'), {
+      target: { value: 'FiddleSticks' },
+    });
+    expect(screen.getByTestId('unsupported-selection-state')).toHaveTextContent('Fiddlesticks');
     assertZeroTechnicalTokensInDom(
       standaloneRender.container,
-      'standalone unsupported champion search'
+      'standalone unsupported Fiddlesticks search'
+    );
+
+    fireEvent.change(screen.getByTestId('pro-champion-search'), {
+      target: { value: 'AurelionSol' },
+    });
+    expect(screen.getByTestId('unsupported-selection-state')).toHaveTextContent('Aurelion Sol');
+    assertZeroTechnicalTokensInDom(
+      standaloneRender.container,
+      'standalone unsupported Aurelion Sol search'
     );
     standaloneRender.unmount();
 
@@ -2324,6 +2389,41 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     });
     assertZeroTechnicalTokensInDom(failingLiveRender.container, 'live timeline fetch error alert');
     failingLiveRender.unmount();
+  });
+
+  it('formats all Riot internal champion IDs (including KSante, MonkeyKing, FiddleSticks, AurelionSol) to player-facing names while preserving underlying IDs', () => {
+    expect(formatChampionDisplayName('KSante')).toBe("K'Sante");
+    expect(formatChampionDisplayName('MonkeyKing')).toBe('Wukong');
+    expect(formatChampionDisplayName('FiddleSticks')).toBe('Fiddlesticks');
+    expect(formatChampionDisplayName('AurelionSol')).toBe('Aurelion Sol');
+    expect(formatChampionDisplayName('JarvanIV')).toBe('Jarvan IV');
+    expect(formatChampionDisplayName('LeeSin')).toBe('Lee Sin');
+    expect(formatChampionDisplayName('XinZhao')).toBe('Xin Zhao');
+    expect(formatChampionDisplayName('Kaisa')).toBe("Kai'Sa");
+    expect(formatChampionDisplayName('KaiSa')).toBe("Kai'Sa");
+    expect(formatChampionDisplayName('Renata')).toBe('Renata Glasc');
+    expect(formatChampionDisplayName('Nunu')).toBe('Nunu & Willump');
+    expect(formatChampionDisplayName('DrMundo')).toBe('Dr. Mundo');
+    expect(formatChampionDisplayName('RekSai')).toBe("Rek'Sai");
+    expect(formatChampionDisplayName('BelVeth')).toBe("Bel'Veth");
+    expect(formatChampionDisplayName('ChoGath')).toBe("Cho'Gath");
+    expect(formatChampionDisplayName('KhaZix')).toBe("Kha'Zix");
+    expect(formatChampionDisplayName('KogMaw')).toBe("Kog'Maw");
+    expect(formatChampionDisplayName('VelKoz')).toBe("Vel'Koz");
+    expect(formatChampionDisplayName('TahmKench')).toBe('Tahm Kench');
+    expect(formatChampionDisplayName('TwistedFate')).toBe('Twisted Fate');
+    expect(formatChampionDisplayName('MasterYi')).toBe('Master Yi');
+    expect(formatChampionDisplayName('MissFortune')).toBe('Miss Fortune');
+    expect(formatChampionDisplayName('Leblanc')).toBe('LeBlanc');
+    expect(formatChampionDisplayName('ALL')).toBe('ALL');
+
+    const wukongSlice = computeProComparisonSlice(DEFAULT_PRO_BENCHMARK_DATASET, {
+      role: 'jungle',
+      championId: 'Wukong',
+    });
+    expect(wukongSlice.isSupportedSelection).toBe(true);
+    expect(wukongSlice.filter.championId).toBe('MonkeyKing');
+    expect(wukongSlice.selectionTitle).toBe('Jungle · Wukong');
   });
 });
 

@@ -1,4 +1,6 @@
 import sampleDatasetJson from "./data/pro_benchmark_sample_baselines.json";
+import { useDataDragonStore } from "../../store/dataDragonStore";
+import { getCorrectChampionName } from "../../utils/championNameHelper";
 import {
   PRO_CHECKPOINT_MINUTES,
   type CheckpointUnavailableReason,
@@ -162,6 +164,90 @@ export function formatRoleDisplay(role: ProRoleFilter): string {
 }
 
 /**
+ * Canonical Riot Data Dragon (16.22.1) + Match-V5 internal champion identifier ->
+ * player-facing League of Legends display name map (keyed by compact lowercase).
+ * Underlying `championId` / `pairKey` values remain untouched; only display strings use this.
+ */
+const CHAMPION_DISPLAY_NAMES_BY_COMPACT_KEY: Record<string, string> = {
+  aurelionsol: "Aurelion Sol",
+  belveth: "Bel'Veth",
+  chogath: "Cho'Gath",
+  drmundo: "Dr. Mundo",
+  fiddlesticks: "Fiddlesticks",
+  jarvaniv: "Jarvan IV",
+  kaisa: "Kai'Sa",
+  khazix: "Kha'Zix",
+  kogmaw: "Kog'Maw",
+  ksante: "K'Sante",
+  leblanc: "LeBlanc",
+  leesin: "Lee Sin",
+  masteryi: "Master Yi",
+  missfortune: "Miss Fortune",
+  monkeyking: "Wukong",
+  wukong: "Wukong",
+  nunu: "Nunu & Willump",
+  nunuandwillump: "Nunu & Willump",
+  nunuwillump: "Nunu & Willump",
+  reksai: "Rek'Sai",
+  renata: "Renata Glasc",
+  renataglasc: "Renata Glasc",
+  tahmkench: "Tahm Kench",
+  twistedfate: "Twisted Fate",
+  velkoz: "Vel'Koz",
+  xinzhao: "Xin Zhao",
+};
+
+export function formatChampionDisplayName(
+  championIdOrName: string | null | undefined,
+): string {
+  if (!championIdOrName || typeof championIdOrName !== "string") {
+    return "Unknown";
+  }
+  const trimmed = championIdOrName.trim();
+  if (!trimmed) return "Unknown";
+  if (trimmed.toUpperCase() === "ALL") return "ALL";
+
+  const compact = trimmed.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+  const mapped = CHAMPION_DISPLAY_NAMES_BY_COMPACT_KEY[compact];
+  if (mapped) return mapped;
+
+  const championMap =
+    typeof useDataDragonStore.getState === "function"
+      ? useDataDragonStore.getState()?.championMap
+      : null;
+  if (championMap) {
+    const lower = trimmed.toLowerCase();
+    for (const key of Object.keys(championMap)) {
+      const champ = championMap[key];
+      if (
+        champ &&
+        (champ.id.toLowerCase() === lower || champ.name.toLowerCase() === lower)
+      ) {
+        return champ.name;
+      }
+    }
+  }
+
+  return getCorrectChampionName(trimmed) ?? trimmed;
+}
+
+export function isSameChampionQuery(a: string, b: string): boolean {
+  const trimA = a.trim();
+  const trimB = b.trim();
+  if (!trimA || !trimB) return false;
+  const compactA = trimA.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+  const compactB = trimB.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+  if (compactA === compactB) return true;
+  const dispA = formatChampionDisplayName(trimA)
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toLowerCase();
+  const dispB = formatChampionDisplayName(trimB)
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toLowerCase();
+  return dispA === dispB;
+}
+
+/**
  * Extracts all supported (role, championId) pairs directly from the dataset's
  * actual game observations so counts and player lists are guaranteed faithful
  * to the underlying 8-game / 80-observation sample.
@@ -220,7 +306,9 @@ export function getSupportedRoleChampionOptions(
       (a, b) =>
         roleRank[a.role] - roleRank[b.role] ||
         b.sampleCount - a.sampleCount ||
-        a.championId.localeCompare(b.championId),
+        formatChampionDisplayName(a.championId).localeCompare(
+          formatChampionDisplayName(b.championId),
+        ),
     );
 }
 
@@ -234,7 +322,9 @@ export function getAllUniqueChampionsInDataset(
       if (p?.championId) set.add(p.championId);
     }
   }
-  return Array.from(set).sort((a, b) => a.localeCompare(b));
+  return Array.from(set).sort((a, b) =>
+    formatChampionDisplayName(a).localeCompare(formatChampionDisplayName(b)),
+  );
 }
 
 function splitSummonerNameToTeamAndHandle(summonerName: string): {
@@ -294,7 +384,7 @@ export function listSelectableProPlayers(
       const roleMatch = roleFilter === "ALL" || p.role === roleFilter;
       const champMatch =
         normalizedChamp === "ALL" ||
-        p.championId.toLowerCase() === normalizedChamp.toLowerCase();
+        isSameChampionQuery(p.championId, normalizedChamp);
 
       let entry = byEsportsId.get(p.esportsPlayerId);
       if (!entry) {
@@ -810,7 +900,7 @@ export function computeProComparisonSlice(
       const roleMatch = normalizedRole === "ALL" || p.role === normalizedRole;
       const champMatch =
         normalizedChamp === "ALL" ||
-        p.championId.toLowerCase() === normalizedChamp.toLowerCase();
+        isSameChampionQuery(p.championId, normalizedChamp);
       const proPlayerMatch =
         normalizedProPlayerQuery === "ALL"
           ? true
@@ -846,15 +936,15 @@ export function computeProComparisonSlice(
       ? []
       : allOptions.filter(
           (opt) =>
-            opt.championId.toLowerCase() === normalizedChamp.toLowerCase() &&
+            isSameChampionQuery(opt.championId, normalizedChamp) &&
             (normalizedRole === "ALL" || opt.role !== normalizedRole),
         );
 
   const canonicalChampName =
     matched[0]?.championId ??
     alternateRolesForChampion[0]?.championId ??
-    allOptions.find(
-      (opt) => opt.championId.toLowerCase() === normalizedChamp.toLowerCase(),
+    allOptions.find((opt) =>
+      isSameChampionQuery(opt.championId, normalizedChamp),
     )?.championId ??
     normalizedChamp;
 
@@ -867,12 +957,14 @@ export function computeProComparisonSlice(
     } else if (normalizedProPlayerQuery !== "ALL" && resolvedProPlayer) {
       const playedSummary =
         resolvedProPlayer.championsPlayed
-          .map((c) => `${c.championId} (${c.games}G)`)
+          .map(
+            (c) => `${formatChampionDisplayName(c.championId)} (${c.games}G)`,
+          )
           .join(", ") || "none";
       const targetDesc =
         normalizedChamp === "ALL"
           ? formatRoleDisplay(normalizedRole)
-          : `${canonicalChampName} (${formatRoleDisplay(normalizedRole)})`;
+          : `${formatChampionDisplayName(canonicalChampName)} (${formatRoleDisplay(normalizedRole)})`;
       unsupportedReason = `${resolvedProPlayer.summonerName} has 0 games on ${targetDesc} in this 8-game sample (played ${formatRoleDisplay(
         resolvedProPlayer.role,
       )}: ${playedSummary}).`;
@@ -883,11 +975,15 @@ export function computeProComparisonSlice(
       const rolesList = alternateRolesForChampion
         .map((opt) => `${formatRoleDisplay(opt.role)} (${opt.sampleCount}G)`)
         .join(", ");
-      unsupportedReason = `${canonicalChampName} has 0 games in ${formatRoleDisplay(
+      unsupportedReason = `${formatChampionDisplayName(
+        canonicalChampName,
+      )} has 0 games in ${formatRoleDisplay(
         normalizedRole,
       )} in this 8-game Worlds 2026 sample, but appears in: ${rolesList}.`;
     } else if (normalizedChamp !== "ALL") {
-      unsupportedReason = `"${normalizedChamp}" is not among the ${allOptions.length} champion-role matchups in this 8-game (80 player-game) Worlds 2026 pro sample.`;
+      unsupportedReason = `"${formatChampionDisplayName(
+        normalizedChamp,
+      )}" is not among the ${allOptions.length} champion-role matchups in this 8-game (80 player-game) Worlds 2026 pro sample.`;
     } else {
       unsupportedReason = `No pro games match ${formatRoleDisplay(
         normalizedRole,
@@ -1606,7 +1702,7 @@ export function computeProComparisonSlice(
   const selectionTitle =
     normalizedChamp === "ALL"
       ? `${roleTitle} · All Supported Champions in Sample${proFilterLabel}`
-      : `${roleTitle} · ${canonicalChampName}${proFilterLabel}`;
+      : `${roleTitle} · ${formatChampionDisplayName(canonicalChampName)}${proFilterLabel}`;
 
   const selectionSubtitle = isSupportedSelection
     ? `${matched.length} pro player-game${matched.length === 1 ? "" : "s"} across ${
