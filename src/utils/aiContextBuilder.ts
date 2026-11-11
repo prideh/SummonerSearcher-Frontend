@@ -27,6 +27,11 @@ import {
 } from './statsCalculator';
 import { formatPurchaseItemLabel, resolveImprovementStats } from './improvementStatsHelper';
 import { camelCaseToTitleCase } from './formatters';
+import {
+  classifyRoleBoundItem,
+  TIER_3_BOOT_IDS,
+  VERIFIED_ROLE_QUEST_METADATA,
+} from './roleQuestUtils';
 
 export const MAX_RECENT_MATCHES = 20;
 export const MAX_EARLY_DEATHS_PER_GAME = 3;
@@ -407,7 +412,7 @@ export function formatPatchMajorMinor(gameVersion?: string): string | undefined 
 function resolveItemName(itemId: number | undefined, itemMap: ItemMap | null): string | null {
   if (!itemId || itemId <= 0) return null;
   const entry = itemMap?.[String(itemId)];
-  return entry?.name || `Item #${itemId}`;
+  return entry?.name || VERIFIED_ROLE_QUEST_METADATA[itemId]?.name || `Item #${itemId}`;
 }
 
 function resolveParticipantItems(p: ParticipantDto, itemMap: ItemMap | null): string[] {
@@ -416,6 +421,18 @@ function resolveParticipantItems(p: ParticipantDto, itemMap: ItemMap | null): st
   for (const id of rawSlots) {
     const name = resolveItemName(id, itemMap);
     if (name) resolved.push(name);
+  }
+  const roleBound = classifyRoleBoundItem(p.roleBoundItem);
+  if (roleBound.kind === 'quest_starter') {
+    resolved.push(`RoleQuest: ${roleBound.meta.shortLabel}`);
+  } else if (roleBound.kind === 'quest_reward') {
+    resolved.push(`RoleQuest: ${roleBound.meta.name}`);
+  } else if (roleBound.kind === 'boots') {
+    const bootName = resolveItemName(roleBound.itemId, itemMap) || `Item #${roleBound.itemId}`;
+    resolved.push(`${bootName} (7th Slot)`);
+  } else if (roleBound.kind === 'unknown_item') {
+    const fallbackName = resolveItemName(roleBound.itemId, itemMap) || `Item #${roleBound.itemId}`;
+    resolved.push(`RoleSlot: ${fallbackName}`);
   }
   return resolved;
 }
@@ -457,6 +474,9 @@ function computeDamageSplitPct(p: ParticipantDto): { physical: number; magic: nu
 function isCompletedSpikeItem(itemId: number, itemMap: ItemMap | null): boolean {
   if (!itemId || itemId <= 0 || COMPONENT_OR_CONSUMABLE_ITEM_IDS.has(itemId)) {
     return false;
+  }
+  if (TIER_3_BOOT_IDS.has(itemId)) {
+    return true;
   }
   const itemData = itemMap?.[String(itemId)];
   if (itemData?.gold && typeof itemData.gold.total === 'number') {

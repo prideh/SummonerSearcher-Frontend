@@ -121,7 +121,19 @@ export interface ParticipantDto {
   totalDamageShieldedOnTeammates?: number;
   totalDamageTaken?: number;
   totalHeal?: number;
-  totalAllyJungleMinionsKilled?: string;
+  totalAllyJungleMinionsKilled?: number | null;
+  totalEnemyJungleMinionsKilled?: number | null;
+  damageDealtToEpicMonsters?: number | null;
+  eligibleForProgression?: boolean | null;
+  /** Season 2026 Role Quest / 7th-slot item ID. Legacy cached entries omit this field (undefined/null = unknown, NEVER 0). */
+  roleBoundItem?: number | null;
+  /** Nullable capture-only IGNB behavioral surrender flags (zero winrate/remake/cohort exclusion impact). */
+  causedGameEndFromIGNBSurrender?: boolean | null;
+  gameEndedInIGNBSurrender?: boolean | null;
+  teamIGNBSurrendered?: boolean | null;
+  wasPremadeWithIGNBGameEndCauser?: boolean | null;
+  wasSevereTransgressor?: boolean | null;
+  wasPremadeWithSevereTransgressor?: boolean | null;
   totalHealsOnTeammates?: number;
   totalMinionsKilled?: number;
   totalTimeCCDealt?: number;

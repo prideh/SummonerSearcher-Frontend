@@ -539,6 +539,15 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
                   { label: 'Gold Lead @10', value: formatGold(summary.avgGoldLeadAt10), color: summary.avgGoldLeadAt10 >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' },
                   { label: 'Gold Lead @15', value: formatGold(summary.avgGoldLeadAt15), color: summary.avgGoldLeadAt15 >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' },
                   { label: 'KDA (K/D)', value: `${summary.killsTotal}/${summary.deathsTotal}`, color: 'text-violet-600 dark:text-violet-400' },
+                  ...(typeof summary.avgRoleQuestCompletionMinute === 'number'
+                    ? [
+                        {
+                          label: 'Avg Role Quest',
+                          value: `${summary.avgRoleQuestCompletionMinute}min`,
+                          color: 'text-amber-600 dark:text-amber-400',
+                        },
+                      ]
+                    : []),
                 ].map(card => (
                   <div key={card.label} className="bg-gray-50 dark:bg-gray-900/70 border border-gray-200 dark:border-gray-800 rounded-xl p-3 text-center">
                     <p className={`text-lg font-bold ${card.color}`}>{card.value}</p>

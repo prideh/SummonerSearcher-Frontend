@@ -4,6 +4,11 @@ import type { MatchTimelineDto, MatchEventEntry, BuildItem, SkillUp } from '../t
 import type { ParticipantDto } from '../types/match';
 import ItemIcon from './ItemIcon';
 import { useDataDragonStore } from '../store/dataDragonStore';
+import {
+  extractCleanSkillUps,
+  extractDefensibleQuestCompletionSeconds,
+  reconcileTimelineBuildItems,
+} from '../utils/roleQuestUtils';
 
 interface MatchDetailsTabProps {
   matchId: string;
@@ -57,45 +62,23 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
     ? timeline?.info?.participants?.find(p => p.puuid === opponentParticipant.puuid)?.participantId
     : undefined;
 
-  // Parse build order
-  const buildItems = React.useMemo<BuildItem[]>(() => {
-    if (!timeline?.info || !playerPid) return [];
-    const items: BuildItem[] = [];
-    for (const frame of timeline.info.frames) {
-      for (const event of frame.events) {
-        if (event.type === 'ITEM_PURCHASED' && event.participantId === playerPid && event.itemId) {
-          items.push({
-            itemId: event.itemId,
-            timestamp: event.timestamp,
-            minuteMark: Math.floor(event.timestamp / 60000),
-          });
-        }
-      }
-    }
-    return items;
-  }, [timeline, playerPid]);
+  // Parse build order with ITEM_UNDO reconciliation (#1174 beforeId=0 safe)
+  const buildItems = React.useMemo<BuildItem[]>(
+    () => reconcileTimelineBuildItems(timeline, playerPid),
+    [timeline, playerPid]
+  );
 
-  // Parse skill order
-  const skillUps = React.useMemo<SkillUp[]>(() => {
-    if (!timeline?.info || !playerPid) return [];
-    const ups: SkillUp[] = [];
-    let currentLevel = 1;
-    for (const frame of timeline.info.frames) {
-      for (const event of frame.events) {
-        if (event.type === 'LEVEL_UP' && event.participantId === playerPid && event.level) {
-          currentLevel = event.level;
-        }
-        if (event.type === 'SKILL_LEVEL_UP' && event.participantId === playerPid && event.skillSlot) {
-          ups.push({
-            skillSlot: event.skillSlot,
-            level: currentLevel,
-            minuteMark: Math.floor((event.timestamp || 0) / 60000),
-          });
-        }
-      }
-    }
-    return ups;
-  }, [timeline, playerPid]);
+  // Parse skill order with NORMAL filter + #1100 burst deduplication (no 18-point hard cap)
+  const skillUps = React.useMemo<SkillUp[]>(
+    () => extractCleanSkillUps(timeline, playerPid),
+    [timeline, playerPid]
+  );
+
+  // Conservative Role Quest completion timestamp (null whenever legacy/ambiguous/uncompleted)
+  const roleQuestCompletionSeconds = React.useMemo<number | null>(
+    () => extractDefensibleQuestCompletionSeconds(timeline, playerParticipant, playerPid),
+    [timeline, playerParticipant, playerPid]
+  );
 
   // Parse events (kills/deaths/plates/objectives for player + opponent)
   const events = React.useMemo<MatchEventEntry[]>(() => {
@@ -293,9 +276,19 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
 
       {/* ── Build Order ── */}
       <section className="min-w-0">
-        <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
-          <span className="text-base">🛡️</span> Item Build Order
-        </h3>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+            <span className="text-base">🛡️</span> Item Build Order
+          </h3>
+          {roleQuestCompletionSeconds !== null && (
+            <span
+              data-testid="role-quest-completion-badge"
+              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/40"
+            >
+              Role Quest Completed @ {formatTime(roleQuestCompletionSeconds)}
+            </span>
+          )}
+        </div>
         {buildGroups.length === 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">No item purchases found.</p>
         ) : (

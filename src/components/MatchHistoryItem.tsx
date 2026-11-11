@@ -212,7 +212,7 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
           {/* Items - Hidden when details are shown */}
           {!showDetails && (
             <div className="flex items-center justify-center">
-              <ItemList mainItems={mainItems} trinket={trinket} />
+              <ItemList mainItems={mainItems} trinket={trinket} roleBoundItem={player.roleBoundItem} />
             </div>
           )}
 
@@ -291,5 +291,15 @@ const MatchHistoryItem: React.FC<MatchHistoryItemProps> = ({ match, puuid, onPla
 };
 
 export default memo(MatchHistoryItem, (prevProps, nextProps) => {
-  return prevProps.match.info?.gameId === nextProps.match.info?.gameId && prevProps.puuid === nextProps.puuid;
+  if (prevProps.puuid !== nextProps.puuid) return false;
+  if (prevProps.match.info?.gameId !== nextProps.match.info?.gameId) return false;
+  const prevParts = prevProps.match.info?.participants;
+  const nextParts = nextProps.match.info?.participants;
+  if (prevParts?.length !== nextParts?.length) return false;
+  if (prevParts && nextParts) {
+    for (let i = 0; i < prevParts.length; i++) {
+      if (prevParts[i].roleBoundItem !== nextParts[i].roleBoundItem) return false;
+    }
+  }
+  return true;
 });

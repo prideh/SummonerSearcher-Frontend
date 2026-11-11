@@ -161,6 +161,20 @@ export interface MatchEventTimelineDto {
 
 import type { ImprovementStatsDto } from './improvementStats';
 
+export interface MatchRoleQuestTimingDto {
+  matchId: string;
+  role: string;
+  playerRoleBoundItem?: number | null;
+  opponentRoleBoundItem?: number | null;
+  playerQuestCompleted?: boolean | null;
+  opponentQuestCompleted?: boolean | null;
+  playerCompletionTimestampMs?: number | null;
+  playerCompletionMinute?: number | null;
+  opponentCompletionTimestampMs?: number | null;
+  opponentCompletionMinute?: number | null;
+  completionDeltaSeconds?: number | null;
+}
+
 export interface TimelineAggregateSummary {
   avgFirstDeathMinute: number;
   mostDangerousZone: string;
@@ -175,6 +189,16 @@ export interface TimelineAggregateSummary {
   assistedDeaths?: number | null;
   unassistedDeaths?: number | null;
   deathsNearObjectiveWindows?: number | null;
+  wardsByTimeBucket?: {
+    pre10: number;
+    min10To20: number;
+    post20: number;
+  } | null;
+  roleQuestEligibleGames?: number | null;
+  roleQuestCompletedGames?: number | null;
+  roleQuestAmbiguousGames?: number | null;
+  avgRoleQuestCompletionMinute?: number | null;
+  avgRoleQuestDeltaSeconds?: number | null;
 }
 
 export interface TimelineAnalysisDto {
@@ -189,6 +213,7 @@ export interface TimelineAnalysisDto {
   eventTimelines: MatchEventTimelineDto[];
   aggregateSummary: TimelineAggregateSummary;
   improvementStats?: ImprovementStatsDto | null;
+  roleQuestTimings?: MatchRoleQuestTimingDto[];
 }
 
 export type CoachTimelinePreparationStatus = 'COMPLETE' | 'PARTIAL' | 'BLOCKED';
@@ -319,7 +344,8 @@ function arePerMatchSubArraysConsistent(
     checkMatchIdList(analysis.powerSpikeTimelines) &&
     checkMatchIdList(analysis.buildOrders) &&
     checkMatchIdList(analysis.skillOrders) &&
-    checkMatchIdList(analysis.eventTimelines)
+    checkMatchIdList(analysis.eventTimelines) &&
+    (analysis.roleQuestTimings === undefined || checkMatchIdList(analysis.roleQuestTimings))
   );
 }
 
@@ -606,8 +632,10 @@ export interface TimelineEventDto {
   victimId?: number;
   assistingParticipantIds?: number[];
   itemId?: number;
+  beforeId?: number;
   afterId?: number;
   skillSlot?: number;
+  levelUpType?: string;
   level?: number;
   wardType?: string;
   buildingType?: string;
