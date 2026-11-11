@@ -78,6 +78,9 @@ const MatchDetails: React.FC<MatchDetailsProps> = ({ match, puuid, onPlayerClick
             playerParticipant={playerParticipant}
             opponentParticipant={opponentParticipant}
             allParticipants={match.info?.participants || []}
+            gameDuration={match.info?.gameDuration}
+            gameVersion={match.info?.gameVersion}
+            queueId={match.info?.queueId}
           />
         )}
         {activeTab === 'details' && !playerParticipant && (

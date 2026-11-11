@@ -4,6 +4,15 @@ import type { MatchTimelineDto, MatchEventEntry, BuildItem, SkillUp } from '../t
 import type { ParticipantDto } from '../types/match';
 import ItemIcon from './ItemIcon';
 import { useDataDragonStore } from '../store/dataDragonStore';
+import {
+  describeMatchRoleQuestState,
+  extractCleanSkillUps,
+  extractDefensibleQuestCompletionSeconds,
+  formatLeagueMonsterLabel,
+  formatLeagueStructureLabel,
+  reconcileTimelineBuildItems,
+  resolveDisplayItemName,
+} from '../utils/roleQuestUtils';
 
 interface MatchDetailsTabProps {
   matchId: string;
@@ -13,6 +22,8 @@ interface MatchDetailsTabProps {
   opponentParticipant?: ParticipantDto;
   allParticipants: ParticipantDto[];
   gameDuration?: number;
+  gameVersion?: string;
+  queueId?: number;
 }
 
 const SKILL_LABELS = ['', 'Q', 'W', 'E', 'R'];
@@ -26,12 +37,21 @@ const formatTime = (totalSeconds: number) => {
 };
 
 const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
-  matchId, region, puuid, playerParticipant, opponentParticipant, allParticipants
+  matchId,
+  region,
+  puuid,
+  playerParticipant,
+  opponentParticipant,
+  allParticipants,
+  gameDuration,
+  gameVersion,
+  queueId,
 }) => {
   const [timeline, setTimeline] = useState<MatchTimelineDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const CDN_URL = useDataDragonStore(state => state.cdnUrl);
+  const itemMap = useDataDragonStore(state => state.itemMap);
   const hasFetched = useRef(false);
 
   useEffect(() => {
@@ -43,7 +63,7 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
         const data = await getMatchTimeline(region, matchId);
         setTimeline(data);
       } catch {
-        setError('Failed to load timeline data.');
+        setError('Match timeline could not be loaded right now.');
       } finally {
         setLoading(false);
       }
@@ -57,45 +77,35 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
     ? timeline?.info?.participants?.find(p => p.puuid === opponentParticipant.puuid)?.participantId
     : undefined;
 
-  // Parse build order
-  const buildItems = React.useMemo<BuildItem[]>(() => {
-    if (!timeline?.info || !playerPid) return [];
-    const items: BuildItem[] = [];
-    for (const frame of timeline.info.frames) {
-      for (const event of frame.events) {
-        if (event.type === 'ITEM_PURCHASED' && event.participantId === playerPid && event.itemId) {
-          items.push({
-            itemId: event.itemId,
-            timestamp: event.timestamp,
-            minuteMark: Math.floor(event.timestamp / 60000),
-          });
-        }
-      }
-    }
-    return items;
-  }, [timeline, playerPid]);
+  // Parse build order with ITEM_UNDO reconciliation (#1174 beforeId=0 safe)
+  const buildItems = React.useMemo<BuildItem[]>(
+    () => reconcileTimelineBuildItems(timeline, playerPid),
+    [timeline, playerPid]
+  );
 
-  // Parse skill order
-  const skillUps = React.useMemo<SkillUp[]>(() => {
-    if (!timeline?.info || !playerPid) return [];
-    const ups: SkillUp[] = [];
-    let currentLevel = 1;
-    for (const frame of timeline.info.frames) {
-      for (const event of frame.events) {
-        if (event.type === 'LEVEL_UP' && event.participantId === playerPid && event.level) {
-          currentLevel = event.level;
-        }
-        if (event.type === 'SKILL_LEVEL_UP' && event.participantId === playerPid && event.skillSlot) {
-          ups.push({
-            skillSlot: event.skillSlot,
-            level: currentLevel,
-            minuteMark: Math.floor((event.timestamp || 0) / 60000),
-          });
-        }
-      }
-    }
-    return ups;
-  }, [timeline, playerPid]);
+  // Parse skill order with NORMAL filter + #1100 burst deduplication (no 18-point hard cap)
+  const skillUps = React.useMemo<SkillUp[]>(
+    () => extractCleanSkillUps(timeline, playerPid),
+    [timeline, playerPid]
+  );
+
+  // Conservative Role Quest completion timestamp (null whenever legacy/ambiguous/uncompleted)
+  const roleQuestCompletionSeconds = React.useMemo<number | null>(
+    () => extractDefensibleQuestCompletionSeconds(timeline, playerParticipant, playerPid),
+    [timeline, playerParticipant, playerPid]
+  );
+
+  const roleQuestDisplay = React.useMemo(
+    () =>
+      describeMatchRoleQuestState({
+        participant: playerParticipant,
+        gameVersion,
+        queueId,
+        gameDurationSeconds: gameDuration,
+        completionSeconds: roleQuestCompletionSeconds,
+      }),
+    [playerParticipant, gameVersion, queueId, gameDuration, roleQuestCompletionSeconds]
+  );
 
   // Parse events (kills/deaths/plates/objectives for player + opponent)
   const events = React.useMemo<MatchEventEntry[]>(() => {
@@ -141,12 +151,12 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
           }
         }
 
-        if (event.type === 'BUILDING_KILL') {
+        if (event.type === 'BUILDING_KILL' || event.type === 'TURRET_PLATE_DESTROYED') {
           const playerInvolved = event.killerId === playerPid || (playerPid ? event.assistingParticipantIds?.includes(playerPid) : false);
           const opponentInvolved = opponentPid !== undefined && (event.killerId === opponentPid || event.assistingParticipantIds?.includes(opponentPid));
           if (playerInvolved || opponentInvolved) {
-            const lane = event.laneType?.replace('_LANE', '') || 'UNKNOWN';
-            result.push({ type: 'PLATE', minuteMark: minute, secondMark: second, actor: playerInvolved ? playerParticipant.championName || null : opponentParticipant?.championName || null, target: lane, isPlayer: !!playerInvolved, isOpponent: !!opponentInvolved, laneType: lane, monsterType: null, position: event.position || null });
+            const structureLabel = formatLeagueStructureLabel(event.laneType, event.buildingType, event.type);
+            result.push({ type: 'PLATE', minuteMark: minute, secondMark: second, actor: playerInvolved ? playerParticipant.championName || null : opponentParticipant?.championName || null, target: structureLabel, isPlayer: !!playerInvolved, isOpponent: !!opponentInvolved, laneType: event.laneType || null, monsterType: null, position: event.position || null });
           }
         }
 
@@ -154,7 +164,8 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
           const playerInvolved = event.killerId === playerPid || (playerPid ? event.assistingParticipantIds?.includes(playerPid) : false);
           const opponentInvolved = opponentPid !== undefined && (event.killerId === opponentPid || event.assistingParticipantIds?.includes(opponentPid));
           if (playerInvolved || opponentInvolved) {
-            result.push({ type: 'OBJECTIVE', minuteMark: minute, secondMark: second, actor: playerInvolved ? playerParticipant.championName || null : opponentParticipant?.championName || null, target: event.monsterType || 'OBJECTIVE', isPlayer: !!playerInvolved, isOpponent: !!opponentInvolved, laneType: null, monsterType: event.monsterType || null, position: event.position || null });
+            const monsterLabel = formatLeagueMonsterLabel(event.monsterType, event.monsterSubType);
+            result.push({ type: 'OBJECTIVE', minuteMark: minute, secondMark: second, actor: playerInvolved ? playerParticipant.championName || null : opponentParticipant?.championName || null, target: monsterLabel, isPlayer: !!playerInvolved, isOpponent: !!opponentInvolved, laneType: null, monsterType: event.monsterType || null, position: event.position || null });
           }
         }
       }
@@ -293,11 +304,31 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
 
       {/* ── Build Order ── */}
       <section className="min-w-0">
-        <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
-          <span className="text-base">🛡️</span> Item Build Order
-        </h3>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+            <span className="text-base">🛡️</span> Item Build Order
+          </h3>
+          {roleQuestDisplay.show && (
+            <span
+              data-testid={
+                roleQuestDisplay.tone === 'completed'
+                  ? 'role-quest-completion-badge'
+                  : 'role-quest-status-badge'
+              }
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                roleQuestDisplay.tone === 'completed'
+                  ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/40'
+                  : roleQuestDisplay.tone === 'in_progress'
+                  ? 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30'
+                  : 'bg-slate-200/70 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+              }`}
+            >
+              {roleQuestDisplay.label}
+            </span>
+          )}
+        </div>
         {buildGroups.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">No item purchases found.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">No item purchases recorded in this match.</p>
         ) : (
           <div className="w-full min-w-0 pb-1">
             <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
@@ -309,15 +340,18 @@ const MatchDetailsTab: React.FC<MatchDetailsTabProps> = ({
                   <div className="flex flex-col items-center gap-1.5 max-w-full">
                     {/* Item icons */}
                     <div className={`flex flex-wrap gap-1 p-1.5 rounded-lg bg-slate-50 dark:bg-[#0b101d] border ${accentClass}`}>
-                      {group.items.map((item, ii) => (
-                        <div
-                          key={ii}
-                          className="rounded overflow-hidden hover:scale-105 transition-transform"
-                          title={`Item ${item.itemId}`}
-                        >
-                          <ItemIcon itemId={item.itemId} className="w-8 h-8 rounded" />
-                        </div>
-                      ))}
+                      {group.items.map((item, ii) => {
+                        const itemTitle = resolveDisplayItemName(item.itemId, itemMap) ?? 'Unrecognized Item';
+                        return (
+                          <div
+                            key={ii}
+                            className="rounded overflow-hidden hover:scale-105 transition-transform"
+                            title={itemTitle}
+                          >
+                            <ItemIcon itemId={item.itemId} className="w-8 h-8 rounded" />
+                          </div>
+                        );
+                      })}
                     </div>
                     {/* Minute badge */}
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 tracking-wide">

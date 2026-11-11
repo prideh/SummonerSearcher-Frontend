@@ -218,6 +218,14 @@ const TeamDetails: React.FC<{
                 {[p.item0, p.item1, p.item2, p.item3, p.item4, p.item5, p.item6].map((item, i) => (
                   <ItemIcon key={i} itemId={item} className={`w-6 h-6 ${i === 6 ? 'ml-1' : ''}`} />
                 ))}
+                {typeof p.roleBoundItem === 'number' && p.roleBoundItem > 0 && (
+                  <ItemIcon
+                    key="role-bound"
+                    itemId={p.roleBoundItem}
+                    isRoleBoundSlot
+                    className="w-6 h-6 ml-0.5"
+                  />
+                )}
                 <div className="flex-grow flex justify-end md:hidden">
                   <div className="text-slate-600 dark:text-slate-300 text-right text-[10px] leading-tight">
                     <p>{formatNumber(p.totalDamageDealtToChampions)} DMG</p>

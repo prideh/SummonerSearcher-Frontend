@@ -19,6 +19,12 @@ import ImprovementStatsSection from './ImprovementStatsSection';
 import { useDataDragonStore } from '../store/dataDragonStore';
 import { getCorrectChampionName } from '../utils/championNameHelper';
 import { COMMITTED_DDRAGON_VERSION } from '../utils/championTags';
+import {
+  formatLeagueMonsterLabel,
+  formatLeagueStructureLabel,
+  formatLeagueWardLabel,
+  resolveDisplayItemName,
+} from '../utils/roleQuestUtils';
 
 // Riot minimap image (Map11 2dlevelminimap, 512x512 edge-to-edge with no border/padding)
 const MINIMAP_URL = 'https://raw.communitydragon.org/latest/game/levels/map11/info/2dlevelminimap.png';
@@ -208,7 +214,9 @@ export const PowerSpikeTooltip = ({ active, payload, label }: CustomTooltipProps
                     className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800/80 px-1.5 py-0.5 rounded text-[10px] text-gray-700 dark:text-gray-200"
                   >
                     <ItemIcon itemId={itemId} className="w-4 h-4 rounded shrink-0" />
-                    <span className="truncate max-w-[110px]">{itemMap?.[itemId]?.name ?? `Item ${itemId}`}</span>
+                    <span className="truncate max-w-[110px]">
+                      {resolveDisplayItemName(itemId, itemMap) ?? 'Unrecognized Item'}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -224,7 +232,9 @@ export const PowerSpikeTooltip = ({ active, payload, label }: CustomTooltipProps
                     className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800/80 px-1.5 py-0.5 rounded text-[10px] text-gray-700 dark:text-gray-200"
                   >
                     <ItemIcon itemId={itemId} className="w-4 h-4 rounded shrink-0" />
-                    <span className="truncate max-w-[110px]">{itemMap?.[itemId]?.name ?? `Item ${itemId}`}</span>
+                    <span className="truncate max-w-[110px]">
+                      {resolveDisplayItemName(itemId, itemMap) ?? 'Unrecognized Item'}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -248,13 +258,19 @@ export const PowerSpikeTooltip = ({ active, payload, label }: CustomTooltipProps
                : ev.type === 'ASSIST' ? ' assisted on '
                : ev.type === 'OBJECTIVE' ? ' secured '
                : ' destroyed ';
+             const targetLabel =
+               ev.type === 'OBJECTIVE'
+                 ? formatLeagueMonsterLabel(ev.monsterType ?? ev.target)
+                 : ev.type === 'PLATE'
+                 ? formatLeagueStructureLabel(ev.laneType ?? ev.target, undefined, ev.type)
+                 : ev.target;
              return (
                <div key={i} className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
                  <span className="text-xs">{icon}</span>
                  <span className="truncate">
                    {ev.actor && <span className="text-gray-700 dark:text-gray-300 font-medium">{ev.actor}</span>}
                    {actionText}
-                   {ev.target && <span className="text-gray-700 dark:text-gray-300 font-medium">{ev.target}</span>}
+                   {targetLabel && <span className="text-gray-700 dark:text-gray-300 font-medium">{targetLabel}</span>}
                  </span>
                </div>
              );
@@ -534,11 +550,50 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 {[
                   { label: 'Games Analyzed', value: summary.gamesAnalyzed, color: 'text-cyan-600 dark:text-cyan-400' },
-                  { label: 'Avg First Death', value: `${summary.avgFirstDeathMinute}min`, color: 'text-red-600 dark:text-red-400' },
-                  { label: 'Most Dangerous Zone', value: summary.mostDangerousZone, color: 'text-orange-600 dark:text-orange-400' },
+                  {
+                    label: 'Avg First Death',
+                    value:
+                      summary.gamesAnalyzed === 0
+                        ? 'Not available'
+                        : summary.deathsTotal === 0
+                        ? 'No deaths'
+                        : `${summary.avgFirstDeathMinute}min`,
+                    color: 'text-red-600 dark:text-red-400',
+                  },
+                  {
+                    label: 'Most Dangerous Zone',
+                    value:
+                      summary.mostDangerousZone === 'Unknown'
+                        ? summary.gamesAnalyzed > 0 && summary.deathsTotal === 0
+                          ? 'No deaths recorded'
+                          : 'Not available'
+                        : summary.mostDangerousZone,
+                    color: 'text-orange-600 dark:text-orange-400',
+                  },
                   { label: 'Gold Lead @10', value: formatGold(summary.avgGoldLeadAt10), color: summary.avgGoldLeadAt10 >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' },
                   { label: 'Gold Lead @15', value: formatGold(summary.avgGoldLeadAt15), color: summary.avgGoldLeadAt15 >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' },
                   { label: 'KDA (K/D)', value: `${summary.killsTotal}/${summary.deathsTotal}`, color: 'text-violet-600 dark:text-violet-400' },
+                  ...(typeof summary.avgRoleQuestCompletionMinute === 'number'
+                    ? [
+                        {
+                          label: 'Avg Role Quest',
+                          value: `${summary.avgRoleQuestCompletionMinute}min`,
+                          color: 'text-amber-600 dark:text-amber-400',
+                        },
+                      ]
+                    : (summary.roleQuestEligibleGames ?? 0) > 0
+                    ? [
+                        {
+                          label: 'Role Quests',
+                          value:
+                            summary.roleQuestCompletedGames === 0 &&
+                            (summary.roleQuestAmbiguousGames ?? 0) === 0
+                              ? '0 completed'
+                              : 'Timing unavailable',
+                          color: 'text-amber-600 dark:text-amber-400',
+                        },
+                      ]
+                    : []),
                 ].map(card => (
                   <div key={card.label} className="bg-gray-50 dark:bg-gray-900/70 border border-gray-200 dark:border-gray-800 rounded-xl p-3 text-center">
                     <p className={`text-lg font-bold ${card.color}`}>{card.value}</p>
@@ -613,6 +668,10 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
                     >
                       {hoveredHeatmapTooltip.events.slice(0, 3).map((ev, idx) => {
                         const timeStr = formatHeatmapEventTime(ev.minuteMark, ev.secondMark);
+                        const isWardEvent = ev.type === 'WARD_PLACED' || ev.type === 'WARD_KILLED';
+                        const wardLabel = isWardEvent
+                          ? formatLeagueWardLabel(ev.wardType ?? ev.target)
+                          : null;
                         const verb =
                           ev.type === 'KILL'
                             ? 'killed'
@@ -621,11 +680,18 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
                             : ev.type === 'ASSIST'
                             ? 'assisted on'
                             : ev.type === 'WARD_KILLED'
-                            ? 'destroyed ward'
-                            : 'placed ward';
+                            ? `cleared ${wardLabel}`
+                            : `placed ${wardLabel}`;
+                        const displayTarget = isWardEvent
+                          ? null
+                          : ev.type === 'OBJECTIVE'
+                          ? formatLeagueMonsterLabel(ev.monsterType ?? ev.target)
+                          : ev.type === 'PLATE'
+                          ? formatLeagueStructureLabel(ev.laneType ?? ev.target, undefined, ev.type)
+                          : ev.target;
                         const showTargetChamp =
                           (ev.type === 'KILL' || ev.type === 'DEATH' || ev.type === 'ASSIST') &&
-                          !!ev.target;
+                          !!displayTarget;
 
                         return (
                           <div key={idx} className="flex items-center gap-1.5 text-gray-800 dark:text-gray-200">
@@ -645,12 +711,12 @@ const TimelineAnalysisModal: React.FC<TimelineAnalysisModalProps> = ({
                             <span>
                               {ev.actor ? `${ev.actor} ` : ''}
                               {verb}
-                              {ev.target ? ` ${ev.target}` : ''}
+                              {displayTarget ? ` ${displayTarget}` : ''}
                             </span>
-                            {showTargetChamp && ev.target && (
+                            {showTargetChamp && displayTarget && (
                               <img
-                                src={`${champCdnBase}/img/champion/${getCorrectChampionName(ev.target)}.png`}
-                                alt={ev.target}
+                                src={`${champCdnBase}/img/champion/${getCorrectChampionName(displayTarget)}.png`}
+                                alt={displayTarget}
                                 className="w-4 h-4 rounded-full shrink-0"
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).style.display = 'none';
