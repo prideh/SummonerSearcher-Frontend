@@ -1687,7 +1687,32 @@ export const buildCoachGreetingMessage = (
   }
 
   if (status === 'BLOCKED') {
-    return `Hi! I'm your AI Coach. Match summaries from ${matchCount} recent games are loaded (minute-by-minute timeline checkpoints are temporarily unavailable, so coaching will use match summary stats). Ask a question below to generate coaching feedback!`;
+    const stopReason =
+      typeof coverage?.stopReason === 'string' ? coverage.stopReason.trim().toUpperCase() : '';
+    if (
+      stopReason === 'DEADLINE_EXCEEDED' ||
+      stopReason === 'NETWORK_TIMEOUT' ||
+      stopReason === 'CLIENT_TIMEOUT' ||
+      stopReason === 'AWAIT_TIMEOUT'
+    ) {
+      return `Hi! I'm your AI Coach. Match summaries from ${matchCount} recent games are loaded (10m/20m timeline preparation timed out, so coaching will use match summary stats). Ask a question below to generate coaching feedback!`;
+    }
+    if (
+      stopReason === 'RIOT_RATE_LIMITED' ||
+      stopReason === 'RATE_LIMIT_429' ||
+      stopReason === 'RATE_LIMIT_COOLDOWN'
+    ) {
+      return `Hi! I'm your AI Coach. Match summaries from ${matchCount} recent games are loaded (10m/20m timeline preparation paused for Riot API rate-limit cooldown, so coaching will use match summary stats). Ask a question below to generate coaching feedback!`;
+    }
+    if (
+      stopReason === 'MEMORY_HEADROOM_ADMISSION_BLOCKED' ||
+      stopReason === 'MEMORY_HEADROOM_STOP' ||
+      stopReason === 'CONCURRENCY_LIMIT_REACHED' ||
+      stopReason === 'HTTP_EXECUTOR_SATURATED'
+    ) {
+      return `Hi! I'm your AI Coach. Match summaries from ${matchCount} recent games are loaded (10m/20m timeline preparation was skipped while the server was busy, so coaching will use match summary stats). Ask a question below to generate coaching feedback!`;
+    }
+    return `Hi! I'm your AI Coach. Match summaries from ${matchCount} recent games are loaded (10m/20m timeline checkpoints could not be loaded for this snapshot, so coaching will use match summary stats). Ask a question below to generate coaching feedback!`;
   }
 
   if (status === 'ANALYZED' || Boolean(impCtx?.hasTimelineAnalysis)) {
