@@ -75,8 +75,9 @@ describe('AiAnalysisModal greeting top-anchor and substantive bottom-scroll', ()
     expect(chatScroll.scrollTop).toBe(0);
     expect(scrollIntoViewSpy).not.toHaveBeenCalled();
     expect(
-      screen.getByText(/minute-by-minute timeline checkpoints are temporarily unavailable/i)
+      screen.getByText(/10m\/20m timeline preparation timed out/i)
     ).toBeInTheDocument();
+    expect(screen.queryByText(/temporarily unavailable/i)).not.toBeInTheDocument();
 
     // Transition to ANALYZED greeting also preserves top-anchor without bottom scrollIntoView
     chatScroll.scrollTop = 96;
