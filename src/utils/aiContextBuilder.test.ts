@@ -1653,7 +1653,59 @@ describe('aiContextBuilder (#14)', () => {
       preparing: buildCoachGreetingMessage(blockedCtx, true),
       analyzed: buildCoachGreetingMessage(completeCtx, false),
       partial: buildCoachGreetingMessage(partialCtx, false),
-      blocked: buildCoachGreetingMessage(blockedCtx, false),
+      blockedRateLimited: buildCoachGreetingMessage(blockedCtx, false),
+      blockedDeadline: buildCoachGreetingMessage(
+        {
+          totalGamesAnalyzed: 20,
+          timelineStatus: 'BLOCKED',
+          timelineCoverage: {
+            status: 'BLOCKED',
+            covered: 0,
+            requested: 20,
+            stopReason: 'DEADLINE_EXCEEDED',
+          },
+        },
+        false
+      ),
+      blockedClientTimeout: buildCoachGreetingMessage(
+        {
+          totalGamesAnalyzed: 20,
+          timelineStatus: 'BLOCKED',
+          timelineCoverage: {
+            status: 'BLOCKED',
+            covered: 0,
+            requested: 20,
+            stopReason: 'CLIENT_TIMEOUT',
+          },
+        },
+        false
+      ),
+      blockedBusy: buildCoachGreetingMessage(
+        {
+          totalGamesAnalyzed: 20,
+          timelineStatus: 'BLOCKED',
+          timelineCoverage: {
+            status: 'BLOCKED',
+            covered: 0,
+            requested: 20,
+            stopReason: 'MEMORY_HEADROOM_ADMISSION_BLOCKED',
+          },
+        },
+        false
+      ),
+      blockedGeneric: buildCoachGreetingMessage(
+        {
+          totalGamesAnalyzed: 2,
+          timelineStatus: 'BLOCKED',
+          timelineCoverage: {
+            status: 'BLOCKED',
+            covered: 0,
+            requested: 2,
+            stopReason: 'REQUEST_FAILED',
+          },
+        },
+        false
+      ),
       notAnalyzed: buildCoachGreetingMessage(
         { totalGamesAnalyzed: 2, timelineStatus: 'NOT_ANALYZED' },
         false
@@ -1664,12 +1716,19 @@ describe('aiContextBuilder (#14)', () => {
     expect(greetings.preparing).toContain('preparing 10m/20m timeline checkpoints');
     expect(greetings.analyzed).toContain('10m/20m timeline checkpoints from 2 recent games are ready');
     expect(greetings.partial).toContain('ready for 1 of 2 games');
-    expect(greetings.blocked).toContain('temporarily unavailable');
+    expect(greetings.blockedRateLimited).toContain('paused for Riot API rate-limit cooldown');
+    expect(greetings.blockedDeadline).toContain('10m/20m timeline preparation timed out');
+    expect(greetings.blockedClientTimeout).toContain('10m/20m timeline preparation timed out');
+    expect(greetings.blockedBusy).toContain('skipped while the server was busy');
+    expect(greetings.blockedGeneric).toContain('could not be loaded for this snapshot');
     expect(greetings.notAnalyzed).toContain('deep timeline analysis not run yet');
 
     for (const text of Object.values(greetings)) {
       expect(text).not.toMatch(/I've analyzed/i);
-      expect(text).not.toMatch(/timelineStatus|timelineCoverage|NOT_ANALYZED|PARTIAL|BLOCKED/);
+      expect(text).not.toMatch(/temporarily unavailable/i);
+      expect(text).not.toMatch(
+        /timelineStatus|timelineCoverage|NOT_ANALYZED|PARTIAL|BLOCKED|DEADLINE_EXCEEDED|RIOT_RATE_LIMITED|MEMORY_HEADROOM/
+      );
     }
   });
 });
