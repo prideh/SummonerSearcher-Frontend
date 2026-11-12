@@ -4,6 +4,7 @@ import {
   PRO_CHECKPOINT_MINUTES,
   type ExplicitUnavailableMetricDescriptor,
   type ProCheckpointMinute,
+  type ProDatasetMetricCapabilities,
   type ProRoleFilter,
   type ProRoleKey,
   type ProSliceComputationResult,
@@ -20,6 +21,7 @@ import {
   getUnavailableRequestedMetrics,
   isSameChampionQuery,
   listSelectableProPlayers,
+  resolveProDatasetMetricCapabilities,
   resolveSelectableProPlayer,
   roundToDecimals,
 } from "./proBenchmarkEngine";
@@ -438,6 +440,7 @@ export interface SearchedPlayerProComparisonView {
   checkpoints: PairedCheckpointComparison[];
   wholeGameComparison: PairedWholeGameComparison;
   playerDeathAttribution: PlayerSliceDeathAttributionSummary;
+  datasetCapabilities: ProDatasetMetricCapabilities;
   unavailableRequestedMetrics: Record<
     RequestedUnavailableMetricKey,
     ExplicitUnavailableMetricDescriptor
@@ -2299,6 +2302,7 @@ export function buildSearchedPlayerProComparison(params: {
       checkpoints: [],
       wholeGameComparison: createEmptyWholeGameComparison(),
       playerDeathAttribution: summarizeSliceDeathAttribution([]),
+      datasetCapabilities: resolveProDatasetMetricCapabilities(dataset),
       unavailableRequestedMetrics: getUnavailableRequestedMetrics(),
       unloadedMatchIdsForSelectedPair: [],
       excludedNonPositionalMatches,
@@ -2907,6 +2911,7 @@ export function buildSearchedPlayerProComparison(params: {
     checkpoints,
     wholeGameComparison,
     playerDeathAttribution,
+    datasetCapabilities: resolveProDatasetMetricCapabilities(dataset),
     unavailableRequestedMetrics: getUnavailableRequestedMetrics(),
     unloadedMatchIdsForSelectedPair,
     excludedNonPositionalMatches,

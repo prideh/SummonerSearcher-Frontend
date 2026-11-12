@@ -440,9 +440,48 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
   );
 
   const verifiedVods = Object.values(VERIFIED_HUD_10M_VOD_BY_GAME_ID);
-  const excludedMetricEntries = (
-    ['soloKills', 'turretPlates', 'soloDeaths'] as RequestedUnavailableMetricKey[]
-  ).map((key) => comparison.unavailableRequestedMetrics[key]);
+  const supportedExtendedMetrics =
+    comparison.datasetCapabilities.supportedExtendedLaneMetricKeys.map(
+      (key) => comparison.unavailableRequestedMetrics[key]
+    );
+  const unsupportedMetricLabels =
+    comparison.datasetCapabilities.unsupportedExtendedLaneMetricKeys.map(
+      (key) => comparison.unavailableRequestedMetrics[key].label
+    );
+
+  const proExtendedMetricMeans = useMemo(() => {
+    const result: Record<RequestedUnavailableMetricKey, { mean: number | null; count: number }> = {
+      soloKills: { mean: null, count: 0 },
+      turretPlates: { mean: null, count: 0 },
+      soloDeaths: { mean: null, count: 0 },
+    };
+    if (
+      !comparison.datasetCapabilities.hasAnyExtendedLaneMetrics ||
+      !comparison.proPlayerSelection.proReferenceAvailableAfterFilters ||
+      !comparison.proSlice
+    ) {
+      return result;
+    }
+    const gamesById = new Map((dataset.games ?? []).map((g) => [g.gameId, g]));
+    for (const key of comparison.datasetCapabilities.supportedExtendedLaneMetricKeys) {
+      let sum = 0;
+      let count = 0;
+      for (const row of comparison.proSlice.evidenceRows) {
+        const val = gamesById.get(row.gameId)?.participants?.[String(row.participantId)]?.[key];
+        if (typeof val === 'number' && Number.isFinite(val)) {
+          sum += val;
+          count += 1;
+        }
+      }
+      result[key] = { mean: count > 0 ? sum / count : null, count };
+    }
+    return result;
+  }, [
+    comparison.datasetCapabilities,
+    comparison.proPlayerSelection.proReferenceAvailableAfterFilters,
+    comparison.proSlice,
+    dataset.games,
+  ]);
 
   const wholeGameCards: Array<{
     key: string;
@@ -728,9 +767,11 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                           data-testid="pro-reference-context-badge"
                           className="px-1.5 py-0.5 rounded bg-cyan-500/10 text-sky-800 dark:text-cyan-200 border border-cyan-500/30 font-semibold text-[10px]"
                         >
-                          Pro {comparison.proSlice.matchingObservationCount}G Finite 8-Game Sample (
-                          {comparison.proSlice.playersInSlice.join(', ')} · Patch{' '}
-                          {comparison.proSlice.patchShort})
+                          Pro {comparison.proSlice.matchingObservationCount}G (
+                          {comparison.proSlice.playersInSlice.length <= 3
+                            ? comparison.proSlice.playersInSlice.join(', ')
+                            : `${comparison.proSlice.playersInSlice.length} pros`}{' '}
+                          · Patch {comparison.proSlice.patchShort})
                         </span>
                       ) : (
                         <span
@@ -807,12 +848,8 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
 
                   {/* WHOLE-GAME COMPARABLE METRICS (KP, Damage Share, Full-Game Deaths, CS/Min) */}
                   <div className="space-y-1">
-                    <div className="flex flex-wrap items-center justify-between gap-1 text-[10px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">
-                      <span>Full-Game Averages vs Pro Reference</span>
-                      <span className="normal-case font-normal text-slate-500 dark:text-slate-400">
-                        Gold is compared at 5m–25m checkpoints only (end-of-game total gold rules
-                        are not verified identical)
-                      </span>
+                    <div className="text-[10px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">
+                      Full-Game Averages
                     </div>
                     <div
                       data-testid="whole-game-comparison-grid"
@@ -1164,48 +1201,51 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                     ))}
                   </div>
 
-                  {/* STATS NOT AVAILABLE IN PRO REFERENCE (Solo Kills, Turret Plates, Solo Deaths = Unknown, Never 0) */}
-                  <div
-                    data-testid="excluded-metrics-strip"
-                    className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/75 p-2 space-y-1.5"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-1 text-[10px]">
-                      <span className="font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                        Stats Not Available in Pro Reference (Shown as Unknown, Never 0)
-                      </span>
-                      <span className="text-slate-500 dark:text-slate-400">
-                        Only stats measured the exact same way over the same game time are compared
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
-                      {excludedMetricEntries.map((item) => (
-                        <div
-                          key={item.metricKey}
-                          data-testid={`excluded-metric-${item.metricKey}`}
-                          className="rounded border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/70 p-2 text-[11px]"
-                        >
-                          <div className="flex items-center justify-between gap-1 mb-0.5">
-                            <span className="font-extrabold text-slate-900 dark:text-white">
-                              {item.label}
-                            </span>
-                            <span
-                              data-testid={`excluded-metric-status-${item.metricKey}`}
-                              className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30"
-                            >
-                              Not available
-                            </span>
+                  {/* CAPABILITY-GATED EXTENDED LANE METRICS (Hidden when unsupported in current 8-game dataset) */}
+                  {supportedExtendedMetrics.length > 0 && (
+                    <div
+                      data-testid="capability-gated-extended-metrics"
+                      className="grid grid-cols-1 sm:grid-cols-3 gap-2"
+                    >
+                      {supportedExtendedMetrics.map((item) => {
+                        const proStat = proExtendedMetricMeans[item.metricKey];
+                        return (
+                          <div
+                            key={item.metricKey}
+                            data-testid={`capability-gated-metric-${item.metricKey}`}
+                            className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-2 text-[11px]"
+                          >
+                            <div className="flex items-center justify-between gap-1 mb-1">
+                              <span className="font-extrabold text-slate-900 dark:text-white">
+                                {item.label}
+                              </span>
+                              <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                                Unknown
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-slate-200/80 dark:border-slate-800">
+                              <div>
+                                <div className="text-[9px] uppercase font-bold text-slate-500">
+                                  Player
+                                </div>
+                                <div className="font-extrabold text-slate-900 dark:text-white">
+                                  Unknown
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-[9px] uppercase font-bold text-slate-500">
+                                  Pro ({proStat.count}G)
+                                </div>
+                                <div className="font-extrabold text-sky-700 dark:text-cyan-300">
+                                  {proStat.mean !== null ? proStat.mean.toFixed(2) : 'Not available'}
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                          <p className="text-[10px] text-slate-600 dark:text-slate-400 leading-snug">
-                            {item.metricKey === 'soloKills'
-                              ? 'Not tracked in the 8-game pro reference; solo-kill time windows are not consistently recorded across match history and timelines (shown as Unknown, never 0).'
-                              : item.metricKey === 'turretPlates'
-                                ? 'Not tracked in the 8-game pro reference; turret plates extend beyond 14:00 onto inner and inhibitor turrets with unverified assist credit (shown as Unknown, never 0).'
-                                : 'Not tracked in match summaries or the 8-game pro reference; opponent solo kills include kills against teammates, and unassisted kills can miss faded assists (shown as Unknown, never 0).'}
-                          </p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
-                  </div>
+                  )}
                 </>
               )}
             </>
@@ -1362,20 +1402,21 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
         </div>
       )}
 
-      {/* Essential Caveat + On-Demand Disclosure Buttons */}
+      {/* Brief Availability Note + Collapsed Breakdown / Methodology Toggles */}
       <div
         data-testid="profile-comparison-caveat"
-        className="mt-2.5 pt-2 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+        className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
       >
-        <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
-          <strong className="text-amber-600 dark:text-amber-300 font-semibold">Caveats:</strong>{' '}
-          Finite 8-game Worlds 2026 sample (80 player-games, {allSupportedProPairs.length}{' '}
-          champion-role matchups, Patch 16.20; 16 games per role, 1–4 per pro)—not broad proof and
-          not a solo-queue percentile. Public esports data permission/terms remain unresolved
-          (private offline preview only). Game clock alignment adjusts for champion spawn and match
-          pauses (±0.50s; CS@10 HUD-checked in 2/8 games; *paused Game 1 excluded from early deaths
-          = 70/80 unpaused player-games; 30m pro stats not available; ended games and missing stats
-          stay Unknown, never 0).
+        <p
+          data-testid="availability-summary-note"
+          className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug"
+        >
+          <strong className="text-slate-800 dark:text-slate-200 font-semibold">
+            8-game Worlds 2026 sample (Patch 16.20, not a solo-queue percentile):
+          </strong>{' '}
+          {unsupportedMetricLabels.length > 0
+            ? `${unsupportedMetricLabels.join(', ')}, and 30m pro stats aren't in this sample; missing stats stay Unknown (never 0).`
+            : "30m pro stats aren't in this sample; missing stats stay Unknown (never 0)."}
         </p>
 
         <div className="flex flex-wrap items-center gap-1.5 shrink-0">
@@ -1583,32 +1624,38 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
         </div>
       )}
 
-      {/* Expandable Methodology & Sample Verification Limits */}
+      {/* Expandable Methodology & Sample Verification Limits (Collapsed by Default) */}
       {showMethodology && (
         <div
           data-testid="profile-methodology-details"
-          className="mt-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80 p-2.5 text-xs text-slate-700 dark:text-slate-300 space-y-1.5"
+          className="mt-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80 p-2.5 text-xs text-slate-700 dark:text-slate-300 space-y-1.5"
         >
           <p>
-            <strong className="text-slate-900 dark:text-white">
-              Same-Rule Stat Matching (Finite 8-Game Sample):
-            </strong>{' '}
-            Checkpoint CS (lane minions plus jungle monsters), Total Gold (including 500 starting
-            gold, verified at 5:00 in the 8-game sample), and Champion Level are matched within ±30s
-            on loaded match timelines. Full-game Kill Participation is calculated from all 5
-            teammates&apos; kills and assists on both sides, correcting team kill totals when turret
-            or monster executions occur (such as G2 vs HLE Game 2 Red side). End-of-game total gold
-            is not compared across the full game because starting-gold and item-resale rules are not
-            verified identical at game end.
+            <strong className="text-slate-900 dark:text-white">Compared Stats:</strong>{' '}
+            Checkpoint CS (lane minions plus jungle monsters), Gold (compared at 5m–25m checkpoints
+            only; end-of-game total gold rules are not verified identical), and Level match within
+            ±30s on loaded match timelines. Early deaths exclude paused pro games (*Game 1).
+            Full-game Kill Participation uses all 5 teammates&apos; kills and assists on both sides
+            (accounting for turret or monster executions such as G2 vs HLE Game 2).
           </p>
+          {unsupportedMetricLabels.length > 0 && (
+            <p>
+              <strong className="text-slate-900 dark:text-white">
+                Hidden Unsupported Stats ({unsupportedMetricLabels.join(', ')}):
+              </strong>{' '}
+              Temporarily hidden for this 8-game sample because matching per-kill assist rules and
+              turret plate credits are not available (kept as Unknown, never 0, for richer match
+              data).
+            </p>
+          )}
           <p>
             <strong className="text-slate-900 dark:text-white">
-              Finite Sample &amp; Permission Caveats:
+              Finite Sample &amp; Permission Limits:
             </strong>{' '}
-            8 Worlds 2026 games (80 player-games, {allSupportedProPairs.length} unique champion-role
-            matchups; 37 matchups have 1 game) on Patch 16.20—not broad proof or a solo-queue
-            percentile. Public esports data permission and terms remain unresolved; this preview
-            uses only the static offline sample.
+            Finite 8-game Worlds 2026 sample (80 player-games, {allSupportedProPairs.length}{' '}
+            champion-role matchups, Patch 16.20)—not broad proof or a solo-queue percentile. Clocks
+            adjust for spawn and match pauses (±0.50s; CS@10 HUD-checked in 2/8 games). Private
+            offline preview only; public esports data permission/terms remain unresolved.
           </p>
           <div className="pt-1.5 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center gap-1.5">
             <span className="text-[11px] font-bold text-slate-500">More options:</span>

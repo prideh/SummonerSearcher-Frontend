@@ -23,6 +23,23 @@ export interface ExplicitUnavailableMetricDescriptor {
   explanation: string;
 }
 
+export interface RawDatasetMetricCapabilities {
+  soloKills?: boolean;
+  soloDeaths?: boolean;
+  turretPlates?: boolean;
+  checkpoint30m?: boolean;
+}
+
+export interface ProDatasetMetricCapabilities {
+  soloKills: boolean;
+  soloDeaths: boolean;
+  turretPlates: boolean;
+  checkpoint30m: boolean;
+  supportedExtendedLaneMetricKeys: RequestedUnavailableMetricKey[];
+  unsupportedExtendedLaneMetricKeys: RequestedUnavailableMetricKey[];
+  hasAnyExtendedLaneMetrics: boolean;
+}
+
 export interface RawClockAnchoredSnapshot {
   wall_ts: string;
   sample_err_s: number;
@@ -100,6 +117,9 @@ export interface RawGameParticipant {
   abilities: string[];
   bootsTiming?: RawItemTiming | null;
   completedItemTimings?: RawItemTiming[];
+  soloKills?: number | null;
+  soloDeaths?: number | null;
+  turretPlates?: number | null;
 }
 
 export interface RawVodInfo {
@@ -180,6 +200,7 @@ export interface RawProBenchmarkDataset {
   ddragonVersion: string;
   gamesIngestedCount: number;
   playerObservationsCount: number;
+  metricCapabilities?: RawDatasetMetricCapabilities;
   roleChampionBaselines: RawRoleChampionBaseline[];
   games: RawProBenchmarkGame[];
 }

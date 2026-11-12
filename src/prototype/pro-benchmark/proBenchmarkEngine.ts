@@ -11,6 +11,7 @@ import {
   type ProCheckpointMinute,
   type ProCheckpointSummary,
   type ProComparisonFilter,
+  type ProDatasetMetricCapabilities,
   type ProGameEvidenceRow,
   type ProObservationCheckpointCell,
   type ProRoleFilter,
@@ -50,12 +51,11 @@ export const PRO_ROLE_LABELS: Record<ProRoleFilter, string> = {
 
 /**
  * Explicit registry of requested metrics (`soloKills`, `soloDeaths`, `turretPlates`) that
- * remain strictly UNAVAILABLE (`null`) because they are absent from the retained derived pro export
- * (`pro_benchmark_sample_baselines.json`, git blob `00148c2d3f665559da1a98e9de4afa4bdb41d813`,
- * sha256 `4d3e0d631eaf0f337e957cd80fbead311a6dad526cb02a14fe588d23da10c253`), and raw upstream
- * HTTP `livestats` feed payloads are not retained locally (upstream field presence/absence cannot
- * be proven from the derived export or local DTO/parser definitions alone without a raw HTTP fetch).
- * Never silently replaced by proxies.
+ * remain strictly UNAVAILABLE (`null`) in the retained static export (`pro_benchmark_sample_baselines.json`,
+ * derived from the direct Riot Esports broadcast feed `feed.lolesports.com/livestats/v1/window` +
+ * `details`, discovered via `homeEvents` in Backend PR #16 — NOT GRID).
+ * Preserved intact for future richer ingestion; UI cards are temporarily capability-gated via
+ * `resolveProDatasetMetricCapabilities` rather than permanently removed.
  */
 export const UNAVAILABLE_REQUESTED_METRICS: Record<
   RequestedUnavailableMetricKey,
@@ -96,6 +96,12 @@ export const UNAVAILABLE_REQUESTED_METRICS: Record<
   },
 };
 
+export const EXTENDED_LANE_METRIC_ORDER: readonly RequestedUnavailableMetricKey[] = [
+  "soloKills",
+  "turretPlates",
+  "soloDeaths",
+] as const;
+
 export function getUnavailableRequestedMetrics(): Record<
   RequestedUnavailableMetricKey,
   ExplicitUnavailableMetricDescriptor
@@ -104,6 +110,61 @@ export function getUnavailableRequestedMetrics(): Record<
     soloKills: { ...UNAVAILABLE_REQUESTED_METRICS.soloKills },
     soloDeaths: { ...UNAVAILABLE_REQUESTED_METRICS.soloDeaths },
     turretPlates: { ...UNAVAILABLE_REQUESTED_METRICS.turretPlates },
+  };
+}
+
+/**
+ * Resolves temporary dataset-level metric capabilities so unsupported metric cards
+ * (`soloKills`, `turretPlates`, `soloDeaths`) can be capability-gated out of the UI
+ * for the current 8-game direct broadcast feed sample while preserving the underlying
+ * metric model (`UNAVAILABLE_REQUESTED_METRICS`) for future richer ingestion.
+ */
+export function resolveProDatasetMetricCapabilities(
+  dataset: RawProBenchmarkDataset = DEFAULT_PRO_BENCHMARK_DATASET
+): ProDatasetMetricCapabilities {
+  const games = dataset?.games ?? [];
+  const explicit = dataset?.metricCapabilities;
+
+  const hasParticipantMetric = (key: RequestedUnavailableMetricKey): boolean =>
+    games.some((game) =>
+      Object.values(game.participants ?? {}).some((participant) => {
+        const value = participant?.[key];
+        return typeof value === "number" && Number.isFinite(value);
+      })
+    );
+
+  const soloKills = explicit?.soloKills ?? hasParticipantMetric("soloKills");
+  const soloDeaths = explicit?.soloDeaths ?? hasParticipantMetric("soloDeaths");
+  const turretPlates =
+    explicit?.turretPlates ?? hasParticipantMetric("turretPlates");
+  const checkpoint30m =
+    explicit?.checkpoint30m ??
+    games.some(
+      (game) =>
+        Boolean(game.aligned_checkpoints?.["30m"]?.true_in_game_clock?.pCs?.length)
+    );
+
+  const flagByKey: Record<RequestedUnavailableMetricKey, boolean> = {
+    soloKills,
+    turretPlates,
+    soloDeaths,
+  };
+
+  const supportedExtendedLaneMetricKeys = EXTENDED_LANE_METRIC_ORDER.filter(
+    (key) => flagByKey[key]
+  );
+  const unsupportedExtendedLaneMetricKeys = EXTENDED_LANE_METRIC_ORDER.filter(
+    (key) => !flagByKey[key]
+  );
+
+  return {
+    soloKills,
+    soloDeaths,
+    turretPlates,
+    checkpoint30m,
+    supportedExtendedLaneMetricKeys,
+    unsupportedExtendedLaneMetricKeys,
+    hasAnyExtendedLaneMetrics: supportedExtendedLaneMetricKeys.length > 0,
   };
 }
 

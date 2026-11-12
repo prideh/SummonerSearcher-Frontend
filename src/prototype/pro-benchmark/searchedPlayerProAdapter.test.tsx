@@ -21,8 +21,10 @@ import {
   computeProComparisonSlice,
   formatChampionDisplayName,
   listSelectableProPlayers,
+  resolveProDatasetMetricCapabilities,
   resolveSelectableProPlayer,
 } from './proBenchmarkEngine';
+import type { RawProBenchmarkDataset } from './proBenchmarkTypes';
 import * as timelineApi from '../../api/timeline';
 import apiClient from '../../api/apiClient';
 import type { MatchDto } from '../../types/match';
@@ -1842,9 +1844,9 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
       expect(titleEl.className).not.toContain('truncate');
       expect(subEl.className).not.toContain('truncate');
     }
-    expect(screen.getByTestId('profile-pro-comparison-tab')).toHaveTextContent(
-      'Gold is compared at 5m–25m checkpoints only (end-of-game total gold rules are not verified identical)'
-    );
+    // Methodology & Match Breakdown start collapsed by default
+    expect(screen.queryByTestId('profile-methodology-details')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('profile-match-breakdown')).not.toBeInTheDocument();
 
     // Checkpoint cards render Gold, Level, and Early Unpaused Deaths alongside CS, and 30m renders Not available at 30m
     expect(screen.getByTestId('paired-gold-row-10m')).toHaveTextContent('Gold');
@@ -1853,12 +1855,15 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     expect(screen.getByTestId('player-denom-25m')).toHaveTextContent('14/16G');
     expect(screen.getByTestId('pro-unavailable-30m')).toHaveTextContent('Not available at 30m');
 
-    // Optional Named Pro filter narrows Top baseline from 16G to HLE Zeus (4G)
+    // Optional Named Pro filter narrows Top baseline from 16G (5 pros) to HLE Zeus (4G)
+    expect(screen.getByTestId('pro-reference-context-badge')).toHaveTextContent(
+      'Pro 16G (5 pros · Patch 16.20)'
+    );
     fireEvent.change(screen.getByTestId('player-pro-select'), {
       target: { value: '105320680474347057' },
     });
     expect(screen.getByTestId('pro-reference-context-badge')).toHaveTextContent(
-      'Pro 4G Finite 8-Game Sample (HLE Zeus · Patch 16.20)'
+      'Pro 4G (HLE Zeus · Patch 16.20)'
     );
 
     // Switch Role to Mid -> Mid · Syndra -> IG Rookie (1G paused IG vs TES G1) -> Early Deaths shows Paused game excluded
@@ -1875,17 +1880,22 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
       'Paused game excluded'
     );
 
-    // Excluded / Unavailable metrics strip shows plain League "Not available" (never 0, never null) for soloKills, turretPlates, soloDeaths
-    expect(screen.getByTestId('excluded-metric-soloKills')).toHaveTextContent('Not available');
-    expect(screen.getByTestId('excluded-metric-turretPlates')).toHaveTextContent('Not available');
-    expect(screen.getByTestId('excluded-metric-soloDeaths')).toHaveTextContent('Not available');
+    // Unsupported metric cards (Solo Kills, Turret Plates, Solo Deaths) are capability-gated out of the UI for this dataset
+    expect(screen.queryByTestId('excluded-metrics-strip')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('capability-gated-extended-metrics')).not.toBeInTheDocument();
 
-    // Caveats explicitly state finite 8-game sample (not broad proof), not solo-queue percentile, and public esports permission/terms
-    const caveats = screen.getByTestId('profile-comparison-caveat');
-    expect(caveats).toHaveTextContent('Finite 8-game Worlds 2026 sample');
-    expect(caveats).toHaveTextContent('not broad proof');
-    expect(caveats).toHaveTextContent('not a solo-queue percentile');
-    expect(caveats).toHaveTextContent('permission/terms remain unresolved');
+    // One brief availability note summarizes sample limits & unsupported stats while deeper methodology is collapsed
+    const caveats = screen.getByTestId('availability-summary-note');
+    expect(caveats).toHaveTextContent('8-game Worlds 2026 sample (Patch 16.20, not a solo-queue percentile)');
+    expect(caveats).toHaveTextContent(
+      "Solo Kills, Turret Plates, Solo Deaths, and 30m pro stats aren't in this sample; missing stats stay Unknown (never 0)."
+    );
+
+    fireEvent.click(screen.getByTestId('toggle-profile-methodology'));
+    const methodology = screen.getByTestId('profile-methodology-details');
+    expect(methodology).toHaveTextContent('Gold (compared at 5m–25m checkpoints only');
+    expect(methodology).toHaveTextContent('not broad proof or a solo-queue percentile');
+    expect(methodology).toHaveTextContent('permission/terms remain unresolved');
 
     unmount();
 
@@ -2181,8 +2191,9 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     expect(screen.getByTestId('pro-comparison-datasource-badge')).toHaveTextContent(
       'Sample player · Not real account data (Offline)'
     );
-    expect(screen.getByTestId('excluded-metric-status-soloKills')).toHaveTextContent(
-      'Not available'
+    expect(screen.queryByTestId('excluded-metrics-strip')).not.toBeInTheDocument();
+    expect(screen.getByTestId('availability-summary-note')).toHaveTextContent(
+      'missing stats stay Unknown (never 0)'
     );
     expect(screen.getByTestId('load-pair-timelines-btn')).toHaveTextContent(
       'Missing match timeline'
@@ -2424,6 +2435,110 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     expect(wukongSlice.isSupportedSelection).toBe(true);
     expect(wukongSlice.filter.championId).toBe('MonkeyKing');
     expect(wukongSlice.selectionTitle).toBe('Jungle · Wukong');
+  });
+
+  it('temporarily capability-gates unsupported metric cards for the current 8-game dataset while preserving the metric model for future richer ingestion', () => {
+    const defaultCaps = resolveProDatasetMetricCapabilities(DEFAULT_PRO_BENCHMARK_DATASET);
+    expect(defaultCaps).toEqual({
+      soloKills: false,
+      soloDeaths: false,
+      turretPlates: false,
+      checkpoint30m: false,
+      supportedExtendedLaneMetricKeys: [],
+      unsupportedExtendedLaneMetricKeys: ['soloKills', 'turretPlates', 'soloDeaths'],
+      hasAnyExtendedLaneMetrics: false,
+    });
+
+    const fullProfile = RECORDED_REVIEW_PROFILES.euw_full_contract_sample;
+    const defaultComparison = buildSearchedPlayerProComparison({
+      identity: {
+        puuid: fullProfile.puuid,
+        region: fullProfile.region,
+        gameName: fullProfile.gameName,
+        tagLine: fullProfile.tagLine,
+      },
+      visibleMatches: fullProfile.visibleMatches,
+      timelinesByMatchId: fullProfile.timelinesByMatchId,
+    });
+
+    // Underlying metric model remains intact (null / UNAVAILABLE, never 0 or deleted)
+    expect(defaultComparison.datasetCapabilities.hasAnyExtendedLaneMetrics).toBe(false);
+    expect(defaultComparison.unavailableRequestedMetrics.soloKills.status).toBe('UNAVAILABLE');
+    expect(defaultComparison.unavailableRequestedMetrics.soloKills.playerValue).toBeNull();
+    expect(defaultComparison.unavailableRequestedMetrics.soloKills.proValue).toBeNull();
+    expect(defaultComparison.unavailableRequestedMetrics.turretPlates.proValue).toBeNull();
+    expect(defaultComparison.unavailableRequestedMetrics.soloDeaths.proValue).toBeNull();
+
+    // Default UI hides unsupported metric cards and keeps methodology + breakdown collapsed
+    const defaultRender = render(
+      <ProfileProComparisonTab
+        puuid={fullProfile.puuid}
+        region={fullProfile.region}
+        gameName={fullProfile.gameName}
+        tagLine={fullProfile.tagLine}
+        visibleMatches={fullProfile.visibleMatches}
+        initialTimelinesByMatchId={fullProfile.timelinesByMatchId}
+        dataSourceMode="synthetic_test_profile"
+      />
+    );
+    expect(screen.queryByTestId('excluded-metrics-strip')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('capability-gated-extended-metrics')).not.toBeInTheDocument();
+    expect(screen.getByTestId('toggle-profile-methodology')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    expect(screen.getByTestId('toggle-profile-match-breakdown')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    expect(screen.getByTestId('availability-summary-note')).toHaveTextContent(
+      "Solo Kills, Turret Plates, Solo Deaths, and 30m pro stats aren't in this sample; missing stats stay Unknown (never 0)."
+    );
+    defaultRender.unmount();
+
+    // Future richer dataset opt-in: populating soloKills enables ONLY Solo Kills card while keeping Turret Plates & Solo Deaths gated
+    const richerDataset: RawProBenchmarkDataset = JSON.parse(
+      JSON.stringify(DEFAULT_PRO_BENCHMARK_DATASET)
+    );
+    richerDataset.metricCapabilities = { soloKills: true };
+    for (const game of richerDataset.games) {
+      for (const participant of Object.values(game.participants)) {
+        if (participant.role === 'top') {
+          participant.soloKills = 1;
+        }
+      }
+    }
+
+    const richerCaps = resolveProDatasetMetricCapabilities(richerDataset);
+    expect(richerCaps.soloKills).toBe(true);
+    expect(richerCaps.turretPlates).toBe(false);
+    expect(richerCaps.soloDeaths).toBe(false);
+    expect(richerCaps.supportedExtendedLaneMetricKeys).toEqual(['soloKills']);
+    expect(richerCaps.unsupportedExtendedLaneMetricKeys).toEqual(['turretPlates', 'soloDeaths']);
+    expect(richerCaps.hasAnyExtendedLaneMetrics).toBe(true);
+
+    const richerRender = render(
+      <ProfileProComparisonTab
+        puuid={fullProfile.puuid}
+        region={fullProfile.region}
+        gameName={fullProfile.gameName}
+        tagLine={fullProfile.tagLine}
+        visibleMatches={fullProfile.visibleMatches}
+        initialTimelinesByMatchId={fullProfile.timelinesByMatchId}
+        dataSourceMode="synthetic_test_profile"
+        dataset={richerDataset}
+      />
+    );
+    expect(screen.getByTestId('capability-gated-extended-metrics')).toBeInTheDocument();
+    expect(screen.getByTestId('capability-gated-metric-soloKills')).toHaveTextContent('Solo Kills');
+    expect(screen.getByTestId('capability-gated-metric-soloKills')).toHaveTextContent('Unknown');
+    expect(screen.getByTestId('capability-gated-metric-soloKills')).toHaveTextContent('1.00');
+    expect(screen.queryByTestId('capability-gated-metric-turretPlates')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('capability-gated-metric-soloDeaths')).not.toBeInTheDocument();
+    expect(screen.getByTestId('availability-summary-note')).toHaveTextContent(
+      "Turret Plates, Solo Deaths, and 30m pro stats aren't in this sample; missing stats stay Unknown (never 0)."
+    );
+    richerRender.unmount();
   });
 });
 
