@@ -436,7 +436,7 @@ describe('SummonerInfo', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/minute-by-minute timeline checkpoints are temporarily unavailable/i)
+        screen.getByText(/10m\/20m timeline preparation paused for Riot API rate-limit cooldown/i)
       ).toBeInTheDocument();
     });
 
@@ -811,7 +811,7 @@ describe('SummonerInfo', () => {
     fireEvent.click(screen.getByText('AI Coach'));
     await waitFor(() => {
       expect(
-        screen.getByText(/minute-by-minute timeline checkpoints are temporarily unavailable/i)
+        screen.getByText(/10m\/20m timeline preparation timed out/i)
       ).toBeInTheDocument();
     });
     expect(prepareCoachTimelines).toHaveBeenCalledTimes(1);
@@ -822,7 +822,7 @@ describe('SummonerInfo', () => {
     await waitFor(() => {
       expect(prepareCoachTimelines).toHaveBeenCalledTimes(2);
       expect(
-        screen.getByText(/minute-by-minute timeline checkpoints are temporarily unavailable/i)
+        screen.getByText(/10m\/20m timeline checkpoints could not be loaded for this snapshot/i)
       ).toBeInTheDocument();
     });
     expect(prepareCoachTimelines).toHaveBeenCalledTimes(2);
@@ -1015,7 +1015,7 @@ describe('SummonerInfo', () => {
     );
     await waitFor(() => {
       expect(
-        screen.getByText(/minute-by-minute timeline checkpoints are temporarily unavailable/i)
+        screen.getByText(/10m\/20m timeline preparation paused for Riot API rate-limit cooldown/i)
       ).toBeInTheDocument();
     });
 
@@ -1196,7 +1196,7 @@ describe('SummonerInfo', () => {
     fireEvent.click(screen.getByText('AI Coach'));
     await waitFor(() => {
       expect(
-        screen.getByText(/minute-by-minute timeline checkpoints are temporarily unavailable/i)
+        screen.getByText(/10m\/20m timeline checkpoints could not be loaded for this snapshot/i)
       ).toBeInTheDocument();
     });
     fireEvent.click(screen.getByTestId('ai-coach-evidence-toggle'));
