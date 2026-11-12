@@ -546,7 +546,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
       data-bound-identity={`${gameName}#${tagLine} (${region.toUpperCase()})`}
       data-source-mode={dataSourceMode}
       data-comparison-scope={comparison.comparisonScope}
-      className="mt-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-[#0b101d] p-2.5 text-slate-900 dark:text-slate-100 telemetry-nums"
+      className="@container mt-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-[#0b101d] p-2.5 text-slate-900 dark:text-slate-100 telemetry-nums"
     >
       {surfaceMode === 'player_vs_pro' && (
         <div className="space-y-2.5">
@@ -610,7 +610,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
               </div>
 
               {/* 4-Control Filter Row: Role + Role/Champion + Optional Pro Player + Games Included */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1.5 items-end">
+              <div className="grid grid-cols-1 @[480px]:grid-cols-2 @[860px]:grid-cols-4 gap-1.5 items-end">
                 <div className="min-w-0">
                   <label
                     htmlFor="player-role-select"
@@ -853,7 +853,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                     </div>
                     <div
                       data-testid="whole-game-comparison-grid"
-                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2"
+                      className="grid grid-cols-1 @[480px]:grid-cols-2 @[860px]:grid-cols-4 gap-2"
                     >
                       {wholeGameCards.map((card) => {
                         const m = card.metric;
@@ -940,7 +940,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                   {/* 6 PAIRED CHECKPOINT CARDS: CS, GOLD, LEVEL, EARLY UNPAUSED DEATHS */}
                   <div
                     data-testid="paired-checkpoint-grid"
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2"
+                    className="grid grid-cols-1 @[310px]:grid-cols-2 @[620px]:grid-cols-3 @[1020px]:grid-cols-6 gap-2"
                   >
                     {comparison.checkpoints.map((cp) => (
                       <div
@@ -956,7 +956,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                             {cp.deltaTotalCs !== null ? (
                               <span
                                 data-testid={`paired-delta-${cp.label}`}
-                                className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded ${
+                                className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded whitespace-nowrap ${
                                   cp.deltaTotalCs >= 0
                                     ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
                                     : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'
@@ -967,7 +967,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                             ) : (
                               <span
                                 data-testid={`paired-delta-${cp.label}`}
-                                className="text-[10px] font-semibold text-slate-400 dark:text-slate-500"
+                                className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 whitespace-nowrap"
                               >
                                 No Delta
                               </span>
@@ -998,7 +998,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                                   <span className="text-[10px] font-semibold text-slate-500">
                                     CS
                                   </span>
-                                  <span className="text-[10px] text-slate-500 ml-auto">
+                                  <span className="text-[10px] text-slate-500 ml-auto whitespace-nowrap">
                                     {cp.playerMeanCsPerMin?.toFixed(1)}/m
                                   </span>
                                 </div>
@@ -1056,7 +1056,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                                   <span className="text-[10px] font-semibold text-slate-500">
                                     CS
                                   </span>
-                                  <span className="text-[10px] text-slate-500 ml-auto">
+                                  <span className="text-[10px] text-slate-500 ml-auto whitespace-nowrap">
                                     {cp.proMeanCsPerMin?.toFixed(1)}/m
                                   </span>
                                 </div>
@@ -1090,13 +1090,34 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                         </div>
 
                         {/* Expanded Checkpoint Telemetry: Gold, Level, Unpaused Early Deaths */}
-                        <div className="pt-1.5 space-y-1 text-[10px]">
+                        <div className="pt-1.5 space-y-1.5 text-[10px]">
                           <div
                             data-testid={`paired-gold-row-${cp.label}`}
-                            className="flex items-center justify-between gap-1"
+                            className="space-y-0.5"
                           >
-                            <span className="font-bold text-slate-500">Gold</span>
-                            <span className="text-slate-800 dark:text-slate-200 truncate">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-bold text-slate-500 dark:text-slate-400">
+                                Gold
+                              </span>
+                              <span
+                                data-testid={`paired-gold-delta-${cp.label}`}
+                                className={`font-bold whitespace-nowrap ${
+                                  cp.deltaTotalGold === null
+                                    ? 'text-slate-400'
+                                    : cp.deltaTotalGold >= 0
+                                      ? 'text-emerald-600 dark:text-emerald-300'
+                                      : 'text-amber-600 dark:text-amber-300'
+                                }`}
+                              >
+                                {cp.deltaTotalGold !== null
+                                  ? formatSignedNumber(Math.round(cp.deltaTotalGold), 0, 'g')
+                                  : '—'}
+                              </span>
+                            </div>
+                            <div
+                              data-testid={`paired-gold-values-${cp.label}`}
+                              className="font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap"
+                            >
                               {cp.playerMeanTotalGold !== null
                                 ? `${Math.round(cp.playerMeanTotalGold)}`
                                 : '—'}{' '}
@@ -1106,55 +1127,71 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                                   ? `${Math.round(cp.proMeanTotalGold)}`
                                   : '—'}
                               </span>
-                            </span>
-                            <span
-                              className={`font-bold ${
-                                cp.deltaTotalGold === null
-                                  ? 'text-slate-400'
-                                  : cp.deltaTotalGold >= 0
-                                    ? 'text-emerald-600 dark:text-emerald-300'
-                                    : 'text-amber-600 dark:text-amber-300'
-                              }`}
-                            >
-                              {cp.deltaTotalGold !== null
-                                ? formatSignedNumber(Math.round(cp.deltaTotalGold), 0, 'g')
-                                : '—'}
-                            </span>
+                            </div>
                           </div>
 
                           <div
                             data-testid={`paired-level-row-${cp.label}`}
-                            className="flex items-center justify-between gap-1"
+                            className="space-y-0.5 pt-1 border-t border-slate-200/60 dark:border-slate-800/70"
                           >
-                            <span className="font-bold text-slate-500">Level</span>
-                            <span className="text-slate-800 dark:text-slate-200">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-bold text-slate-500 dark:text-slate-400">
+                                Level
+                              </span>
+                              <span
+                                data-testid={`paired-level-delta-${cp.label}`}
+                                className={`font-bold whitespace-nowrap ${
+                                  cp.deltaLevel === null
+                                    ? 'text-slate-400'
+                                    : cp.deltaLevel >= 0
+                                      ? 'text-emerald-600 dark:text-emerald-300'
+                                      : 'text-amber-600 dark:text-amber-300'
+                                }`}
+                              >
+                                {cp.deltaLevel !== null ? formatSignedNumber(cp.deltaLevel, 1) : '—'}
+                              </span>
+                            </div>
+                            <div
+                              data-testid={`paired-level-values-${cp.label}`}
+                              className="font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap"
+                            >
                               {cp.playerMeanLevel !== null ? cp.playerMeanLevel.toFixed(1) : '—'} /{' '}
                               <span className="text-sky-700 dark:text-cyan-300">
                                 {cp.proMeanLevel !== null ? cp.proMeanLevel.toFixed(1) : '—'}
                               </span>
-                            </span>
-                            <span
-                              className={`font-bold ${
-                                cp.deltaLevel === null
-                                  ? 'text-slate-400'
-                                  : cp.deltaLevel >= 0
-                                    ? 'text-emerald-600 dark:text-emerald-300'
-                                    : 'text-amber-600 dark:text-amber-300'
-                              }`}
-                            >
-                              {cp.deltaLevel !== null ? formatSignedNumber(cp.deltaLevel, 1) : '—'}
-                            </span>
+                            </div>
                           </div>
 
                           <div
                             data-testid={`paired-deaths-row-${cp.label}`}
-                            className="flex items-center justify-between gap-1"
+                            className="space-y-0.5 pt-1 border-t border-slate-200/60 dark:border-slate-800/70"
                           >
-                            <span className="font-bold text-slate-500">Deaths</span>
                             {cp.proEarlyTotalDeathsStatus === 'available' &&
                             cp.proMeanEarlyTotalDeaths !== null ? (
                               <>
-                                <span className="text-slate-800 dark:text-slate-200">
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="font-bold text-slate-500 dark:text-slate-400">
+                                    Deaths
+                                  </span>
+                                  <span
+                                    data-testid={`paired-deaths-delta-${cp.label}`}
+                                    className={`font-bold whitespace-nowrap ${
+                                      cp.deltaEarlyTotalDeaths === null
+                                        ? 'text-slate-400'
+                                        : cp.deltaEarlyTotalDeaths <= 0
+                                          ? 'text-emerald-600 dark:text-emerald-300'
+                                          : 'text-amber-600 dark:text-amber-300'
+                                    }`}
+                                  >
+                                    {cp.deltaEarlyTotalDeaths !== null
+                                      ? formatSignedNumber(cp.deltaEarlyTotalDeaths, 2)
+                                      : '—'}
+                                  </span>
+                                </div>
+                                <div
+                                  data-testid={`paired-deaths-values-${cp.label}`}
+                                  className="font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap"
+                                >
                                   {cp.playerMeanEarlyTotalDeaths !== null
                                     ? cp.playerMeanEarlyTotalDeaths.toFixed(2)
                                     : '—'}{' '}
@@ -1170,30 +1207,22 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                                       *
                                     </span>
                                   )}
-                                </span>
-                                <span
-                                  className={`font-bold ${
-                                    cp.deltaEarlyTotalDeaths === null
-                                      ? 'text-slate-400'
-                                      : cp.deltaEarlyTotalDeaths <= 0
-                                        ? 'text-emerald-600 dark:text-emerald-300'
-                                        : 'text-amber-600 dark:text-amber-300'
-                                  }`}
-                                >
-                                  {cp.deltaEarlyTotalDeaths !== null
-                                    ? formatSignedNumber(cp.deltaEarlyTotalDeaths, 2)
-                                    : '—'}
-                                </span>
+                                </div>
                               </>
                             ) : (
-                              <span
-                                data-testid={`pro-early-deaths-unavailable-${cp.label}`}
-                                className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 ml-auto"
-                              >
-                                {cp.proEarlyTotalDeathsStatus === 'all_reached_games_paused'
-                                  ? 'Paused game excluded'
-                                  : 'Not available'}
-                              </span>
+                              <div className="flex flex-wrap items-center justify-between gap-x-1 gap-y-0.5">
+                                <span className="font-bold text-slate-500 dark:text-slate-400">
+                                  Deaths
+                                </span>
+                                <span
+                                  data-testid={`pro-early-deaths-unavailable-${cp.label}`}
+                                  className="text-[9px] font-semibold text-slate-400 dark:text-slate-500"
+                                >
+                                  {cp.proEarlyTotalDeathsStatus === 'all_reached_games_paused'
+                                    ? 'Paused game excluded'
+                                    : 'Not available'}
+                                </span>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -1205,7 +1234,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
                   {supportedExtendedMetrics.length > 0 && (
                     <div
                       data-testid="capability-gated-extended-metrics"
-                      className="grid grid-cols-1 sm:grid-cols-3 gap-2"
+                      className="grid grid-cols-1 @[620px]:grid-cols-3 gap-2"
                     >
                       {supportedExtendedMetrics.map((item) => {
                         const proStat = proExtendedMetricMeans[item.metricKey];
@@ -1338,7 +1367,7 @@ export const ProfileProComparisonTab: React.FC<ProfileProComparisonTabProps> = (
             </select>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          <div className="grid grid-cols-1 @[340px]:grid-cols-2 @[600px]:grid-cols-3 @[1020px]:grid-cols-6 gap-2">
             {PRO_CHECKPOINT_MINUTES.map((minute) => {
               const cp = catalogSlice.checkpoints[minute];
               const demoEval = demoEvaluations[minute];

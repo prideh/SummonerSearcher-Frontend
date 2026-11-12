@@ -244,25 +244,31 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
               </div>
 
               <div className="pt-1 border-t border-slate-800/80 space-y-0.5 text-[10px] text-slate-300">
-                <div className="flex items-center justify-between gap-1">
+                <div className="flex flex-wrap items-center justify-between gap-x-1 gap-y-0.5">
                   <span className="text-slate-400">Gold</span>
-                  <span data-testid={`checkpoint-mean-gold-${minuteMark}m`} className="font-semibold">
+                  <span
+                    data-testid={`checkpoint-mean-gold-${minuteMark}m`}
+                    className="font-semibold whitespace-nowrap"
+                  >
                     {cp.meanTotalGold !== null
                       ? `${Math.round(cp.meanTotalGold).toLocaleString('en-US')}g`
                       : 'Not available'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between gap-1">
+                <div className="flex flex-wrap items-center justify-between gap-x-1 gap-y-0.5">
                   <span className="text-slate-400">Level</span>
-                  <span data-testid={`checkpoint-mean-level-${minuteMark}m`} className="font-semibold">
+                  <span
+                    data-testid={`checkpoint-mean-level-${minuteMark}m`}
+                    className="font-semibold whitespace-nowrap"
+                  >
                     {cp.meanLevel !== null ? cp.meanLevel.toFixed(1) : 'Not available'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between gap-1">
+                <div className="flex flex-wrap items-center justify-between gap-x-1 gap-y-0.5">
                   <span className="text-slate-400">Deaths</span>
                   <span
                     data-testid={`checkpoint-mean-deaths-${minuteMark}m`}
-                    className="font-semibold"
+                    className="font-semibold whitespace-nowrap"
                   >
                     {cp.earlyTotalDeathsStatus === 'AVAILABLE' && cp.meanEarlyTotalDeaths !== null
                       ? `${cp.meanEarlyTotalDeaths.toFixed(2)}${
@@ -508,7 +514,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
         </header>
       )}
 
-      <main className="max-w-6xl mx-auto px-3 sm:px-5 py-2.5 space-y-2.5">
+      <main className="@container max-w-6xl mx-auto px-3 sm:px-5 py-2.5 space-y-2.5">
         {activeSurface === 'profile' ? (
           <div data-testid="profile-tab-review-surface" className="space-y-2">
             {/* Simulated Summoner Profile Card with [ Overview | Pro Comparison ] Tabs */}
@@ -523,7 +529,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                   </span>
                   <h1
                     data-testid="review-profile-riot-id"
-                    className="text-sm sm:text-base font-extrabold tracking-tight text-white truncate"
+                    className="text-sm sm:text-base font-extrabold tracking-tight text-white break-words"
                   >
                     <span data-testid="pro-comparison-identity-badge">
                       {activeReviewProfile.gameName}#{activeReviewProfile.tagLine} (
@@ -975,7 +981,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
           ) : (
             <div
               data-testid="checkpoint-cards-grid"
-              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2"
+              className="grid grid-cols-1 @[340px]:grid-cols-2 @[600px]:grid-cols-3 @[1020px]:grid-cols-6 gap-2"
             >
               {PRO_CHECKPOINT_MINUTES.map((m) => renderCheckpointCard(m))}
             </div>
@@ -1227,7 +1233,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                 <div className="font-semibold text-slate-200">
                   IG vs TES Game 1 (105.02s Pause) — Unadjusted 8:10 vs Verified 10:00 In-Game CS
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                <div className="grid grid-cols-1 @[420px]:grid-cols-2 @[820px]:grid-cols-5 gap-1.5">
                   {Object.keys(igTesG1.participants)
                     .map((k) => Number(k))
                     .sort((a, b) => a - b)
@@ -1242,7 +1248,7 @@ export const ProComparisonPreview: React.FC<ProComparisonPreviewProps> = ({
                           key={pid}
                           className="rounded border border-slate-800 bg-slate-900 p-1.5 text-[11px]"
                         >
-                          <div className="font-bold text-white truncate">
+                          <div className="font-bold text-white break-words leading-snug">
                             {p.summonerName} ({formatChampionDisplayName(p.championId)})
                           </div>
                           <div className="text-slate-400">

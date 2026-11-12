@@ -2540,8 +2540,64 @@ describe('searchedPlayerProAdapter & ProfileProComparisonTab contract suite', ()
     );
     richerRender.unmount();
   });
+
+  it('uses @container responsive checkpoint grids and renders full Player/Pro Gold, Level, and Deaths pairs without truncate classes', () => {
+    const profileRender = render(<ProComparisonPreview initialSurface="profile" />);
+
+    const tabSection = screen.getByTestId('profile-pro-comparison-tab');
+    expect(tabSection.className).toContain('@container');
+
+    const wholeGameGrid = screen.getByTestId('whole-game-comparison-grid');
+    expect(wholeGameGrid.className).toContain('@[480px]:grid-cols-2');
+    expect(wholeGameGrid.className).toContain('@[860px]:grid-cols-4');
+    expect(wholeGameGrid.className).not.toContain('lg:grid-cols-4');
+
+    const checkpointGrid = screen.getByTestId('paired-checkpoint-grid');
+    expect(checkpointGrid.className).toContain('@[310px]:grid-cols-2');
+    expect(checkpointGrid.className).toContain('@[620px]:grid-cols-3');
+    expect(checkpointGrid.className).toContain('@[1020px]:grid-cols-6');
+    expect(checkpointGrid.className).not.toContain('lg:grid-cols-6');
+
+    expect(screen.getByTestId('review-profile-riot-id').className).not.toContain('truncate');
+
+    for (const label of ['5m', '10m', '15m', '20m', '25m', '30m'] as const) {
+      const card = screen.getByTestId(`paired-checkpoint-card-${label}`);
+      const truncatedDescendants = Array.from(card.querySelectorAll('*')).filter((el) =>
+        el.className.toString().split(/\s+/).includes('truncate')
+      );
+      expect(truncatedDescendants).toHaveLength(0);
+
+      if (label !== '30m') {
+        const goldValues = screen.getByTestId(`paired-gold-values-${label}`);
+        const goldDelta = screen.getByTestId(`paired-gold-delta-${label}`);
+        const levelValues = screen.getByTestId(`paired-level-values-${label}`);
+        const levelDelta = screen.getByTestId(`paired-level-delta-${label}`);
+
+        expect(goldValues.textContent).toMatch(/^\d+\s*\/\s*\d+$/);
+        expect(goldDelta.textContent).toMatch(/^[+-]?\d+g$/);
+        expect(levelValues.textContent).toMatch(/^\d+\.\d\s*\/\s*\d+\.\d$/);
+        expect(levelDelta.textContent).toMatch(/^[+-]?\d+\.\d$/);
+      }
+
+      if (label === '5m' || label === '10m' || label === '15m' || label === '20m') {
+        const deathsValues = screen.getByTestId(`paired-deaths-values-${label}`);
+        const deathsDelta = screen.getByTestId(`paired-deaths-delta-${label}`);
+        expect(deathsValues.textContent).toMatch(/^\d+\.\d{2}\s*\/\s*\d+\.\d{2}\*?$/);
+        expect(deathsDelta.textContent).toMatch(/^[+-]?\d+\.\d{2}$/);
+      } else {
+        expect(screen.getByTestId(`pro-early-deaths-unavailable-${label}`)).toHaveTextContent(
+          'Not available'
+        );
+      }
+    }
+
+    profileRender.unmount();
+
+    const standaloneRender = render(<ProComparisonPreview initialSurface="standalone" />);
+    const standaloneGrid = screen.getByTestId('checkpoint-cards-grid');
+    expect(standaloneGrid.className).toContain('@[600px]:grid-cols-3');
+    expect(standaloneGrid.className).toContain('@[1020px]:grid-cols-6');
+    expect(standaloneGrid.className).not.toContain('lg:grid-cols-6');
+    standaloneRender.unmount();
+  });
 });
-
-
-
-
