@@ -154,7 +154,7 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ championStats
                   laneCs10.avgTarget !== null &&
                   laneCs10.targetMatchCount === laneCs10.matchCount;
                 const tooltipText = showTarget
-                  ? `Average lane-only CS @ 10:00 across ${laneCs10.matchCount} laner ${laneCs10.matchCount === 1 ? 'game' : 'games'}: ${Number(laneCs10.avgActual).toFixed(1)} last-hit / ${laneCs10.avgTarget} target (${laneCs10.targetLabel}; Top/Bot 114, Mid 120)`
+                  ? `Average lane-only CS @ 10:00 across ${laneCs10.matchCount} laner ${laneCs10.matchCount === 1 ? 'game' : 'games'}: ${Number(laneCs10.avgActual).toFixed(1)} last-hit / ${laneCs10.avgTarget} theoretical maximum (${laneCs10.targetLabel}; Top/Bot 114, Mid 120)`
                   : `Average lane-only CS @ 10:00 across ${laneCs10.matchCount} laner ${laneCs10.matchCount === 1 ? 'game' : 'games'}: ${Number(laneCs10.avgActual).toFixed(1)} last-hit`;
                 return (
                   <div
@@ -171,7 +171,7 @@ const RecentChampionStats: React.FC<RecentChampionStatsProps> = ({ championStats
                       </span>
                       {showTarget && (
                         <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                          / {laneCs10.avgTarget} target
+                          / {laneCs10.avgTarget} theoretical maximum
                         </span>
                       )}
                     </div>

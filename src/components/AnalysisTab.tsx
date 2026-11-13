@@ -108,7 +108,7 @@ const AnalysisTab: React.FC<AnalysisTabProps> = ({ match, puuid }) => {
               {laneCsComparison && laneCsComparison.target !== null ? (
                 <span
                   className={`font-bold pl-2 min-w-0 text-right ${isWinner ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
-                  title={`Lane-only CS @ 10:00: ${laneCsComparison.actual} last-hit vs ${laneCsComparison.target} target (${laneCsComparison.targetLabel})`}
+                  title={`Lane-only CS @ 10:00: ${laneCsComparison.actual} last-hit vs ${laneCsComparison.target} theoretical maximum (${laneCsComparison.targetLabel})`}
                 >
                   {laneCsComparison.actual} / {laneCsComparison.target}{' '}
                   <span className="font-normal text-slate-400 dark:text-slate-500">

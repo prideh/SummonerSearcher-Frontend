@@ -556,9 +556,10 @@ describe('ImprovementStatsSection', () => {
     expect(screen.getByTestId('summary-lane-cs-10-actual')).toHaveTextContent('Avg @10m:');
     expect(screen.getByTestId('summary-lane-cs-10-actual')).toHaveTextContent('79 CS (2G)');
     const summaryTargetRow = screen.getByTestId('summary-lane-cs-10-target');
-    expect(summaryTargetRow).toHaveTextContent('Target (≠ missed CS):');
+    expect(summaryTargetRow).toHaveTextContent('Theoretical maximum (≠ missed CS):');
     expect(summaryTargetRow).toHaveTextContent('Unavailable (mixed patch)');
-    // Regression guard: supported actual (82 CS) must NEVER be rendered under the Target row
+    expect(summaryTargetRow).not.toHaveTextContent(/target|benchmark/i);
+    // Regression guard: supported actual (82 CS) must NEVER be rendered under the Theoretical maximum row
     expect(summaryTargetRow).not.toHaveTextContent('82');
     const summarySupportedActualRow = screen.getByTestId('summary-lane-cs-10-supported-actual');
     expect(summarySupportedActualRow).toHaveTextContent('26.1+ actual:');
@@ -578,12 +579,17 @@ describe('ImprovementStatsSection', () => {
     // Default tab is ALL: cards show concise Observed metrics with per-card Inspect evidence disclosure collapsed by default
     const laneCs10Card = screen.getByTestId('evidence-card-lane-cs-10');
     expect(laneCs10Card).toHaveTextContent('79 CS (2G)');
-    expect(laneCs10Card).toHaveTextContent('Target ≠ missed CS (114 Top/Bot, 120 Mid benchmark)');
+    expect(laneCs10Card).toHaveTextContent(
+      'Theoretical maximum ≠ missed CS (114 Top/Bot, 120 Mid passive wave ceiling)'
+    );
     expect(laneCs10Card).toHaveTextContent(
       'Unavailable (1 pre-26.1 / mixed-patch · supported actual 82 CS in 1G)'
     );
     expect(laneCs10Card).toHaveTextContent('Missing/Short Laner Excl: 1G');
-    expect(laneCs10Card).toHaveTextContent('never subtract target - actual');
+    expect(laneCs10Card).toHaveTextContent(
+      'never subtract actual from the theoretical maximum to claim missed CS'
+    );
+    expect(laneCs10Card).not.toHaveTextContent(/target|benchmark/i);
     const laneCs10Details = laneCs10Card.querySelector('details');
     expect(laneCs10Details).not.toHaveAttribute('open');
 
@@ -601,18 +607,18 @@ describe('ImprovementStatsSection', () => {
 
     expect(screen.getByTestId('evidence-lane-cs-row-EUW1_102')).toHaveTextContent('Orianna');
     expect(screen.getByTestId('evidence-lane-cs-row-EUW1_102')).toHaveTextContent(
-      'Short game <10:00 (excluded from 10m benchmark)'
+      'Short game <10:00 (excluded from 10m theoretical maximum)'
     );
 
     expect(screen.getByTestId('evidence-lane-cs-row-EUW1_103')).toHaveTextContent('Viktor');
     expect(screen.getByTestId('evidence-lane-cs-row-EUW1_103')).toHaveTextContent('76 CS');
     expect(screen.getByTestId('evidence-lane-cs-row-EUW1_103')).toHaveTextContent(
-      'Pre-26.1 patch (actual recorded · no target)'
+      'Pre-26.1 patch (actual recorded · no theoretical maximum)'
     );
 
     expect(screen.getByTestId('evidence-lane-cs-row-EUW1_104')).toHaveTextContent('LeeSin');
     expect(screen.getByTestId('evidence-lane-cs-row-EUW1_104')).toHaveTextContent(
-      'Non-laner role (excluded from lane benchmark)'
+      'Non-laner role (excluded from theoretical maximum)'
     );
 
     // Switch through all category tabs and verify Observed Facts + Coach Inference Boundaries + Per-Match/Checkpoint rows
