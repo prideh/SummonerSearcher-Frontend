@@ -426,7 +426,7 @@ const SummonerInfo: React.FC<SummonerInfoProps> = ({
           if (substantiveModelMsgs.length > 0) {
             setAiSummaryText(substantiveModelMsgs[substantiveModelMsgs.length - 1].content);
             setAiSummarySuggestions(
-              Array.isArray(parsed.suggestions) && parsed.suggestions.length > 0
+              Array.isArray(parsed.suggestions)
                 ? parsed.suggestions
                 : generatePersonalizedSuggestions(aiContext)
             );

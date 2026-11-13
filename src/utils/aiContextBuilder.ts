@@ -1624,22 +1624,37 @@ export const parseAiResponseWithSuggestions = (
   const suggestionsMatch = rawResponse.match(/---SUGGESTIONS---\s*(\[[\s\S]*?\])/);
 
   if (suggestionsMatch) {
+    cleanResponse = rawResponse.replace(suggestionsMatch[0], '').trim();
     try {
       let jsonStr = suggestionsMatch[1];
       jsonStr = jsonStr.replace(/,\s*\]/g, ']');
       const newSuggestions = JSON.parse(jsonStr);
       if (Array.isArray(newSuggestions)) {
-        parsedSuggestions = newSuggestions;
+        if (newSuggestions.length === 0) {
+          parsedSuggestions = [];
+        } else {
+          const validStrings = newSuggestions
+            .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+            .map((item) => item.trim());
+          if (validStrings.length > 0) {
+            parsedSuggestions = validStrings;
+          }
+        }
       }
-      cleanResponse = rawResponse.replace(suggestionsMatch[0], '').trim();
     } catch (e) {
       console.error('Failed to parse suggestions:', e);
       const manualMatches = suggestionsMatch[1].match(/"([^"]+)"/g);
       if (manualMatches) {
-        parsedSuggestions = manualMatches.map((s) => s.replace(/"/g, ''));
-        cleanResponse = rawResponse.replace(suggestionsMatch[0], '').trim();
+        const recovered = manualMatches
+          .map((s) => s.replace(/"/g, '').trim())
+          .filter((s) => s.length > 0);
+        if (recovered.length > 0) {
+          parsedSuggestions = recovered;
+        }
       }
     }
+  } else if (rawResponse.includes('---SUGGESTIONS---')) {
+    cleanResponse = rawResponse.replace(/---SUGGESTIONS---[\s\S]*$/, '').trim();
   }
 
   return { cleanResponse, suggestions: parsedSuggestions };
