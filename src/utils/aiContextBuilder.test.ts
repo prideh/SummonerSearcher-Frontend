@@ -8,6 +8,7 @@ import {
   MAX_EARLY_DEATHS_PER_GAME,
   MAX_ITEM_SPIKES_PER_GAME,
   MAX_RECENT_MATCHES,
+  parseAiResponseWithSuggestions,
   VISION_DATA_PRECISION_NOTE,
 } from './aiContextBuilder';
 import { useDataDragonStore } from '../store/dataDragonStore';
@@ -1731,5 +1732,70 @@ describe('aiContextBuilder (#14)', () => {
       );
     }
   });
+
+  it('parses explicit empty ---SUGGESTIONS--- [], restores real 3 suggestions from empty, and falls back on absent or malformed suggestion blocks without leaking delimiter text', () => {
+    const starterFallback = [
+      'How can I improve my CS?',
+      'Which matchups give me the most trouble?',
+      'Am I dying too much early?',
+    ];
+
+    // 1. Explicit empty array clears starter/prior fallback suggestions and strips delimiter cleanly
+    const offTopicParsed = parseAiResponseWithSuggestions(
+      'I focus exclusively on solo queue coaching rather than travel planning.\n---SUGGESTIONS--- []',
+      starterFallback
+    );
+    expect(offTopicParsed).toEqual({
+      cleanResponse: 'I focus exclusively on solo queue coaching rather than travel planning.',
+      suggestions: [],
+    });
+
+    // 2. Empty -> real 3 suggestions transition
+    const realThreeParsed = parseAiResponseWithSuggestions(
+      'Your 10:00 lane CS averages 72.9 across 14 laner games.\n---SUGGESTIONS--- ["How is my Pantheon 10-minute CS?", "Which deaths gave up shutdown gold?", "Compare recent to saved matches"]',
+      offTopicParsed.suggestions
+    );
+    expect(realThreeParsed).toEqual({
+      cleanResponse: 'Your 10:00 lane CS averages 72.9 across 14 laner games.',
+      suggestions: [
+        'How is my Pantheon 10-minute CS?',
+        'Which deaths gave up shutdown gold?',
+        'Compare recent to saved matches',
+      ],
+    });
+
+    // 3. Absent ---SUGGESTIONS--- preserves fallback suggestions
+    const absentParsed = parseAiResponseWithSuggestions(
+      'Crash the wave cleanly before resetting.',
+      realThreeParsed.suggestions
+    );
+    expect(absentParsed).toEqual({
+      cleanResponse: 'Crash the wave cleanly before resetting.',
+      suggestions: realThreeParsed.suggestions,
+    });
+
+    // 4. Malformed ---SUGGESTIONS--- variants preserve fallback suggestions while stripping raw delimiter text
+    const errorSpy = console.error;
+    console.error = () => {};
+    try {
+      for (const rawMalformed of [
+        'Hold your defensive spell.\n---SUGGESTIONS--- [malformed unquoted]',
+        'Hold your defensive spell.\n---SUGGESTIONS--- ["unterminated',
+        'Hold your defensive spell.\n---SUGGESTIONS--- {"notAnArray": true}',
+        'Hold your defensive spell.\n---SUGGESTIONS--- [null, "   ", 42]',
+      ]) {
+        const malformedParsed = parseAiResponseWithSuggestions(
+          rawMalformed,
+          realThreeParsed.suggestions
+        );
+        expect(malformedParsed.cleanResponse).toBe('Hold your defensive spell.');
+        expect(malformedParsed.cleanResponse).not.toContain('---SUGGESTIONS---');
+        expect(malformedParsed.suggestions).toEqual(realThreeParsed.suggestions);
+      }
+    } finally {
+      console.error = errorSpy;
+    }
+  });
 });
+
 

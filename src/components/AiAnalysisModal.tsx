@@ -157,9 +157,7 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
         apiResponse.response,
         suggestionsRef.current
       );
-      if (nextSuggestions.length > 0) {
-        setSuggestions(nextSuggestions);
-      }
+      setSuggestions(nextSuggestions);
 
       updateOwnerMessages(ownerAtStart, prev => [...prev, { 
         role: 'model', 
@@ -663,7 +661,10 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
 
         {/* Suggested Questions */}
         {suggestions.length > 0 && !loading && (
-          <div className="px-2.5 py-1.5 sm:px-5 sm:py-2.5 bg-transparent border-t border-gray-200/50 dark:border-white/5 shrink-0">
+          <div
+            data-testid="ai-coach-suggestions"
+            className="px-2.5 py-1.5 sm:px-5 sm:py-2.5 bg-transparent border-t border-gray-200/50 dark:border-white/5 shrink-0"
+          >
             <div className="flex overflow-x-auto sm:flex-wrap gap-1.5 sm:gap-2 pb-0.5 scrollbar-hide snap-x">
               {suggestions.map((q, i) => (
                 <button
