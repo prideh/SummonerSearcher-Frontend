@@ -238,7 +238,7 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
           actual: hasRawNumber ? Math.round(rawLaneCs10 * 10) / 10 : null,
           target: null,
           targetLabel: null,
-          statusBadge: 'Non-laner role (excluded from lane benchmark)',
+          statusBadge: 'Non-laner role (excluded from theoretical maximum)',
           statusTone: 'slate',
         });
         continue;
@@ -258,9 +258,9 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
           target: null,
           targetLabel: null,
           statusBadge: isEarlySurrender
-            ? 'Early surrender (excluded from 10m benchmark)'
+            ? 'Early surrender (excluded from 10m theoretical maximum)'
             : durationSeconds < 600
-            ? 'Short game <10:00 (excluded from 10m benchmark)'
+            ? 'Short game <10:00 (excluded from 10m theoretical maximum)'
             : 'Non-standard queue (excluded)',
           statusTone: 'amber',
         });
@@ -297,7 +297,7 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
           actual: comp.actual,
           target: comp.target,
           targetLabel: comp.targetLabel,
-          statusBadge: `Eligible · ${comp.targetLabel ?? 'Patch 26.1+ target'} (${comp.target})`,
+          statusBadge: `Eligible · ${comp.targetLabel ?? 'Patch 26.1+ theoretical maximum'} (${comp.target})`,
           statusTone: 'emerald',
         });
       } else {
@@ -312,7 +312,7 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
           actual: comp?.actual ?? Math.round(rawLaneCs10 * 10) / 10,
           target: null,
           targetLabel: null,
-          statusBadge: 'Pre-26.1 patch (actual recorded · no target)',
+          statusBadge: 'Pre-26.1 patch (actual recorded · no theoretical maximum)',
           statusTone: 'slate',
         });
       }
@@ -711,7 +711,7 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
                   className="flex justify-between gap-1"
                 >
                   <span className="text-slate-500 dark:text-slate-400">
-                    Target (&ne; missed CS):
+                    Theoretical maximum (&ne; missed CS):
                   </span>
                   <span className="font-bold text-slate-800 dark:text-slate-100 text-right">
                     {laneCs10Evidence.summary?.avgTarget !== null &&
@@ -1078,7 +1078,7 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
           </div>
 
           <div className="space-y-2">
-            {/* Evidence Card 0: Early Lane CS @ 10m Benchmark (Table collapsed by default in All Cards) */}
+            {/* Evidence Card 0: Early Lane CS @ 10m Theoretical Maximum (Table collapsed by default in All Cards) */}
             {laneCs10Evidence &&
               (activeEvidenceTab === 'ALL' || activeEvidenceTab === 'LANE_CS_10') && (
                 <div
@@ -1090,7 +1090,7 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
                       Early Lane CS @ 10m
                     </span>
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
-                      Eligible Laner Games: {laneCs10Evidence.summary?.matchCount ?? 0}G · Target-Supported:{' '}
+                      Eligible Laner Games: {laneCs10Evidence.summary?.matchCount ?? 0}G · Theoretical-Max-Supported:{' '}
                       {laneCs10Evidence.summary?.targetMatchCount ?? 0}G · Missing/Short Laner Excl:{' '}
                       {laneCs10Evidence.missingLanerCount}G
                     </span>
@@ -1108,7 +1108,7 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
                           : 'Unavailable (0 eligible laner games)'}
                       </strong>
                       {' · '}
-                      Role Target:{' '}
+                      Theoretical Maximum:{' '}
                       <strong>
                         {laneCs10Evidence.summary?.avgTarget !== null &&
                         laneCs10Evidence.summary?.avgTarget !== undefined
@@ -1122,7 +1122,7 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
                       </strong>
                     </div>
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
-                      Target &ne; missed CS (114 Top/Bot, 120 Mid benchmark)
+                      Theoretical maximum &ne; missed CS (114 Top/Bot, 120 Mid passive wave ceiling)
                     </span>
                   </div>
 
@@ -1133,8 +1133,7 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
                     <div className="mt-2 space-y-2">
                       <p className="text-[11px] text-slate-600 dark:text-slate-300 bg-amber-500/5 border border-amber-500/20 rounded px-2.5 py-1.5 leading-snug">
                         <strong className="text-amber-700 dark:text-amber-300">Coach boundary:</strong>{' '}
-                        Role targets (114 Top/Bot, 120 Mid on Patch 26.1+) are 10m benchmarks, not farmable supply—never subtract{' '}
-                        <code className="text-[10px]">target - actual</code> as missed CS. Short (&lt;10:00) and early-surrender games are excluded, never counted as 0.
+                        Passive wave theoretical maximums (114 Top/Bot, 120 Mid on Patch 26.1+) are 10m spawn ceilings, not expected CS—never subtract actual from the theoretical maximum to claim missed CS. Short (&lt;10:00) and early-surrender games are excluded, never counted as 0.
                       </p>
                       <div className="sm:overflow-x-auto">
                         <table className="block sm:table w-full text-left border-collapse text-[11px]">
@@ -1144,7 +1143,7 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
                               <th className="py-1 px-2">Role &amp; Patch</th>
                               <th className="py-1 px-2">Duration</th>
                               <th className="py-1 px-2">Observed 10m CS</th>
-                              <th className="py-1 px-2">Role Target (&ne; missed CS)</th>
+                              <th className="py-1 px-2">Theoretical Maximum (&ne; missed CS)</th>
                               <th className="py-1 pl-2">Status</th>
                             </tr>
                           </thead>
@@ -1186,9 +1185,9 @@ const ImprovementStatsSection: React.FC<ImprovementStatsSectionProps> = ({
                                 </td>
                                 <td className="block sm:table-cell sm:py-1.5 sm:px-2 font-semibold text-slate-700 dark:text-slate-200">
                                   <span className="sm:hidden text-[10px] font-normal text-slate-400 mr-1">
-                                    Target:
+                                    Theoretical maximum:
                                   </span>
-                                  {row.target !== null ? `${row.target} CS` : 'No target'}
+                                  {row.target !== null ? `${row.target} CS` : 'No theoretical maximum'}
                                 </td>
                                 <td className="block sm:table-cell sm:py-1.5 sm:pl-2">
                                   <span

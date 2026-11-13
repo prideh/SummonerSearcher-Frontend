@@ -63,7 +63,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
 
   const laneCsAt10TooltipText = laneCsAt10
     ? laneCsAt10.target !== null
-      ? `Lane-only CS @ 10:00: ${laneCsAt10.actual} last-hit / ${laneCsAt10.target} target (${laneCsAt10.targetLabel})`
+      ? `Lane-only CS @ 10:00: ${laneCsAt10.actual} last-hit / ${laneCsAt10.target} theoretical maximum (${laneCsAt10.targetLabel})`
       : `Lane-only CS @ 10:00: ${laneCsAt10.actual} last-hit`
     : null;
 
@@ -71,7 +71,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
   if (laneCsAt10) {
     csTooltipParts.push(
       laneCsAt10.target !== null
-        ? `Lane CS @10: ${laneCsAt10.actual} / ${laneCsAt10.target} target (${laneCsAt10.targetLabel})`
+        ? `Lane CS @10: ${laneCsAt10.actual} / ${laneCsAt10.target} theoretical maximum (${laneCsAt10.targetLabel})`
         : `Lane CS @10: ${laneCsAt10.actual}`
     );
   } else if (teamPosition === 'JUNGLE' && typeof challenges?.jungleCsBefore10Minutes === 'number') {
@@ -154,7 +154,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
                 <>
                   {' '}
                   <span className="text-slate-400 dark:text-slate-500">
-                    / {laneCsAt10.target} target
+                    / {laneCsAt10.target} theoretical maximum
                   </span>
                 </>
               )}
@@ -257,7 +257,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ participant, onPlayerClick, i
                   <>
                     {' '}
                     <span className="text-slate-400 dark:text-slate-500">
-                      / {laneCsAt10.target} target
+                      / {laneCsAt10.target} theoretical maximum
                     </span>
                   </>
                 )}

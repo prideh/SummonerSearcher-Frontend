@@ -208,9 +208,9 @@ export const POST_26_1_LANE_CS_AT_10_TARGETS: Readonly<Record<LanerPosition, num
 };
 
 export const LANE_CS_AT_10_ROLE_LABELS: Readonly<Record<LanerPosition, string>> = {
-  TOP: 'Top lane target',
-  MIDDLE: 'Mid lane target',
-  BOTTOM: 'Bot lane target',
+  TOP: 'Top lane theoretical maximum',
+  MIDDLE: 'Mid lane theoretical maximum',
+  BOTTOM: 'Bot lane theoretical maximum',
 };
 
 export const normalizeLanerPosition = (teamPosition?: string): LanerPosition | null => {

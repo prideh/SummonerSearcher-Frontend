@@ -60,7 +60,7 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ puuid, matches, onPlayerCli
 
   const avgLaneCsAt10Tooltip = avgLaneCsAt10
     ? showAvgLaneCsTarget
-      ? `Average lane-only CS @ 10:00 across ${avgLaneCsAt10.matchCount} laner ${avgLaneCsAt10.matchCount === 1 ? 'game' : 'games'}: ${avgLaneCsAt10.avgActual.toFixed(1)} last-hit / ${avgLaneCsAt10.avgTarget} target (${avgLaneCsAt10.targetLabel}; Top/Bot 114, Mid 120)`
+      ? `Average lane-only CS @ 10:00 across ${avgLaneCsAt10.matchCount} laner ${avgLaneCsAt10.matchCount === 1 ? 'game' : 'games'}: ${avgLaneCsAt10.avgActual.toFixed(1)} last-hit / ${avgLaneCsAt10.avgTarget} theoretical maximum (${avgLaneCsAt10.targetLabel}; Top/Bot 114, Mid 120)`
       : `Average lane-only CS @ 10:00 across ${avgLaneCsAt10.matchCount} laner ${avgLaneCsAt10.matchCount === 1 ? 'game' : 'games'}: ${avgLaneCsAt10.avgActual.toFixed(1)} last-hit`
     : undefined;
   
@@ -109,13 +109,13 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ puuid, matches, onPlayerCli
             </span>
             {showAvgLaneCsTarget && (
               <span className="text-slate-500 dark:text-slate-400 font-medium">
-                / {avgLaneCsAt10.avgTarget} target
+                / {avgLaneCsAt10.avgTarget} theoretical maximum
               </span>
             )}
           </div>
           {showAvgLaneCsTarget && (
             <span className="text-[11px] text-slate-400 dark:text-slate-500">
-              Lane target ({avgLaneCsAt10.targetLabel}; Top/Bot 114, Mid 120)
+              Theoretical maximum ({avgLaneCsAt10.targetLabel}; Top/Bot 114, Mid 120)
             </span>
           )}
         </div>

@@ -468,7 +468,7 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                   Observed: {context.totalGamesAnalyzed || 0} matches · {timelineBadgeLabel}
                 </span>
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
-                  Guardrails: Target &ne; missed CS · No guessed wave states
+                  Guardrails: Theoretical maximum &ne; missed CS · No guessed wave states
                 </span>
               </div>
             </div>
@@ -493,15 +493,15 @@ const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                     {avgLaneCs10
                       ? `Avg ${avgLaneCs10.avgActual} CS (${avgLaneCs10.matchCount}G) · ${
                           avgLaneCs10.avgTarget !== null && avgLaneCs10.avgTarget !== undefined
-                            ? `Target ${avgLaneCs10.avgTarget} CS (${avgLaneCs10.targetMatchCount}G)`
+                            ? `Theoretical maximum ${avgLaneCs10.avgTarget} CS (${avgLaneCs10.targetMatchCount}G)`
                             : avgLaneCs10.targetMatchCount
-                            ? `Target: Unavailable (mixed patch) · 26.1+ actual: ${avgLaneCs10.avgSupportedActual ?? avgLaneCs10.avgActual} CS (${avgLaneCs10.targetMatchCount}G)`
-                            : 'Target: Unavailable (pre-26.1)'
+                            ? `Theoretical maximum: Unavailable (mixed patch) · 26.1+ actual: ${avgLaneCs10.avgSupportedActual ?? avgLaneCs10.avgActual} CS (${avgLaneCs10.targetMatchCount}G)`
+                            : 'Theoretical maximum: Unavailable (pre-26.1)'
                         }`
                       : 'No eligible laner games'}
                   </div>
                   <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                    {missingCs10 > 0 ? `${missingCs10}G short/missing excl. · ` : ''}Role target &ne; missed CS
+                    {missingCs10 > 0 ? `${missingCs10}G short/missing excl. · ` : ''}Theoretical maximum &ne; missed CS
                   </div>
                 </div>
 

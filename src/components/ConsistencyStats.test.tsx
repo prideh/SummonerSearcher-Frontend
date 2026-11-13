@@ -339,19 +339,19 @@ describe('ConsistencyStats', () => {
       actual: 84,
       target: 114,
       role: 'TOP',
-      targetLabel: 'Top lane target',
+      targetLabel: 'Top lane theoretical maximum',
     });
     expect(calculateLaneCsAt10Comparison(84, '16.5.1', 'BOTTOM')).toEqual({
       actual: 84,
       target: 114,
       role: 'BOTTOM',
-      targetLabel: 'Bot lane target',
+      targetLabel: 'Bot lane theoretical maximum',
     });
     expect(calculateLaneCsAt10Comparison(84, '16.5.1', 'MIDDLE')).toEqual({
       actual: 84,
       target: 120,
       role: 'MIDDLE',
-      targetLabel: 'Mid lane target',
+      targetLabel: 'Mid lane theoretical maximum',
     });
     expect(calculateLaneCsAt10Comparison(18, '16.5.1', 'UTILITY')).toEqual({
       actual: 18,
@@ -373,7 +373,7 @@ describe('ConsistencyStats', () => {
     });
   });
 
-  test('renders role-gated CS@10 actual vs verified lane targets (TOP 114, BOTTOM 114, MIDDLE 120) on patch 26.1+ and excludes older/unknown-patch games and non-laners', () => {
+  test('renders role-gated CS@10 actual vs verified lane theoretical maximums (TOP 114, BOTTOM 114, MIDDLE 120) on patch 26.1+ and excludes older/unknown-patch games and non-laners', () => {
     useDataDragonStore.setState({
       version: '16.5.1',
       versionReady: true,
@@ -385,9 +385,9 @@ describe('ConsistencyStats', () => {
     });
 
     const roleExpectations = [
-      { role: 'TOP', target: 114, label: 'Top lane target' },
-      { role: 'MIDDLE', target: 120, label: 'Mid lane target' },
-      { role: 'BOTTOM', target: 114, label: 'Bot lane target' },
+      { role: 'TOP', target: 114, label: 'Top lane theoretical maximum' },
+      { role: 'MIDDLE', target: 120, label: 'Mid lane theoretical maximum' },
+      { role: 'BOTTOM', target: 114, label: 'Bot lane theoretical maximum' },
     ] as const;
 
     for (const { role: lanerRole, target, label } of roleExpectations) {
@@ -408,10 +408,12 @@ describe('ConsistencyStats', () => {
         />
       );
       const badge = screen.getByTestId('lane-cs-10');
-      expect(badge).toHaveTextContent(`CS@10: 84 / ${target} target`);
+      expect(badge).toHaveTextContent(`CS@10: 84 / ${target} theoretical maximum`);
+      expect(badge).not.toHaveTextContent(/target|benchmark/i);
       expect(badge.getAttribute('title')).toContain(
-        `Lane-only CS @ 10:00: 84 last-hit / ${target} target (${label})`
+        `Lane-only CS @ 10:00: 84 last-hit / ${target} theoretical maximum (${label})`
       );
+      expect(badge.getAttribute('title')).not.toMatch(/target|benchmark|missed/i);
       unmount();
 
       const { unmount: unmountAnalysisLaner } = render(
@@ -425,7 +427,7 @@ describe('ConsistencyStats', () => {
       unmountAnalysisLaner();
     }
 
-    // Older patch (15.24.1) match: must NOT apply the post-26.1 lane target even when store version is 16.5.1
+    // Older patch (15.24.1) match: must NOT apply the post-26.1 lane theoretical maximum even when store version is 16.5.1
     const olderLanerMatch = createMatch(
       puuid,
       { laneMinionsFirst10Minutes: 80 },
@@ -445,7 +447,7 @@ describe('ConsistencyStats', () => {
     const olderBadge = screen.getByTestId('lane-cs-10');
     expect(olderBadge).toHaveTextContent('CS@10: 80');
     expect(olderBadge).not.toHaveTextContent('120');
-    expect(olderBadge).not.toHaveTextContent('target');
+    expect(olderBadge).not.toHaveTextContent(/target|theoretical maximum/i);
     unmountOlderPlayerStats();
 
     const { unmount: unmountOlderAnalysis } = render(
@@ -453,7 +455,7 @@ describe('ConsistencyStats', () => {
     );
     expect(screen.getAllByText('Lane minions @ 10 min:').length).toBeGreaterThan(0);
     expect(screen.getByText('80')).toBeInTheDocument();
-    expect(screen.queryByText(/lane target/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/lane (target|theoretical maximum)/i)).not.toBeInTheDocument();
     unmountOlderAnalysis();
 
     const supportMatch = createMatch(

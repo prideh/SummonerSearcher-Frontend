@@ -229,10 +229,11 @@ describe('RecentChampionStats & Average Lane CS@10 (#12 follow-up)', () => {
     const recentAvgRow = screen.getByTestId('avg-lane-cs-10');
     expect(recentAvgRow).toHaveTextContent('Avg CS@10 (2G):');
     expect(recentAvgRow).toHaveTextContent('80.0');
-    expect(recentAvgRow).toHaveTextContent('/ 117 target');
+    expect(recentAvgRow).toHaveTextContent('/ 117 theoretical maximum');
+    expect(recentAvgRow).not.toHaveTextContent(/target|benchmark/i);
     expect(recentAvgRow).toHaveAttribute(
       'title',
-      'Average lane-only CS @ 10:00 across 2 laner games: 80.0 last-hit / 117 target (1 Mid, 1 Top; Top/Bot 114, Mid 120)'
+      'Average lane-only CS @ 10:00 across 2 laner games: 80.0 last-hit / 117 theoretical maximum (1 Mid, 1 Top; Top/Bot 114, Mid 120)'
     );
     unmount();
 
@@ -250,10 +251,11 @@ describe('RecentChampionStats & Average Lane CS@10 (#12 follow-up)', () => {
     const banner = screen.getByTestId('match-history-avg-lane-cs-10');
     expect(banner).toHaveTextContent('Avg Lane CS@10 (2 games):');
     expect(banner).toHaveTextContent('80.0');
-    expect(banner).toHaveTextContent('/ 117 target');
+    expect(banner).toHaveTextContent('/ 117 theoretical maximum');
     expect(banner).toHaveTextContent(
-      'Lane target (1 Mid, 1 Top; Top/Bot 114, Mid 120)'
+      'Theoretical maximum (1 Mid, 1 Top; Top/Bot 114, Mid 120)'
     );
+    expect(banner).not.toHaveTextContent(/target|benchmark/i);
   });
 
   it('computes weighted average target over the exact same eligible games (e.g. 12 Mid + 6 Top = 118) and excludes unknown roles, SUPPORT/UTILITY, and JUNGLE', () => {
@@ -436,7 +438,7 @@ describe('RecentChampionStats & Average Lane CS@10 (#12 follow-up)', () => {
     expect(recentAvgRow).toHaveTextContent('Avg CS@10 (2G):');
     expect(recentAvgRow).toHaveTextContent('80.0');
     expect(recentAvgRow).not.toHaveTextContent('120');
-    expect(recentAvgRow).not.toHaveTextContent('target');
+    expect(recentAvgRow).not.toHaveTextContent(/target|theoretical maximum/i);
     unmount();
 
     render(
@@ -454,7 +456,7 @@ describe('RecentChampionStats & Average Lane CS@10 (#12 follow-up)', () => {
     expect(banner).toHaveTextContent('Avg Lane CS@10 (2 games):');
     expect(banner).toHaveTextContent('80.0');
     expect(banner).not.toHaveTextContent('120');
-    expect(banner).not.toHaveTextContent('target');
+    expect(banner).not.toHaveTextContent(/target|theoretical maximum/i);
   });
 
   it('omits the target when all eligible laner games are pre-26.1 and returns null when no laner games have laneMinionsFirst10Minutes', () => {
@@ -502,7 +504,7 @@ describe('RecentChampionStats & Average Lane CS@10 (#12 follow-up)', () => {
     expect(banner).toHaveTextContent('Avg Lane CS@10 (2 games):');
     expect(banner).toHaveTextContent('78.5');
     expect(banner).not.toHaveTextContent('120');
-    expect(banner).not.toHaveTextContent('target');
+    expect(banner).not.toHaveTextContent(/target|theoretical maximum/i);
     unmount();
 
     // Jungle + missing laneMinionsFirst10Minutes only -> returns null, no banner rendered

@@ -478,7 +478,8 @@ describe('SummonerInfo', () => {
 
     const drawer = screen.getByTestId('ai-coach-evidence-drawer');
     expect(drawer).toHaveTextContent('Observed: 4 matches · 10m/20m timelines loaded');
-    expect(drawer).toHaveTextContent('Guardrails: Target ≠ missed CS · No guessed wave states');
+    expect(drawer).toHaveTextContent('Guardrails: Theoretical maximum ≠ missed CS · No guessed wave states');
+    expect(drawer).not.toHaveTextContent(/target|benchmark/i);
     expect(drawer).toHaveTextContent('9.15/m (2G)');
     expect(drawer).toHaveTextContent('750g (3D)');
     expect(drawer).toHaveTextContent('800.0g / 854.5g');

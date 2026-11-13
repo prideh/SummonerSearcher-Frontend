@@ -348,7 +348,7 @@ describe('aiContextBuilder (#14)', () => {
     expect(m1.laneCsAt10).toEqual({
       actual: 86,
       target: 120,
-      targetLabel: 'Mid lane target',
+      targetLabel: 'Mid lane theoretical maximum',
     });
     expect(m1.jungleCsBefore10Minutes).toBeUndefined();
     expect(m1.controlWardsPlaced).toBe(2);
@@ -1217,15 +1217,15 @@ describe('aiContextBuilder (#14)', () => {
     ).byteLength;
 
     // Exact measured deterministic UTF-8 payload sizes & upper bounds (with 5-stat improvementStats + scoped sample records)
-    expect(oneMatchNotAnalyzedBytes).toBe(5171);
-    expect(oneMatchAnalyzedBytes).toBe(6234);
-    expect(notAnalyzedBytes).toBe(25177);
-    expect(analyzedBytes).toBe(38590);
+    expect(oneMatchNotAnalyzedBytes).toBe(5184);
+    expect(oneMatchAnalyzedBytes).toBe(6247);
+    expect(notAnalyzedBytes).toBe(25437);
+    expect(analyzedBytes).toBe(38850);
     expect(notAnalyzedBytes).toBeLessThan(26000);
     expect(analyzedBytes).toBeLessThan(40000);
   });
 
-  it('excludes short (<600s) and early-surrendered laner games from 10m lane CS target and counts them in missingLaneCsAt10Matches', () => {
+  it('excludes short (<600s) and early-surrendered laner games from 10m lane CS theoretical maximum and counts them in missingLaneCsAt10Matches', () => {
     const shortMatch = createMatch({
       matchId: 'KR_SHORT_1',
       playerOverrides: { challenges: { laneMinionsFirst10Minutes: 53 } },
@@ -1268,7 +1268,7 @@ describe('aiContextBuilder (#14)', () => {
     expect(ctx.recentMatches[2].laneCsAt10).toEqual({
       actual: 85,
       target: 120,
-      targetLabel: 'Mid lane target',
+      targetLabel: 'Mid lane theoretical maximum',
     });
   });
 
